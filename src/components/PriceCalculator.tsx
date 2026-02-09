@@ -74,8 +74,16 @@ const PriceCalculator = () => {
     const estimatedProfit = sellingPrice - totalCost;
     const effectiveMargin = totalCost > 0 ? (estimatedProfit / totalCost) * 100 : 0;
     const estimatedProfitUsd = dollar > 0 ? estimatedProfit / dollar : estimatedProfit;
-    return { fobBrl, estimatedTaxValue, totalCost, sellingPrice, estimatedProfit, estimatedProfitUsd, effectiveMargin };
-  }, [fobCost, dollarRate, estimatedTaxPercent, desiredMargin]);
+    const sellingPriceUsd = dollar > 0 ? sellingPrice / dollar : sellingPrice;
+
+    const minMg = parseFloat(minMargin) || 0;
+    const minSellingPrice = totalCost * (1 + minMg / 100);
+    const minProfit = minSellingPrice - totalCost;
+    const minProfitUsd = dollar > 0 ? minProfit / dollar : minProfit;
+    const minSellingPriceUsd = dollar > 0 ? minSellingPrice / dollar : minSellingPrice;
+
+    return { fobBrl, estimatedTaxValue, totalCost, sellingPrice, sellingPriceUsd, estimatedProfit, estimatedProfitUsd, effectiveMargin, minSellingPrice, minSellingPriceUsd, minProfit, minProfitUsd, minMarginPct: minMg };
+  }, [fobCost, dollarRate, estimatedTaxPercent, desiredMargin, minMargin]);
 
   const nationalized = useMemo(() => {
     if (!simulation) return null;
@@ -237,16 +245,30 @@ const PriceCalculator = () => {
                     <Row label="Impostos Estimados" value={simulation ? `${formatPct(parseFloat(estimatedTaxPercent) || 0)} = ${formatCurrency(simulation.estimatedTaxValue)}` : "R$ 0,00"} color="text-warning" />
                     <Row label="Custo Total Estimado" value={simulation ? formatCurrency(simulation.totalCost) : "R$ 0,00"} />
                     <Separator className="my-2" />
-                    <Row label="Margem Desejada" value={formatPct(parseFloat(desiredMargin) || 0)} color="text-accent" />
-                    {minMarginVal > 0 && (
-                      <Row label="Margem Mínima Aceitável" value={formatPct(minMarginVal)} color="text-warning" />
+                    <h3 className="text-sm font-semibold text-card-foreground">Margem Desejada ({formatPct(parseFloat(desiredMargin) || 0)})</h3>
+                    <Row label="Preço de Venda" value={simulation ? formatCurrency(simulation.sellingPrice) : "R$ 0,00"} bold />
+                    {simulation && parseFloat(dollarRate) > 0 && (
+                      <Row label="Preço de Venda (USD)" value={`US$ ${simulation.sellingPriceUsd.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
                     )}
                     <Row label="Lucro Estimado" value={simulation ? formatCurrency(simulation.estimatedProfit) : "R$ 0,00"} color="text-accent" bold />
                     {simulation && parseFloat(dollarRate) > 0 && (
                       <Row label="Lucro Estimado (USD)" value={`US$ ${simulation.estimatedProfitUsd.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} color="text-accent" />
                     )}
-                    <Separator className="my-2" />
-                    <Row label="Preço de Venda" value={simulation ? formatCurrency(simulation.sellingPrice) : "R$ 0,00"} bold />
+
+                    {simulation && simulation.minMarginPct > 0 && (
+                      <>
+                        <Separator className="my-2" />
+                        <h3 className="text-sm font-semibold text-warning">Margem Mínima Aceitável ({formatPct(simulation.minMarginPct)})</h3>
+                        <Row label="Preço de Venda" value={formatCurrency(simulation.minSellingPrice)} bold />
+                        {parseFloat(dollarRate) > 0 && (
+                          <Row label="Preço de Venda (USD)" value={`US$ ${simulation.minSellingPriceUsd.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                        )}
+                        <Row label="Lucro Estimado" value={formatCurrency(simulation.minProfit)} color="text-warning" bold />
+                        {parseFloat(dollarRate) > 0 && (
+                          <Row label="Lucro Estimado (USD)" value={`US$ ${simulation.minProfitUsd.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} color="text-warning" />
+                        )}
+                      </>
+                    )}
                   </div>
                 </Card>
 
