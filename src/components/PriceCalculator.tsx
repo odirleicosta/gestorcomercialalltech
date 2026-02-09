@@ -81,44 +81,51 @@ const PriceCalculator = () => {
     const taxPct = parseFloat(estimatedTaxPercent) || 0;
     const margin = parseFloat(desiredMargin) || 0;
     if (fob <= 0) return null;
-    const fobBrl = dollar > 0 ? fob * dollar : fob;
-    const m = margin / 100;
+
     const t = taxPct / 100;
+    const m = margin / 100;
 
-    // imposto = t × preçoVenda, lucro = m × custoTotal
-    // preçoVenda = (fobBrl + t × preçoVenda) × (1 + m)
-    // preçoVenda = fobBrl(1+m) / (1 - t(1+m))
-    const denominator = 1 - t * (1 + m);
-    if (denominator <= 0) return null;
-    const sellingPrice = fobBrl * (1 + m) / denominator;
-    const estimatedTaxValue = t * sellingPrice;
-    const totalCost = fobBrl + estimatedTaxValue;
-    const estimatedProfit = sellingPrice - totalCost;
-    const effectiveMargin = totalCost > 0 ? (estimatedProfit / totalCost) * 100 : 0;
-    const estimatedProfitUsd = dollar > 0 ? estimatedProfit / dollar : estimatedProfit;
-    const sellingPriceUsd = dollar > 0 ? sellingPrice / dollar : sellingPrice;
+    // Impostos = FOB(USD) × Imposto%
+    const estimatedTaxValue = fob * t;
+    // Custo Total = FOB + Impostos (tudo em USD)
+    const totalCost = fob + estimatedTaxValue;
+    // Lucro = FOB × Margem% (margem sobre o FOB puro)
+    const estimatedProfit = fob * m;
+    // Preço de Venda = Custo Total + Lucro
+    const sellingPrice = totalCost + estimatedProfit;
+    const effectiveMargin = fob > 0 ? (estimatedProfit / fob) * 100 : 0;
 
+    // Conversão para BRL
+    const fobBrl = dollar > 0 ? fob * dollar : fob;
+    const sellingPriceBrl = dollar > 0 ? sellingPrice * dollar : sellingPrice;
+    const estimatedTaxBrl = dollar > 0 ? estimatedTaxValue * dollar : estimatedTaxValue;
+    const totalCostBrl = dollar > 0 ? totalCost * dollar : totalCost;
+    const estimatedProfitBrl = dollar > 0 ? estimatedProfit * dollar : estimatedProfit;
+
+    // Margem mínima
     const minMg = parseFloat(minMargin) || 0;
     const minM = minMg / 100;
-    const minDenom = 1 - t * (1 + minM);
-    const minSellingPrice = minDenom > 0 ? fobBrl * (1 + minM) / minDenom : 0;
-    const minTax = t * minSellingPrice;
-    const minTotalCost = fobBrl + minTax;
-    const minProfit = minSellingPrice - minTotalCost;
-    const minProfitUsd = dollar > 0 ? minProfit / dollar : minProfit;
-    const minSellingPriceUsd = dollar > 0 ? minSellingPrice / dollar : minSellingPrice;
+    const minProfit = fob * minM;
+    const minSellingPrice = totalCost + minProfit;
+    const minSellingPriceBrl = dollar > 0 ? minSellingPrice * dollar : minSellingPrice;
+    const minProfitBrl = dollar > 0 ? minProfit * dollar : minProfit;
 
-    return { fobBrl, estimatedTaxValue, totalCost, sellingPrice, sellingPriceUsd, estimatedProfit, estimatedProfitUsd, effectiveMargin, minSellingPrice, minSellingPriceUsd, minProfit, minProfitUsd, minMarginPct: minMg };
+    return {
+      fob, fobBrl, estimatedTaxValue, estimatedTaxBrl, totalCost, totalCostBrl,
+      sellingPrice, sellingPriceBrl, estimatedProfit, estimatedProfitBrl,
+      effectiveMargin, minSellingPrice, minSellingPriceBrl, minProfit, minProfitBrl, minMarginPct: minMg,
+    };
   }, [fobCost, dollarRate, estimatedTaxPercent, desiredMargin, minMargin]);
 
   const nationalized = useMemo(() => {
     if (!simulation) return null;
     const realTax = parseFloat(realTaxValue);
     if (isNaN(realTax) || realTax <= 0) return null;
+    // Impostos reais em BRL, comparar com valores em BRL
     const realTotalCost = simulation.fobBrl + realTax;
-    const realProfit = simulation.sellingPrice - realTotalCost;
-    const realMarginPct = realTotalCost > 0 ? (realProfit / realTotalCost) * 100 : 0;
-    const taxDifference = realTax - simulation.estimatedTaxValue;
+    const realProfit = simulation.sellingPriceBrl - realTotalCost;
+    const realMarginPct = simulation.fobBrl > 0 ? (realProfit / simulation.fobBrl) * 100 : 0;
+    const taxDifference = realTax - simulation.estimatedTaxBrl;
     return { realTotalCost, realProfit, realMarginPct, taxDifference };
   }, [simulation, realTaxValue]);
 
@@ -129,6 +136,8 @@ const PriceCalculator = () => {
 
   const formatCurrency = (v: number) =>
     v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const formatUsd = (v: number) =>
+    `US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const formatPct = (v: number) =>
     v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
 
@@ -364,41 +373,52 @@ const PriceCalculator = () => {
                 <Card className="border-border bg-primary p-6 shadow-sm">
                   <p className="text-sm font-medium text-primary-foreground/70">Preço de Venda Sugerido</p>
                   <p className="mt-1 font-heading text-4xl font-bold text-primary-foreground">
-                    {simulation ? formatCurrency(simulation.sellingPrice) : "R$ 0,00"}
+                    {simulation ? formatUsd(simulation.sellingPrice) : "US$ 0,00"}
                   </p>
+                  {simulation && parseFloat(dollarRate) > 0 && (
+                    <p className="mt-1 text-sm text-primary-foreground/60">
+                      {formatCurrency(simulation.sellingPriceBrl)}
+                    </p>
+                  )}
                 </Card>
 
                 <Card className="border-border bg-card p-6 shadow-sm">
                   <h2 className="font-heading text-base font-semibold text-card-foreground mb-4">Composição Estimada</h2>
                   <div className="space-y-2.5">
-                    <Row label="Custo FOB (USD)" value={`US$ ${(parseFloat(fobCost) || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} />
+                    <Row label="Custo FOB (USD)" value={formatUsd(parseFloat(fobCost) || 0)} />
                     {simulation && parseFloat(dollarRate) > 0 && (
                       <Row label={`FOB em BRL (×${parseFloat(dollarRate).toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`} value={formatCurrency(simulation.fobBrl)} />
                     )}
-                    <Row label="Impostos Estimados" value={simulation ? `${formatPct(parseFloat(estimatedTaxPercent) || 0)} = ${formatCurrency(simulation.estimatedTaxValue)}` : "R$ 0,00"} color="text-warning" />
-                    <Row label="Custo Total Estimado" value={simulation ? formatCurrency(simulation.totalCost) : "R$ 0,00"} />
-                    <Separator className="my-2" />
-                    <h3 className="text-sm font-semibold text-card-foreground">Margem Desejada ({formatPct(parseFloat(desiredMargin) || 0)})</h3>
-                    <Row label="Preço de Venda" value={simulation ? formatCurrency(simulation.sellingPrice) : "R$ 0,00"} bold />
+                    <Row label="Impostos Estimados" value={simulation ? `${formatPct(parseFloat(estimatedTaxPercent) || 0)} = ${formatUsd(simulation.estimatedTaxValue)}` : "US$ 0,00"} color="text-warning" />
                     {simulation && parseFloat(dollarRate) > 0 && (
-                      <Row label="Preço de Venda (USD)" value={`US$ ${simulation.sellingPriceUsd.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                      <Row label="Impostos em BRL" value={formatCurrency(simulation.estimatedTaxBrl)} color="text-warning" />
                     )}
-                    <Row label="Lucro Estimado" value={simulation ? formatCurrency(simulation.estimatedProfit) : "R$ 0,00"} color="text-accent" bold />
+                    <Row label="Custo Total Estimado" value={simulation ? formatUsd(simulation.totalCost) : "US$ 0,00"} />
                     {simulation && parseFloat(dollarRate) > 0 && (
-                      <Row label="Lucro Estimado (USD)" value={`US$ ${simulation.estimatedProfitUsd.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} color="text-accent" />
+                      <Row label="Custo Total em BRL" value={formatCurrency(simulation.totalCostBrl)} />
+                    )}
+                    <Separator className="my-2" />
+                    <h3 className="text-sm font-semibold text-card-foreground">Margem Desejada ({formatPct(parseFloat(desiredMargin) || 0)}) sobre FOB</h3>
+                    <Row label="Preço de Venda (USD)" value={simulation ? formatUsd(simulation.sellingPrice) : "US$ 0,00"} bold />
+                    {simulation && parseFloat(dollarRate) > 0 && (
+                      <Row label="Preço de Venda (BRL)" value={formatCurrency(simulation.sellingPriceBrl)} />
+                    )}
+                    <Row label="Lucro Estimado (USD)" value={simulation ? formatUsd(simulation.estimatedProfit) : "US$ 0,00"} color="text-accent" bold />
+                    {simulation && parseFloat(dollarRate) > 0 && (
+                      <Row label="Lucro Estimado (BRL)" value={formatCurrency(simulation.estimatedProfitBrl)} color="text-accent" />
                     )}
 
                     {simulation && simulation.minMarginPct > 0 && (
                       <>
                         <Separator className="my-2" />
-                        <h3 className="text-sm font-semibold text-warning">Margem Mínima Aceitável ({formatPct(simulation.minMarginPct)})</h3>
-                        <Row label="Preço de Venda" value={formatCurrency(simulation.minSellingPrice)} bold />
+                        <h3 className="text-sm font-semibold text-warning">Margem Mínima Aceitável ({formatPct(simulation.minMarginPct)}) sobre FOB</h3>
+                        <Row label="Preço de Venda (USD)" value={formatUsd(simulation.minSellingPrice)} bold />
                         {parseFloat(dollarRate) > 0 && (
-                          <Row label="Preço de Venda (USD)" value={`US$ ${simulation.minSellingPriceUsd.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} />
+                          <Row label="Preço de Venda (BRL)" value={formatCurrency(simulation.minSellingPriceBrl)} />
                         )}
-                        <Row label="Lucro Estimado" value={formatCurrency(simulation.minProfit)} color="text-warning" bold />
+                        <Row label="Lucro Estimado (USD)" value={formatUsd(simulation.minProfit)} color="text-warning" bold />
                         {parseFloat(dollarRate) > 0 && (
-                          <Row label="Lucro Estimado (USD)" value={`US$ ${simulation.minProfitUsd.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} color="text-warning" />
+                          <Row label="Lucro Estimado (BRL)" value={formatCurrency(simulation.minProfitBrl)} color="text-warning" />
                         )}
                       </>
                     )}
@@ -423,7 +443,7 @@ const PriceCalculator = () => {
                   <Card className="border-border bg-card p-6 shadow-sm">
                     <h2 className="font-heading text-sm font-semibold text-card-foreground mb-3">Distribuição Visual</h2>
                     <div className="flex h-6 w-full overflow-hidden rounded-lg">
-                      <BarSegment percent={simulation.fobBrl / simulation.sellingPrice * 100} className="bg-muted-foreground/40" label="FOB" />
+                      <BarSegment percent={simulation.fob / simulation.sellingPrice * 100} className="bg-muted-foreground/40" label="FOB" />
                       <BarSegment percent={simulation.estimatedTaxValue / simulation.sellingPrice * 100} className="bg-warning" label="Impostos" />
                       <BarSegment percent={simulation.estimatedProfit / simulation.sellingPrice * 100} className="bg-accent" label="Lucro" />
                     </div>
