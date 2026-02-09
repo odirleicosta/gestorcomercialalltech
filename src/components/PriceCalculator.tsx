@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   DollarSign, Percent, TrendingUp, Package, Receipt,
-  Save, AlertTriangle, History, Calculator,
+  Save, AlertTriangle, History, Calculator, RotateCcw,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import CalculationHistory from "@/components/CalculationHistory";
@@ -204,9 +204,18 @@ const PriceCalculator = () => {
                   </div>
                 </Card>
 
-                <Button className="w-full" onClick={handleSave} disabled={!simulation}>
-                  <Save className="h-4 w-4 mr-2" /> Salvar Cálculo
-                </Button>
+                <div className="flex gap-3">
+                  <Button className="flex-1" onClick={handleSave} disabled={!simulation}>
+                    <Save className="h-4 w-4 mr-2" /> Salvar Cálculo
+                  </Button>
+                  <Button variant="outline" onClick={() => {
+                    setMachineName(""); setFobCost(""); setDollarRate("");
+                    setEstimatedTaxPercent(""); setDesiredMargin(""); setMinMargin("");
+                    setRealTaxValue(""); setObservation("");
+                  }}>
+                    <RotateCcw className="h-4 w-4 mr-2" /> Resetar
+                  </Button>
+                </div>
               </div>
 
               {/* Results – 2 cols */}
