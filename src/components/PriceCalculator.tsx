@@ -10,11 +10,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   DollarSign, Percent, TrendingUp, Package, Receipt,
   Save, AlertTriangle, History, Calculator, RotateCcw, User, StickyNote,
-  Building2, Plus,
+  Building2, Plus, Wrench,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import CalculationHistory from "@/components/CalculationHistory";
 import ClientManager, { loadClients, saveClients, type Client } from "@/components/ClientManager";
+import MachineManager, { loadMachines, saveMachines, type Machine } from "@/components/MachineManager";
 
 export interface SavedCalculation {
   id: string;
@@ -60,9 +61,14 @@ const PriceCalculator = () => {
   const [history, setHistory] = useState<SavedCalculation[]>(loadHistory);
   const [clients, setClients] = useState<Client[]>(loadClients);
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
+  const [machines, setMachines] = useState<Machine[]>(loadMachines);
+  const [showMachineSuggestions, setShowMachineSuggestions] = useState(false);
 
   const filteredClients = clients.filter((c) =>
     c.name.toLowerCase().includes(clientName.toLowerCase())
+  );
+  const filteredMachines = machines.filter((m) =>
+    m.name.toLowerCase().includes(machineName.toLowerCase())
   );
 
   useEffect(() => {
@@ -185,6 +191,9 @@ const PriceCalculator = () => {
             <TabsTrigger value="clients">
               <Building2 className="h-4 w-4 mr-1" /> Empresas
             </TabsTrigger>
+            <TabsTrigger value="machines">
+              <Wrench className="h-4 w-4 mr-1" /> Máquinas
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="simulation">
@@ -244,7 +253,54 @@ const PriceCalculator = () => {
                         </Button>
                       </div>
                     </div>
-                    <InputField label="Nome da Máquina" icon={<Package className="h-4 w-4" />} value={machineName} onChange={setMachineName} placeholder="Ex: Torno CNC" />
+                    <div className="relative">
+                      <Label className="mb-1.5 flex items-center gap-1.5 text-sm text-muted-foreground"><Package className="h-4 w-4" />Nome da Máquina</Label>
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Input
+                            value={machineName}
+                            onChange={(e) => { setMachineName(e.target.value); setShowMachineSuggestions(true); }}
+                            onFocus={() => setShowMachineSuggestions(true)}
+                            onBlur={() => setTimeout(() => setShowMachineSuggestions(false), 150)}
+                            placeholder="Ex: Torno CNC"
+                            className="bg-secondary/50 border-border"
+                          />
+                          {showMachineSuggestions && machineName && filteredMachines.length > 0 && (
+                            <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md max-h-40 overflow-y-auto">
+                              {filteredMachines.map((m) => (
+                                <button
+                                  key={m.id}
+                                  type="button"
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+                                  onMouseDown={() => { setMachineName(m.name); setShowMachineSuggestions(false); }}
+                                >
+                                  {m.name}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="shrink-0"
+                          disabled={!machineName.trim() || machines.some((m) => m.name.toLowerCase() === machineName.trim().toLowerCase())}
+                          onClick={() => {
+                            const trimmed = machineName.trim();
+                            if (!trimmed) return;
+                            const entry: Machine = { id: crypto.randomUUID(), name: trimmed, created_at: new Date().toISOString() };
+                            const updated = [entry, ...machines];
+                            setMachines(updated);
+                            saveMachines(updated);
+                            toast({ title: "Máquina cadastrada!" });
+                          }}
+                          title="Cadastrar máquina"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
                     <InputField label="Custo FOB (USD)" icon={<DollarSign className="h-4 w-4" />} value={fobCost} onChange={setFobCost} placeholder="0,00" prefix="US$" type="number" />
                     <InputField label="Cotação do Dólar" icon={<DollarSign className="h-4 w-4" />} value={dollarRate} onChange={setDollarRate} placeholder="0,00" prefix="R$" type="number" />
                     <InputField label="Impostos Estimados" icon={<Receipt className="h-4 w-4" />} value={estimatedTaxPercent} onChange={setEstimatedTaxPercent} placeholder="0,00" suffix="%" type="number" />
@@ -391,6 +447,10 @@ const PriceCalculator = () => {
 
           <TabsContent value="clients">
             <ClientManager clients={clients} setClients={setClients} />
+          </TabsContent>
+
+          <TabsContent value="machines">
+            <MachineManager machines={machines} setMachines={setMachines} />
           </TabsContent>
         </Tabs>
       </div>
