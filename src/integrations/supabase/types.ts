@@ -14,13 +14,96 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      calculations: {
+        Row: {
+          created_at: string
+          desired_margin_percent: number
+          estimated_profit: number
+          estimated_tax_percent: number
+          estimated_tax_value: number
+          fob_cost: number
+          id: string
+          machine_name: string
+          min_acceptable_margin: number | null
+          observation: string | null
+          real_margin_percent: number | null
+          real_profit: number | null
+          real_tax_value: number | null
+          selling_price: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          desired_margin_percent?: number
+          estimated_profit?: number
+          estimated_tax_percent?: number
+          estimated_tax_value?: number
+          fob_cost?: number
+          id?: string
+          machine_name?: string
+          min_acceptable_margin?: number | null
+          observation?: string | null
+          real_margin_percent?: number | null
+          real_profit?: number | null
+          real_tax_value?: number | null
+          selling_price?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          desired_margin_percent?: number
+          estimated_profit?: number
+          estimated_tax_percent?: number
+          estimated_tax_value?: number
+          fob_cost?: number
+          id?: string
+          machine_name?: string
+          min_acceptable_margin?: number | null
+          observation?: string | null
+          real_margin_percent?: number | null
+          real_profit?: number | null
+          real_tax_value?: number | null
+          selling_price?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+          min_acceptable_margin: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id: string
+          min_acceptable_margin?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          min_acceptable_margin?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_calculation_owner: { Args: { calc_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
