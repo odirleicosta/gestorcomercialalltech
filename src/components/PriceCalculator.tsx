@@ -65,20 +65,30 @@ const PriceCalculator = () => {
     const taxPct = parseFloat(estimatedTaxPercent) || 0;
     const margin = parseFloat(desiredMargin) || 0;
     if (fob <= 0) return null;
-    const estimatedTaxUsd = fob * (taxPct / 100);
-    const totalCostUsd = fob + estimatedTaxUsd;
     const fobBrl = dollar > 0 ? fob * dollar : fob;
-    const estimatedTaxValue = dollar > 0 ? estimatedTaxUsd * dollar : estimatedTaxUsd;
-    const totalCost = dollar > 0 ? totalCostUsd * dollar : totalCostUsd;
-    const sellingPrice = totalCost * (1 + margin / 100);
+    const m = margin / 100;
+    const t = taxPct / 100;
+
+    // imposto = t × preçoVenda, lucro = m × custoTotal
+    // preçoVenda = (fobBrl + t × preçoVenda) × (1 + m)
+    // preçoVenda = fobBrl(1+m) / (1 - t(1+m))
+    const denominator = 1 - t * (1 + m);
+    if (denominator <= 0) return null;
+    const sellingPrice = fobBrl * (1 + m) / denominator;
+    const estimatedTaxValue = t * sellingPrice;
+    const totalCost = fobBrl + estimatedTaxValue;
     const estimatedProfit = sellingPrice - totalCost;
     const effectiveMargin = totalCost > 0 ? (estimatedProfit / totalCost) * 100 : 0;
     const estimatedProfitUsd = dollar > 0 ? estimatedProfit / dollar : estimatedProfit;
     const sellingPriceUsd = dollar > 0 ? sellingPrice / dollar : sellingPrice;
 
     const minMg = parseFloat(minMargin) || 0;
-    const minSellingPrice = totalCost * (1 + minMg / 100);
-    const minProfit = minSellingPrice - totalCost;
+    const minM = minMg / 100;
+    const minDenom = 1 - t * (1 + minM);
+    const minSellingPrice = minDenom > 0 ? fobBrl * (1 + minM) / minDenom : 0;
+    const minTax = t * minSellingPrice;
+    const minTotalCost = fobBrl + minTax;
+    const minProfit = minSellingPrice - minTotalCost;
     const minProfitUsd = dollar > 0 ? minProfit / dollar : minProfit;
     const minSellingPriceUsd = dollar > 0 ? minSellingPrice / dollar : minSellingPrice;
 
