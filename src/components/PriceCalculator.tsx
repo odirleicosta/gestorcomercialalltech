@@ -73,7 +73,8 @@ const PriceCalculator = () => {
     const sellingPrice = totalCost * (1 + margin / 100);
     const estimatedProfit = sellingPrice - totalCost;
     const effectiveMargin = totalCost > 0 ? (estimatedProfit / totalCost) * 100 : 0;
-    return { fobBrl, estimatedTaxValue, totalCost, sellingPrice, estimatedProfit, effectiveMargin };
+    const estimatedProfitUsd = dollar > 0 ? estimatedProfit / dollar : estimatedProfit;
+    return { fobBrl, estimatedTaxValue, totalCost, sellingPrice, estimatedProfit, estimatedProfitUsd, effectiveMargin };
   }, [fobCost, dollarRate, estimatedTaxPercent, desiredMargin]);
 
   const nationalized = useMemo(() => {
@@ -238,6 +239,9 @@ const PriceCalculator = () => {
                     <Separator className="my-2" />
                     <Row label="Margem Desejada" value={formatPct(parseFloat(desiredMargin) || 0)} color="text-accent" />
                     <Row label="Lucro Estimado" value={simulation ? formatCurrency(simulation.estimatedProfit) : "R$ 0,00"} color="text-accent" bold />
+                    {simulation && parseFloat(dollarRate) > 0 && (
+                      <Row label="Lucro Estimado (USD)" value={`US$ ${simulation.estimatedProfitUsd.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} color="text-accent" />
+                    )}
                     <Separator className="my-2" />
                     <Row label="Preço de Venda" value={simulation ? formatCurrency(simulation.sellingPrice) : "R$ 0,00"} bold />
                   </div>
