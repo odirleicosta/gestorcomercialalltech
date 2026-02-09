@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   DollarSign, Percent, TrendingUp, Package, Receipt,
-  Save, AlertTriangle, History, Calculator, RotateCcw,
+  Save, AlertTriangle, History, Calculator, RotateCcw, User, StickyNote,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import CalculationHistory from "@/components/CalculationHistory";
@@ -43,6 +43,7 @@ const PriceCalculator = () => {
   const { toast } = useToast();
 
   const [machineName, setMachineName] = useState("");
+  const [clientName, setClientName] = useState("");
   const [fobCost, setFobCost] = useState("");
   const [dollarRate, setDollarRate] = useState("");
   const [estimatedTaxPercent, setEstimatedTaxPercent] = useState("");
@@ -51,6 +52,7 @@ const PriceCalculator = () => {
 
   const [realTaxValue, setRealTaxValue] = useState("");
   const [observation, setObservation] = useState("");
+  const [notes, setNotes] = useState("");
 
   const [activeTab, setActiveTab] = useState("simulation");
   const [history, setHistory] = useState<SavedCalculation[]>(loadHistory);
@@ -184,11 +186,21 @@ const PriceCalculator = () => {
                   </h2>
                   <div className="space-y-5">
                     <InputField label="Nome da Máquina" icon={<Package className="h-4 w-4" />} value={machineName} onChange={setMachineName} placeholder="Ex: Torno CNC" />
+                    <InputField label="Nome do Cliente" icon={<User className="h-4 w-4" />} value={clientName} onChange={setClientName} placeholder="Ex: Empresa ABC" />
                     <InputField label="Custo FOB (USD)" icon={<DollarSign className="h-4 w-4" />} value={fobCost} onChange={setFobCost} placeholder="0,00" prefix="US$" type="number" />
                     <InputField label="Cotação do Dólar" icon={<DollarSign className="h-4 w-4" />} value={dollarRate} onChange={setDollarRate} placeholder="0,00" prefix="R$" type="number" />
                     <InputField label="Impostos Estimados" icon={<Receipt className="h-4 w-4" />} value={estimatedTaxPercent} onChange={setEstimatedTaxPercent} placeholder="0,00" suffix="%" type="number" />
                     <InputField label="Margem Desejada" icon={<TrendingUp className="h-4 w-4" />} value={desiredMargin} onChange={setDesiredMargin} placeholder="0,00" suffix="%" type="number" />
                     <InputField label="Margem Mínima Aceitável" icon={<AlertTriangle className="h-4 w-4" />} value={minMargin} onChange={setMinMargin} placeholder="0,00" suffix="%" type="number" />
+                    <div>
+                      <Label className="mb-1.5 flex items-center gap-1.5 text-sm text-muted-foreground"><StickyNote className="h-4 w-4" />Anotações</Label>
+                      <Textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Anotações gerais sobre este cálculo..."
+                        className="bg-secondary/50 border-border"
+                      />
+                    </div>
                   </div>
                 </Card>
 
@@ -227,9 +239,9 @@ const PriceCalculator = () => {
                     <Save className="h-4 w-4 mr-2" /> Salvar Cálculo
                   </Button>
                   <Button variant="outline" onClick={() => {
-                    setMachineName(""); setFobCost(""); setDollarRate("");
+                    setMachineName(""); setClientName(""); setFobCost(""); setDollarRate("");
                     setEstimatedTaxPercent(""); setDesiredMargin(""); setMinMargin("");
-                    setRealTaxValue(""); setObservation("");
+                    setRealTaxValue(""); setObservation(""); setNotes("");
                   }}>
                     <RotateCcw className="h-4 w-4 mr-2" /> Resetar
                   </Button>
