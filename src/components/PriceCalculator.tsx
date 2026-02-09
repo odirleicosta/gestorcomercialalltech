@@ -188,11 +188,8 @@ const PriceCalculator = () => {
             <TabsTrigger value="history">
               <History className="h-4 w-4 mr-1" /> Histórico
             </TabsTrigger>
-            <TabsTrigger value="clients">
-              <Building2 className="h-4 w-4 mr-1" /> Empresas
-            </TabsTrigger>
-            <TabsTrigger value="machines">
-              <Wrench className="h-4 w-4 mr-1" /> Máquinas
+            <TabsTrigger value="registry">
+              <Building2 className="h-4 w-4 mr-1" /> Cadastros
             </TabsTrigger>
           </TabsList>
 
@@ -445,12 +442,11 @@ const PriceCalculator = () => {
             <CalculationHistory calculations={history} onDelete={handleDelete} />
           </TabsContent>
 
-          <TabsContent value="clients">
-            <ClientManager clients={clients} setClients={setClients} />
-          </TabsContent>
-
-          <TabsContent value="machines">
-            <MachineManager machines={machines} setMachines={setMachines} />
+          <TabsContent value="registry">
+            <div className="grid gap-6 lg:grid-cols-2">
+              <ClientManager clients={clients} setClients={setClients} />
+              <MachineManager machines={machines} setMachines={setMachines} />
+            </div>
           </TabsContent>
         </Tabs>
       </div>
