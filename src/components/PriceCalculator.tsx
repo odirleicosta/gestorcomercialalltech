@@ -44,6 +44,7 @@ const PriceCalculator = () => {
 
   const [machineName, setMachineName] = useState("");
   const [fobCost, setFobCost] = useState("");
+  const [dollarRate, setDollarRate] = useState("");
   const [estimatedTaxPercent, setEstimatedTaxPercent] = useState("");
   const [desiredMargin, setDesiredMargin] = useState("");
   const [minMargin, setMinMargin] = useState("");
@@ -60,28 +61,29 @@ const PriceCalculator = () => {
 
   const simulation = useMemo(() => {
     const fob = parseFloat(fobCost) || 0;
+    const dollar = parseFloat(dollarRate) || 0;
     const taxPct = parseFloat(estimatedTaxPercent) || 0;
     const margin = parseFloat(desiredMargin) || 0;
     if (fob <= 0) return null;
-    const estimatedTaxValue = fob * (taxPct / 100);
-    const totalCost = fob + estimatedTaxValue;
+    const fobBrl = dollar > 0 ? fob * dollar : fob;
+    const estimatedTaxValue = fobBrl * (taxPct / 100);
+    const totalCost = fobBrl + estimatedTaxValue;
     const sellingPrice = totalCost * (1 + margin / 100);
     const estimatedProfit = sellingPrice - totalCost;
     const effectiveMargin = totalCost > 0 ? (estimatedProfit / totalCost) * 100 : 0;
-    return { estimatedTaxValue, totalCost, sellingPrice, estimatedProfit, effectiveMargin };
-  }, [fobCost, estimatedTaxPercent, desiredMargin]);
+    return { fobBrl, estimatedTaxValue, totalCost, sellingPrice, estimatedProfit, effectiveMargin };
+  }, [fobCost, dollarRate, estimatedTaxPercent, desiredMargin]);
 
   const nationalized = useMemo(() => {
     if (!simulation) return null;
     const realTax = parseFloat(realTaxValue);
     if (isNaN(realTax) || realTax <= 0) return null;
-    const fob = parseFloat(fobCost) || 0;
-    const realTotalCost = fob + realTax;
+    const realTotalCost = simulation.fobBrl + realTax;
     const realProfit = simulation.sellingPrice - realTotalCost;
     const realMarginPct = realTotalCost > 0 ? (realProfit / realTotalCost) * 100 : 0;
     const taxDifference = realTax - simulation.estimatedTaxValue;
     return { realTotalCost, realProfit, realMarginPct, taxDifference };
-  }, [simulation, realTaxValue, fobCost]);
+  }, [simulation, realTaxValue]);
 
   const minMarginVal = parseFloat(minMargin) || 0;
   const isBelowMinMargin = nationalized
@@ -161,7 +163,8 @@ const PriceCalculator = () => {
                   </h2>
                   <div className="space-y-5">
                     <InputField label="Nome da Máquina" icon={<Package className="h-4 w-4" />} value={machineName} onChange={setMachineName} placeholder="Ex: Torno CNC" />
-                    <InputField label="Custo FOB" icon={<DollarSign className="h-4 w-4" />} value={fobCost} onChange={setFobCost} placeholder="0,00" prefix="R$" type="number" />
+                    <InputField label="Custo FOB (USD)" icon={<DollarSign className="h-4 w-4" />} value={fobCost} onChange={setFobCost} placeholder="0,00" prefix="US$" type="number" />
+                    <InputField label="Cotação do Dólar" icon={<DollarSign className="h-4 w-4" />} value={dollarRate} onChange={setDollarRate} placeholder="0,00" prefix="R$" type="number" />
                     <InputField label="Impostos Estimados" icon={<Receipt className="h-4 w-4" />} value={estimatedTaxPercent} onChange={setEstimatedTaxPercent} placeholder="0,00" suffix="%" type="number" />
                     <InputField label="Margem Desejada" icon={<TrendingUp className="h-4 w-4" />} value={desiredMargin} onChange={setDesiredMargin} placeholder="0,00" suffix="%" type="number" />
                     <InputField label="Margem Mínima Aceitável" icon={<AlertTriangle className="h-4 w-4" />} value={minMargin} onChange={setMinMargin} placeholder="0,00" suffix="%" type="number" />
@@ -215,7 +218,10 @@ const PriceCalculator = () => {
                 <Card className="border-border bg-card p-6 shadow-sm">
                   <h2 className="font-heading text-base font-semibold text-card-foreground mb-4">Composição Estimada</h2>
                   <div className="space-y-2.5">
-                    <Row label="Custo FOB" value={formatCurrency(parseFloat(fobCost) || 0)} />
+                    <Row label="Custo FOB (USD)" value={`US$ ${(parseFloat(fobCost) || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} />
+                    {simulation && parseFloat(dollarRate) > 0 && (
+                      <Row label={`FOB em BRL (×${parseFloat(dollarRate).toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`} value={formatCurrency(simulation.fobBrl)} />
+                    )}
                     <Row label="Impostos Estimados" value={simulation ? `${formatPct(parseFloat(estimatedTaxPercent) || 0)} = ${formatCurrency(simulation.estimatedTaxValue)}` : "R$ 0,00"} color="text-warning" />
                     <Row label="Custo Total Estimado" value={simulation ? formatCurrency(simulation.totalCost) : "R$ 0,00"} />
                     <Separator className="my-2" />
@@ -244,7 +250,7 @@ const PriceCalculator = () => {
                   <Card className="border-border bg-card p-6 shadow-sm">
                     <h2 className="font-heading text-sm font-semibold text-card-foreground mb-3">Distribuição Visual</h2>
                     <div className="flex h-6 w-full overflow-hidden rounded-lg">
-                      <BarSegment percent={(parseFloat(fobCost) || 0) / simulation.sellingPrice * 100} className="bg-muted-foreground/40" label="FOB" />
+                      <BarSegment percent={simulation.fobBrl / simulation.sellingPrice * 100} className="bg-muted-foreground/40" label="FOB" />
                       <BarSegment percent={simulation.estimatedTaxValue / simulation.sellingPrice * 100} className="bg-warning" label="Impostos" />
                       <BarSegment percent={simulation.estimatedProfit / simulation.sellingPrice * 100} className="bg-accent" label="Lucro" />
                     </div>
