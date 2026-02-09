@@ -3,8 +3,9 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Wrench } from "lucide-react";
+import { Plus, Trash2, Wrench, Hash } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export interface Machine {
@@ -58,46 +59,52 @@ const MachineManager = ({ machines, setMachines }: Props) => {
   };
 
   return (
-    <div className="space-y-6">
-      <Card className="border-border bg-card p-6 shadow-sm">
-        <h2 className="font-heading text-lg font-semibold text-card-foreground mb-4 flex items-center gap-2">
-          <Wrench className="h-5 w-5" /> Cadastrar Nova Máquina
+    <Card className="border-border bg-card p-6 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-heading text-lg font-semibold text-card-foreground flex items-center gap-2">
+          <Wrench className="h-5 w-5" /> Máquinas
         </h2>
-        <div className="flex gap-3">
-          <div className="flex-1">
-            <Label className="mb-1.5 text-sm text-muted-foreground">Nome da Máquina</Label>
-            <Input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="Ex: Torno CNC"
-              className="bg-secondary/50 border-border"
-              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-            />
-          </div>
-          <Button className="self-end" onClick={handleAdd} disabled={!newName.trim()}>
-            <Plus className="h-4 w-4 mr-1" /> Adicionar
-          </Button>
-        </div>
-      </Card>
+        <Badge variant="secondary" className="gap-1">
+          <Hash className="h-3 w-3" /> {machines.length} cadastrada{machines.length !== 1 ? "s" : ""}
+        </Badge>
+      </div>
 
-      <Card className="border-border bg-card p-4 shadow-sm overflow-x-auto">
-        {machines.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">Nenhuma máquina cadastrada ainda.</p>
-        ) : (
+      <div className="flex gap-3 mb-5">
+        <div className="flex-1">
+          <Label className="mb-1.5 text-sm text-muted-foreground">Nome da Máquina</Label>
+          <Input
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Ex: Torno CNC"
+            className="bg-secondary/50 border-border"
+            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+          />
+        </div>
+        <Button className="self-end" onClick={handleAdd} disabled={!newName.trim()}>
+          <Plus className="h-4 w-4 mr-1" /> Adicionar
+        </Button>
+      </div>
+
+      {machines.length === 0 ? (
+        <p className="text-muted-foreground text-center py-6 text-sm">Nenhuma máquina cadastrada ainda.</p>
+      ) : (
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-8">#</TableHead>
                 <TableHead>Máquina</TableHead>
                 <TableHead>Data Cadastro</TableHead>
                 <TableHead></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {machines.map((m) => (
+              {machines.map((m, i) => (
                 <TableRow key={m.id}>
+                  <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
                   <TableCell className="font-medium">{m.name}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {new Date(m.created_at).toLocaleDateString("pt-BR")}
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                    {new Date(m.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                   </TableCell>
                   <TableCell>
                     <Button variant="ghost" size="icon" onClick={() => handleDelete(m.id)}>
@@ -108,9 +115,9 @@ const MachineManager = ({ machines, setMachines }: Props) => {
               ))}
             </TableBody>
           </Table>
-        )}
-      </Card>
-    </div>
+        </div>
+      )}
+    </Card>
   );
 };
 

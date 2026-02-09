@@ -443,7 +443,7 @@ const PriceCalculator = () => {
           </TabsContent>
 
           <TabsContent value="registry">
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="space-y-6">
               <ClientManager clients={clients} setClients={setClients} />
               <MachineManager machines={machines} setMachines={setMachines} />
             </div>
