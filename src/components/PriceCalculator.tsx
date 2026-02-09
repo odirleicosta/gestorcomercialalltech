@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,16 +8,38 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  DollarSign, Percent, TrendingUp, Package, Receipt, BarChart3,
-  Save, LogOut, AlertTriangle, History, Calculator,
+  DollarSign, Percent, TrendingUp, Package, Receipt,
+  Save, AlertTriangle, History, Calculator,
 } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import CalculationHistory from "@/components/CalculationHistory";
 
+export interface SavedCalculation {
+  id: string;
+  machine_name: string;
+  fob_cost: number;
+  estimated_tax_percent: number;
+  estimated_tax_value: number;
+  desired_margin_percent: number;
+  selling_price: number;
+  estimated_profit: number;
+  real_tax_value: number | null;
+  real_profit: number | null;
+  real_margin_percent: number | null;
+  min_acceptable_margin: number;
+  observation: string | null;
+  created_at: string;
+}
+
+const STORAGE_KEY = "price-calc-history";
+
+const loadHistory = (): SavedCalculation[] => {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+  } catch { return []; }
+};
+
 const PriceCalculator = () => {
-  const { user, signOut } = useAuth();
   const { toast } = useToast();
 
   const [machineName, setMachineName] = useState("");
@@ -26,26 +48,26 @@ const PriceCalculator = () => {
   const [desiredMargin, setDesiredMargin] = useState("");
   const [minMargin, setMinMargin] = useState("");
 
-  // Nationalization
   const [realTaxValue, setRealTaxValue] = useState("");
   const [observation, setObservation] = useState("");
 
-  const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("simulation");
+  const [history, setHistory] = useState<SavedCalculation[]>(loadHistory);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+  }, [history]);
 
   const simulation = useMemo(() => {
     const fob = parseFloat(fobCost) || 0;
     const taxPct = parseFloat(estimatedTaxPercent) || 0;
     const margin = parseFloat(desiredMargin) || 0;
-
     if (fob <= 0) return null;
-
     const estimatedTaxValue = fob * (taxPct / 100);
     const totalCost = fob + estimatedTaxValue;
     const sellingPrice = totalCost * (1 + margin / 100);
     const estimatedProfit = sellingPrice - totalCost;
     const effectiveMargin = totalCost > 0 ? (estimatedProfit / totalCost) * 100 : 0;
-
     return { estimatedTaxValue, totalCost, sellingPrice, estimatedProfit, effectiveMargin };
   }, [fobCost, estimatedTaxPercent, desiredMargin]);
 
@@ -53,13 +75,11 @@ const PriceCalculator = () => {
     if (!simulation) return null;
     const realTax = parseFloat(realTaxValue);
     if (isNaN(realTax) || realTax <= 0) return null;
-
     const fob = parseFloat(fobCost) || 0;
     const realTotalCost = fob + realTax;
     const realProfit = simulation.sellingPrice - realTotalCost;
     const realMarginPct = realTotalCost > 0 ? (realProfit / realTotalCost) * 100 : 0;
     const taxDifference = realTax - simulation.estimatedTaxValue;
-
     return { realTotalCost, realProfit, realMarginPct, taxDifference };
   }, [simulation, realTaxValue, fobCost]);
 
@@ -70,62 +90,55 @@ const PriceCalculator = () => {
 
   const formatCurrency = (v: number) =>
     v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
   const formatPct = (v: number) =>
     v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
 
-  const handleSave = async () => {
-    if (!user || !simulation) return;
+  const handleSave = () => {
+    if (!simulation) return;
     if (isBelowMinMargin && !observation.trim()) {
       toast({ title: "Observação obrigatória", description: "A margem está abaixo do mínimo. Informe uma observação.", variant: "destructive" });
       return;
     }
 
-    setSaving(true);
-    try {
-      const { error } = await supabase.from("calculations").insert({
-        user_id: user.id,
-        machine_name: machineName,
-        fob_cost: parseFloat(fobCost) || 0,
-        estimated_tax_percent: parseFloat(estimatedTaxPercent) || 0,
-        estimated_tax_value: simulation.estimatedTaxValue,
-        desired_margin_percent: parseFloat(desiredMargin) || 0,
-        selling_price: simulation.sellingPrice,
-        estimated_profit: simulation.estimatedProfit,
-        real_tax_value: nationalized ? parseFloat(realTaxValue) : null,
-        real_profit: nationalized?.realProfit ?? null,
-        real_margin_percent: nationalized?.realMarginPct ?? null,
-        min_acceptable_margin: minMarginVal,
-        observation: observation || null,
-      });
-      if (error) throw error;
-      toast({ title: "Salvo!", description: "Cálculo salvo no histórico." });
-    } catch (err: any) {
-      toast({ title: "Erro ao salvar", description: err.message, variant: "destructive" });
-    } finally {
-      setSaving(false);
-    }
+    const entry: SavedCalculation = {
+      id: crypto.randomUUID(),
+      machine_name: machineName,
+      fob_cost: parseFloat(fobCost) || 0,
+      estimated_tax_percent: parseFloat(estimatedTaxPercent) || 0,
+      estimated_tax_value: simulation.estimatedTaxValue,
+      desired_margin_percent: parseFloat(desiredMargin) || 0,
+      selling_price: simulation.sellingPrice,
+      estimated_profit: simulation.estimatedProfit,
+      real_tax_value: nationalized ? parseFloat(realTaxValue) : null,
+      real_profit: nationalized?.realProfit ?? null,
+      real_margin_percent: nationalized?.realMarginPct ?? null,
+      min_acceptable_margin: minMarginVal,
+      observation: observation || null,
+      created_at: new Date().toISOString(),
+    };
+
+    setHistory((prev) => [entry, ...prev]);
+    toast({ title: "Salvo!", description: "Cálculo salvo no histórico local." });
+  };
+
+  const handleDelete = (id: string) => {
+    setHistory((prev) => prev.filter((c) => c.id !== id));
   };
 
   return (
     <div className="min-h-screen bg-background px-4 py-8 md:py-12">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary">
-              <TrendingUp className="h-6 w-6 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">
-                Preço de Venda
-              </h1>
-              <p className="text-sm text-muted-foreground">Máquinas Industriais</p>
-            </div>
+        <div className="mb-8 flex items-center gap-3">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary">
+            <TrendingUp className="h-6 w-6 text-primary-foreground" />
           </div>
-          <Button variant="ghost" size="sm" onClick={signOut}>
-            <LogOut className="h-4 w-4 mr-1" /> Sair
-          </Button>
+          <div>
+            <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">
+              Preço de Venda
+            </h1>
+            <p className="text-sm text-muted-foreground">Máquinas Industriais</p>
+          </div>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -142,7 +155,6 @@ const PriceCalculator = () => {
             <div className="grid gap-6 lg:grid-cols-5">
               {/* Inputs – 3 cols */}
               <div className="lg:col-span-3 space-y-6">
-                {/* Simulation inputs */}
                 <Card className="border-border bg-card p-6 shadow-sm">
                   <h2 className="font-heading text-lg font-semibold text-card-foreground mb-6 flex items-center gap-2">
                     <Package className="h-5 w-5" /> Simulação
@@ -156,7 +168,6 @@ const PriceCalculator = () => {
                   </div>
                 </Card>
 
-                {/* Nationalization */}
                 <Card className="border-border bg-card p-6 shadow-sm">
                   <h2 className="font-heading text-lg font-semibold text-card-foreground mb-6 flex items-center gap-2">
                     <Receipt className="h-5 w-5" /> Venda Nacionalizada
@@ -187,14 +198,13 @@ const PriceCalculator = () => {
                   </div>
                 </Card>
 
-                <Button className="w-full" onClick={handleSave} disabled={saving || !simulation}>
-                  <Save className="h-4 w-4 mr-2" /> {saving ? "Salvando..." : "Salvar Cálculo"}
+                <Button className="w-full" onClick={handleSave} disabled={!simulation}>
+                  <Save className="h-4 w-4 mr-2" /> Salvar Cálculo
                 </Button>
               </div>
 
               {/* Results – 2 cols */}
               <div className="lg:col-span-2 space-y-6">
-                {/* Selling price */}
                 <Card className="border-border bg-primary p-6 shadow-sm">
                   <p className="text-sm font-medium text-primary-foreground/70">Preço de Venda Sugerido</p>
                   <p className="mt-1 font-heading text-4xl font-bold text-primary-foreground">
@@ -202,7 +212,6 @@ const PriceCalculator = () => {
                   </p>
                 </Card>
 
-                {/* Simulation breakdown */}
                 <Card className="border-border bg-card p-6 shadow-sm">
                   <h2 className="font-heading text-base font-semibold text-card-foreground mb-4">Composição Estimada</h2>
                   <div className="space-y-2.5">
@@ -217,7 +226,6 @@ const PriceCalculator = () => {
                   </div>
                 </Card>
 
-                {/* Nationalized results */}
                 {nationalized && (
                   <Card className={`border-border p-6 shadow-sm ${isBelowMinMargin ? "bg-destructive/10 border-destructive/30" : "bg-card"}`}>
                     <h2 className="font-heading text-base font-semibold text-card-foreground mb-4">Resultado Nacionalizado</h2>
@@ -232,12 +240,9 @@ const PriceCalculator = () => {
                   </Card>
                 )}
 
-                {/* Visual bar */}
                 {simulation && simulation.sellingPrice > 0 && (
                   <Card className="border-border bg-card p-6 shadow-sm">
-                    <h2 className="font-heading text-sm font-semibold text-card-foreground mb-3">
-                      Distribuição Visual
-                    </h2>
+                    <h2 className="font-heading text-sm font-semibold text-card-foreground mb-3">Distribuição Visual</h2>
                     <div className="flex h-6 w-full overflow-hidden rounded-lg">
                       <BarSegment percent={(parseFloat(fobCost) || 0) / simulation.sellingPrice * 100} className="bg-muted-foreground/40" label="FOB" />
                       <BarSegment percent={simulation.estimatedTaxValue / simulation.sellingPrice * 100} className="bg-warning" label="Impostos" />
@@ -255,7 +260,7 @@ const PriceCalculator = () => {
           </TabsContent>
 
           <TabsContent value="history">
-            <CalculationHistory />
+            <CalculationHistory calculations={history} onDelete={handleDelete} />
           </TabsContent>
         </Tabs>
       </div>

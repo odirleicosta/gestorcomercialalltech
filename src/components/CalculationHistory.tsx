@@ -1,68 +1,17 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import type { SavedCalculation } from "@/components/PriceCalculator";
 
-interface Calculation {
-  id: string;
-  machine_name: string;
-  fob_cost: number;
-  estimated_tax_percent: number;
-  estimated_tax_value: number;
-  desired_margin_percent: number;
-  selling_price: number;
-  estimated_profit: number;
-  real_tax_value: number | null;
-  real_profit: number | null;
-  real_margin_percent: number | null;
-  min_acceptable_margin: number;
-  observation: string | null;
-  created_at: string;
+interface Props {
+  calculations: SavedCalculation[];
+  onDelete: (id: string) => void;
 }
 
-const CalculationHistory = () => {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [calculations, setCalculations] = useState<Calculation[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchCalculations = async () => {
-    if (!user) return;
-    setLoading(true);
-    const { data, error } = await supabase
-      .from("calculations")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-    } else {
-      setCalculations(data || []);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchCalculations();
-  }, [user]);
-
-  const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("calculations").delete().eq("id", id);
-    if (error) {
-      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
-    } else {
-      setCalculations((prev) => prev.filter((c) => c.id !== id));
-    }
-  };
-
+const CalculationHistory = ({ calculations, onDelete }: Props) => {
   const fmt = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const fmtPct = (v: number) => v.toFixed(2) + "%";
-
-  if (loading) return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
 
   if (calculations.length === 0)
     return <p className="text-muted-foreground text-center py-8">Nenhum cálculo salvo ainda.</p>;
@@ -105,7 +54,7 @@ const CalculationHistory = () => {
                   {c.real_margin_percent !== null ? fmtPct(c.real_margin_percent) : "—"}
                 </TableCell>
                 <TableCell>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(c.id)}>
+                  <Button variant="ghost" size="icon" onClick={() => onDelete(c.id)}>
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </TableCell>
