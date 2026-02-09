@@ -238,6 +238,9 @@ const PriceCalculator = () => {
                     <Row label="Custo Total Estimado" value={simulation ? formatCurrency(simulation.totalCost) : "R$ 0,00"} />
                     <Separator className="my-2" />
                     <Row label="Margem Desejada" value={formatPct(parseFloat(desiredMargin) || 0)} color="text-accent" />
+                    {minMarginVal > 0 && (
+                      <Row label="Margem Mínima Aceitável" value={formatPct(minMarginVal)} color="text-warning" />
+                    )}
                     <Row label="Lucro Estimado" value={simulation ? formatCurrency(simulation.estimatedProfit) : "R$ 0,00"} color="text-accent" bold />
                     {simulation && parseFloat(dollarRate) > 0 && (
                       <Row label="Lucro Estimado (USD)" value={`US$ ${simulation.estimatedProfitUsd.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} color="text-accent" />
