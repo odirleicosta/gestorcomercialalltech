@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import CalculationHistory from "@/components/CalculationHistory";
+import ClientManager, { loadClients, saveClients, type Client } from "@/components/ClientManager";
+import { Building2 } from "lucide-react";
 
 export interface SavedCalculation {
   id: string;
@@ -56,6 +58,12 @@ const PriceCalculator = () => {
 
   const [activeTab, setActiveTab] = useState("simulation");
   const [history, setHistory] = useState<SavedCalculation[]>(loadHistory);
+  const [clients, setClients] = useState<Client[]>(loadClients);
+  const [showClientSuggestions, setShowClientSuggestions] = useState(false);
+
+  const filteredClients = clients.filter((c) =>
+    c.name.toLowerCase().includes(clientName.toLowerCase())
+  );
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
@@ -174,6 +182,9 @@ const PriceCalculator = () => {
             <TabsTrigger value="history">
               <History className="h-4 w-4 mr-1" /> Histórico
             </TabsTrigger>
+            <TabsTrigger value="clients">
+              <Building2 className="h-4 w-4 mr-1" /> Empresas
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="simulation">
@@ -185,7 +196,31 @@ const PriceCalculator = () => {
                     <Package className="h-5 w-5" /> Simulação
                   </h2>
                   <div className="space-y-5">
-                    <InputField label="Nome do Cliente" icon={<User className="h-4 w-4" />} value={clientName} onChange={setClientName} placeholder="Ex: Empresa ABC" />
+                    <div className="relative">
+                      <Label className="mb-1.5 flex items-center gap-1.5 text-sm text-muted-foreground"><User className="h-4 w-4" />Nome do Cliente</Label>
+                      <Input
+                        value={clientName}
+                        onChange={(e) => { setClientName(e.target.value); setShowClientSuggestions(true); }}
+                        onFocus={() => setShowClientSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowClientSuggestions(false), 150)}
+                        placeholder="Ex: Empresa ABC"
+                        className="bg-secondary/50 border-border"
+                      />
+                      {showClientSuggestions && clientName && filteredClients.length > 0 && (
+                        <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md max-h-40 overflow-y-auto">
+                          {filteredClients.map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+                              onMouseDown={() => { setClientName(c.name); setShowClientSuggestions(false); }}
+                            >
+                              {c.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <InputField label="Nome da Máquina" icon={<Package className="h-4 w-4" />} value={machineName} onChange={setMachineName} placeholder="Ex: Torno CNC" />
                     <InputField label="Custo FOB (USD)" icon={<DollarSign className="h-4 w-4" />} value={fobCost} onChange={setFobCost} placeholder="0,00" prefix="US$" type="number" />
                     <InputField label="Cotação do Dólar" icon={<DollarSign className="h-4 w-4" />} value={dollarRate} onChange={setDollarRate} placeholder="0,00" prefix="R$" type="number" />
@@ -329,6 +364,10 @@ const PriceCalculator = () => {
 
           <TabsContent value="history">
             <CalculationHistory calculations={history} onDelete={handleDelete} />
+          </TabsContent>
+
+          <TabsContent value="clients">
+            <ClientManager clients={clients} setClients={setClients} />
           </TabsContent>
         </Tabs>
       </div>
