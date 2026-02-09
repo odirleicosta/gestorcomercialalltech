@@ -65,13 +65,12 @@ const PriceCalculator = () => {
     const taxPct = parseFloat(estimatedTaxPercent) || 0;
     const margin = parseFloat(desiredMargin) || 0;
     if (fob <= 0) return null;
-    if (margin >= 100) return null;
     const estimatedTaxUsd = fob * (taxPct / 100);
     const totalCostUsd = fob + estimatedTaxUsd;
     const fobBrl = dollar > 0 ? fob * dollar : fob;
     const estimatedTaxValue = dollar > 0 ? estimatedTaxUsd * dollar : estimatedTaxUsd;
     const totalCost = dollar > 0 ? totalCostUsd * dollar : totalCostUsd;
-    const sellingPrice = totalCost / (1 - margin / 100);
+    const sellingPrice = totalCost * (1 + margin / 100);
     const estimatedProfit = sellingPrice - totalCost;
     const effectiveMargin = totalCost > 0 ? (estimatedProfit / totalCost) * 100 : 0;
     return { fobBrl, estimatedTaxValue, totalCost, sellingPrice, estimatedProfit, effectiveMargin };
