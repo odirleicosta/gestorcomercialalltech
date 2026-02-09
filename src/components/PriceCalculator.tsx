@@ -10,11 +10,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   DollarSign, Percent, TrendingUp, Package, Receipt,
   Save, AlertTriangle, History, Calculator, RotateCcw, User, StickyNote,
+  Building2, Plus,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import CalculationHistory from "@/components/CalculationHistory";
 import ClientManager, { loadClients, saveClients, type Client } from "@/components/ClientManager";
-import { Building2 } from "lucide-react";
 
 export interface SavedCalculation {
   id: string;
@@ -198,28 +198,51 @@ const PriceCalculator = () => {
                   <div className="space-y-5">
                     <div className="relative">
                       <Label className="mb-1.5 flex items-center gap-1.5 text-sm text-muted-foreground"><User className="h-4 w-4" />Nome do Cliente</Label>
-                      <Input
-                        value={clientName}
-                        onChange={(e) => { setClientName(e.target.value); setShowClientSuggestions(true); }}
-                        onFocus={() => setShowClientSuggestions(true)}
-                        onBlur={() => setTimeout(() => setShowClientSuggestions(false), 150)}
-                        placeholder="Ex: Empresa ABC"
-                        className="bg-secondary/50 border-border"
-                      />
-                      {showClientSuggestions && clientName && filteredClients.length > 0 && (
-                        <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md max-h-40 overflow-y-auto">
-                          {filteredClients.map((c) => (
-                            <button
-                              key={c.id}
-                              type="button"
-                              className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
-                              onMouseDown={() => { setClientName(c.name); setShowClientSuggestions(false); }}
-                            >
-                              {c.name}
-                            </button>
-                          ))}
+                      <div className="flex gap-2">
+                        <div className="relative flex-1">
+                          <Input
+                            value={clientName}
+                            onChange={(e) => { setClientName(e.target.value); setShowClientSuggestions(true); }}
+                            onFocus={() => setShowClientSuggestions(true)}
+                            onBlur={() => setTimeout(() => setShowClientSuggestions(false), 150)}
+                            placeholder="Ex: Empresa ABC"
+                            className="bg-secondary/50 border-border"
+                          />
+                          {showClientSuggestions && clientName && filteredClients.length > 0 && (
+                            <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md max-h-40 overflow-y-auto">
+                              {filteredClients.map((c) => (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+                                  onMouseDown={() => { setClientName(c.name); setShowClientSuggestions(false); }}
+                                >
+                                  {c.name}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      )}
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="shrink-0"
+                          disabled={!clientName.trim() || clients.some((c) => c.name.toLowerCase() === clientName.trim().toLowerCase())}
+                          onClick={() => {
+                            const trimmed = clientName.trim();
+                            if (!trimmed) return;
+                            const entry: Client = { id: crypto.randomUUID(), name: trimmed, created_at: new Date().toISOString() };
+                            const updated = [entry, ...clients];
+                            setClients(updated);
+                            saveClients(updated);
+                            toast({ title: "Empresa cadastrada!" });
+                          }}
+                          title="Cadastrar empresa"
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                     <InputField label="Nome da Máquina" icon={<Package className="h-4 w-4" />} value={machineName} onChange={setMachineName} placeholder="Ex: Torno CNC" />
                     <InputField label="Custo FOB (USD)" icon={<DollarSign className="h-4 w-4" />} value={fobCost} onChange={setFobCost} placeholder="0,00" prefix="US$" type="number" />
