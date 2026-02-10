@@ -84,38 +84,48 @@ const PriceCalculator = () => {
 
     const t = taxPct / 100;
     const m = margin / 100;
-
-    const estimatedTaxValue = fob * t;
-    const totalCost = fob + estimatedTaxValue;
     if (m >= 1) return null;
-    const sellingPrice = totalCost / (1 - m);
-    const estimatedProfit = sellingPrice - totalCost;
-    const effectiveMargin = sellingPrice > 0 ? (estimatedProfit / sellingPrice) * 100 : 0;
+
+    // Impostos = repasse (por fora, sem margem)
+    const estimatedTaxValue = fob * t;
+
+    // Margem por dentro aplicada SOMENTE sobre o FOB
+    const factor = 1 - m;
+    const basePrice = fob / factor;         // preço base da máquina
+    const profit = basePrice - fob;          // lucro da máquina
+    const finalPrice = basePrice + estimatedTaxValue; // preço final ao cliente
+
+    // Margem verificada = lucro / preço base (sem impostos)
+    const effectiveMargin = basePrice > 0 ? (profit / basePrice) * 100 : 0;
+    const marginCheck = basePrice > 0 ? Math.abs(effectiveMargin - margin) < 0.01 : true;
 
     // Conversão para BRL
     const hasDollar = dollar > 0;
     const fobBrl = hasDollar ? fob * dollar : fob;
-    const sellingPriceBrl = hasDollar ? sellingPrice * dollar : sellingPrice;
     const estimatedTaxBrl = hasDollar ? estimatedTaxValue * dollar : estimatedTaxValue;
-    const totalCostBrl = hasDollar ? totalCost * dollar : totalCost;
-    const estimatedProfitBrl = hasDollar ? estimatedProfit * dollar : estimatedProfit;
+    const basePriceBrl = hasDollar ? basePrice * dollar : basePrice;
+    const profitBrl = hasDollar ? profit * dollar : profit;
+    const finalPriceBrl = hasDollar ? finalPrice * dollar : finalPrice;
 
     // Margem mínima
     const minMg = parseFloat(minMargin) || 0;
     const minM = minMg / 100;
-    const minSellingPrice = minM < 1 ? totalCost / (1 - minM) : 0;
-    const minProfit = minSellingPrice - totalCost;
-    const minSellingPriceBrl = hasDollar ? minSellingPrice * dollar : minSellingPrice;
+    const minFactor = 1 - minM;
+    const minBasePrice = minM < 1 ? fob / minFactor : 0;
+    const minProfit = minBasePrice - fob;
+    const minFinalPrice = minBasePrice + estimatedTaxValue;
+    const minBasePriceBrl = hasDollar ? minBasePrice * dollar : minBasePrice;
     const minProfitBrl = hasDollar ? minProfit * dollar : minProfit;
-
-    const factor = 1 - m;
-    const marginCheck = sellingPrice > 0 ? Math.abs(effectiveMargin - margin) < 0.01 : true;
+    const minFinalPriceBrl = hasDollar ? minFinalPrice * dollar : minFinalPrice;
 
     return {
-      fob, fobBrl, estimatedTaxValue, estimatedTaxBrl, totalCost, totalCostBrl,
-      sellingPrice, sellingPriceBrl, estimatedProfit, estimatedProfitBrl,
-      effectiveMargin, minSellingPrice, minSellingPriceBrl, minProfit, minProfitBrl, minMarginPct: minMg,
-      hasDollar, factor, marginCheck,
+      fob, fobBrl, estimatedTaxValue, estimatedTaxBrl,
+      basePrice, basePriceBrl, profit, profitBrl,
+      finalPrice, finalPriceBrl,
+      effectiveMargin, factor, marginCheck,
+      minBasePrice, minBasePriceBrl, minProfit, minProfitBrl,
+      minFinalPrice, minFinalPriceBrl, minMarginPct: minMg,
+      hasDollar,
     };
   }, [fobCost, dollarRate, estimatedTaxPercent, desiredMargin, minMargin]);
 
@@ -123,12 +133,16 @@ const PriceCalculator = () => {
     if (!simulation) return null;
     const realTax = parseFloat(realTaxValue);
     if (isNaN(realTax) || realTax <= 0) return null;
-    // Impostos reais em BRL, comparar com valores em BRL
+    // Impostos reais em BRL — lucro real = preço base BRL - FOB BRL (impostos reais são repasse)
+    // Mas na nacionalização, o custo real inclui FOB + impostos reais
     const realTotalCost = simulation.fobBrl + realTax;
-    const realProfit = simulation.sellingPriceBrl - realTotalCost;
-    const realMarginPct = simulation.sellingPriceBrl > 0 ? (realProfit / simulation.sellingPriceBrl) * 100 : 0;
+    const realProfit = simulation.basePriceBrl - simulation.fobBrl; // lucro da máquina não muda (margem sobre FOB)
+    // Porém se impostos reais diferem, o preço final muda ou o lucro real absorve a diferença
+    // Na prática: preço final foi combinado, então lucro real = preço final BRL - FOB BRL - impostos reais
+    const realProfitAdjusted = simulation.finalPriceBrl - simulation.fobBrl - realTax;
+    const realMarginPct = simulation.basePriceBrl > 0 ? (realProfitAdjusted / simulation.basePriceBrl) * 100 : 0;
     const taxDifference = realTax - simulation.estimatedTaxBrl;
-    return { realTotalCost, realProfit, realMarginPct, taxDifference };
+    return { realTotalCost, realProfit: realProfitAdjusted, realMarginPct, taxDifference };
   }, [simulation, realTaxValue]);
 
   const minMarginVal = parseFloat(minMargin) || 0;
@@ -157,8 +171,8 @@ const PriceCalculator = () => {
       estimated_tax_percent: parseFloat(estimatedTaxPercent) || 0,
       estimated_tax_value: simulation.estimatedTaxValue,
       desired_margin_percent: parseFloat(desiredMargin) || 0,
-      selling_price: simulation.sellingPrice,
-      estimated_profit: simulation.estimatedProfit,
+      selling_price: simulation.finalPrice,
+      estimated_profit: simulation.profit,
       real_tax_value: nationalized ? parseFloat(realTaxValue) : null,
       real_profit: nationalized?.realProfit ?? null,
       real_margin_percent: nationalized?.realMarginPct ?? null,
@@ -375,11 +389,11 @@ const PriceCalculator = () => {
                 <Card className="border-border bg-primary p-6 shadow-sm">
                   <p className="text-sm font-medium text-primary-foreground/70">Preço de Venda Sugerido</p>
                   <p className="mt-1 font-heading text-4xl font-bold text-primary-foreground">
-                    {simulation ? formatUsd(simulation.sellingPrice) : "US$ 0,00"}
+                    {simulation ? formatUsd(simulation.finalPrice) : "US$ 0,00"}
                   </p>
                   {simulation && simulation.hasDollar && (
                     <p className="mt-1 text-sm text-primary-foreground/60">
-                      {formatCurrency(simulation.sellingPriceBrl)}
+                      {formatCurrency(simulation.finalPriceBrl)}
                     </p>
                   )}
                 </Card>
@@ -391,24 +405,20 @@ const PriceCalculator = () => {
                     {simulation && simulation.hasDollar && (
                       <Row label={`FOB em BRL (×${parseFloat(dollarRate).toLocaleString("pt-BR", { minimumFractionDigits: 2 })})`} value={formatCurrency(simulation.fobBrl)} />
                     )}
-                    <Row label="Impostos Estimados" value={simulation ? `${formatPct(parseFloat(estimatedTaxPercent) || 0)} = ${formatUsd(simulation.estimatedTaxValue)}` : "US$ 0,00"} color="text-warning" />
+                    <Row label="Impostos Estimados (repasse)" value={simulation ? `${formatPct(parseFloat(estimatedTaxPercent) || 0)} = ${formatUsd(simulation.estimatedTaxValue)}` : "US$ 0,00"} color="text-warning" />
                     {simulation && simulation.hasDollar && (
                       <Row label="Impostos em BRL" value={formatCurrency(simulation.estimatedTaxBrl)} color="text-warning" />
                     )}
-                    <Row label="Custo Total Estimado" value={simulation ? formatUsd(simulation.totalCost) : "US$ 0,00"} />
-                    {simulation && simulation.hasDollar && (
-                      <Row label="Custo Total em BRL" value={formatCurrency(simulation.totalCostBrl)} />
-                    )}
                     <Separator className="my-2" />
-                    <p className="text-xs text-muted-foreground italic mb-1">Margem calculada sobre o preço de venda (margem por dentro)</p>
+                    <p className="text-xs text-muted-foreground italic mb-1">Margem calculada sobre o preço de venda (margem por dentro), aplicada somente sobre o FOB</p>
                     <h3 className="text-sm font-semibold text-card-foreground">Margem Desejada ({formatPct(parseFloat(desiredMargin) || 0)}) — Fator: {simulation ? simulation.factor.toFixed(4) : "—"}</h3>
-                    <Row label="Preço de Venda (USD)" value={simulation ? formatUsd(simulation.sellingPrice) : "US$ 0,00"} bold />
+                    <Row label="Preço Base da Máquina (USD)" value={simulation ? formatUsd(simulation.basePrice) : "US$ 0,00"} bold />
                     {simulation && simulation.hasDollar && (
-                      <Row label="Preço de Venda (BRL)" value={formatCurrency(simulation.sellingPriceBrl)} />
+                      <Row label="Preço Base (BRL)" value={formatCurrency(simulation.basePriceBrl)} />
                     )}
-                    <Row label="Lucro Estimado (USD)" value={simulation ? formatUsd(simulation.estimatedProfit) : "US$ 0,00"} color="text-accent" bold />
+                    <Row label="Lucro da Máquina (USD)" value={simulation ? formatUsd(simulation.profit) : "US$ 0,00"} color="text-accent" bold />
                     {simulation && simulation.hasDollar && (
-                      <Row label="Lucro Estimado (BRL)" value={formatCurrency(simulation.estimatedProfitBrl)} color="text-accent" />
+                      <Row label="Lucro da Máquina (BRL)" value={formatCurrency(simulation.profitBrl)} color="text-accent" />
                     )}
                     <Row label="Margem Verificada" value={simulation ? formatPct(simulation.effectiveMargin) : "—"} color={simulation && !simulation.marginCheck ? "text-destructive" : "text-accent"} />
                     {simulation && !simulation.marginCheck && (
@@ -417,18 +427,28 @@ const PriceCalculator = () => {
                         <AlertDescription>Erro de cálculo: a margem verificada não corresponde à margem informada.</AlertDescription>
                       </Alert>
                     )}
+                    <Separator className="my-2" />
+                    <h3 className="text-sm font-semibold text-primary">Preço Final ao Cliente</h3>
+                    <Row label="Preço Final (USD)" value={simulation ? formatUsd(simulation.finalPrice) : "US$ 0,00"} bold />
+                    {simulation && simulation.hasDollar && (
+                      <Row label="Preço Final (BRL)" value={formatCurrency(simulation.finalPriceBrl)} />
+                    )}
 
                     {simulation && simulation.minMarginPct > 0 && (
                       <>
                         <Separator className="my-2" />
                         <h3 className="text-sm font-semibold text-warning">Margem Mínima Aceitável ({formatPct(simulation.minMarginPct)})</h3>
-                        <Row label="Preço de Venda (USD)" value={formatUsd(simulation.minSellingPrice)} bold />
+                        <Row label="Preço Base Mín. (USD)" value={formatUsd(simulation.minBasePrice)} bold />
                         {simulation.hasDollar && (
-                          <Row label="Preço de Venda (BRL)" value={formatCurrency(simulation.minSellingPriceBrl)} />
+                          <Row label="Preço Base Mín. (BRL)" value={formatCurrency(simulation.minBasePriceBrl)} />
                         )}
-                        <Row label="Lucro Estimado (USD)" value={formatUsd(simulation.minProfit)} color="text-warning" bold />
+                        <Row label="Lucro Mín. (USD)" value={formatUsd(simulation.minProfit)} color="text-warning" bold />
                         {simulation.hasDollar && (
-                          <Row label="Lucro Estimado (BRL)" value={formatCurrency(simulation.minProfitBrl)} color="text-warning" />
+                          <Row label="Lucro Mín. (BRL)" value={formatCurrency(simulation.minProfitBrl)} color="text-warning" />
+                        )}
+                        <Row label="Preço Final Mín. (USD)" value={formatUsd(simulation.minFinalPrice)} />
+                        {simulation.hasDollar && (
+                          <Row label="Preço Final Mín. (BRL)" value={formatCurrency(simulation.minFinalPriceBrl)} />
                         )}
                       </>
                     )}
@@ -449,13 +469,13 @@ const PriceCalculator = () => {
                   </Card>
                 )}
 
-                {simulation && simulation.sellingPrice > 0 && (
+                {simulation && simulation.finalPrice > 0 && (
                   <Card className="border-border bg-card p-6 shadow-sm">
                     <h2 className="font-heading text-sm font-semibold text-card-foreground mb-3">Distribuição Visual</h2>
                     <div className="flex h-6 w-full overflow-hidden rounded-lg">
-                      <BarSegment percent={simulation.fob / simulation.sellingPrice * 100} className="bg-muted-foreground/40" label="FOB" />
-                      <BarSegment percent={simulation.estimatedTaxValue / simulation.sellingPrice * 100} className="bg-warning" label="Impostos" />
-                      <BarSegment percent={simulation.estimatedProfit / simulation.sellingPrice * 100} className="bg-accent" label="Lucro" />
+                      <BarSegment percent={simulation.fob / simulation.finalPrice * 100} className="bg-muted-foreground/40" label="FOB" />
+                      <BarSegment percent={simulation.estimatedTaxValue / simulation.finalPrice * 100} className="bg-warning" label="Impostos" />
+                      <BarSegment percent={simulation.profit / simulation.finalPrice * 100} className="bg-accent" label="Lucro" />
                     </div>
                     <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
                       <Legend color="bg-muted-foreground/40" label="FOB" />
