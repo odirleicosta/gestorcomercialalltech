@@ -89,11 +89,11 @@ const PriceCalculator = () => {
     const estimatedTaxValue = fob * t;
     // Custo Total = FOB + Impostos (tudo em USD)
     const totalCost = fob + estimatedTaxValue;
-    // Margem sobre preço de venda: Preço = Custo Total / (1 - Margem%)
-    if (m >= 1) return null;
-    const sellingPrice = totalCost / (1 - m);
-    const estimatedProfit = sellingPrice - totalCost;
-    const effectiveMargin = sellingPrice > 0 ? (estimatedProfit / sellingPrice) * 100 : 0;
+    // Lucro = FOB × Margem% (markup sobre FOB)
+    const estimatedProfit = fob * m;
+    // Preço de Venda = Custo Total + Lucro
+    const sellingPrice = totalCost + estimatedProfit;
+    const effectiveMargin = fob > 0 ? (estimatedProfit / fob) * 100 : 0;
 
     // Conversão para BRL
     const fobBrl = dollar > 0 ? fob * dollar : fob;
@@ -105,8 +105,8 @@ const PriceCalculator = () => {
     // Margem mínima
     const minMg = parseFloat(minMargin) || 0;
     const minM = minMg / 100;
-    const minSellingPrice = minM < 1 ? totalCost / (1 - minM) : 0;
-    const minProfit = minSellingPrice - totalCost;
+    const minProfit = fob * minM;
+    const minSellingPrice = totalCost + minProfit;
     const minSellingPriceBrl = dollar > 0 ? minSellingPrice * dollar : minSellingPrice;
     const minProfitBrl = dollar > 0 ? minProfit * dollar : minProfit;
 
