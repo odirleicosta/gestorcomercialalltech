@@ -108,11 +108,14 @@ const PriceCalculator = () => {
     const minSellingPriceBrl = hasDollar ? minSellingPrice * dollar : minSellingPrice;
     const minProfitBrl = hasDollar ? minProfit * dollar : minProfit;
 
+    const factor = 1 - m;
+    const marginCheck = sellingPrice > 0 ? Math.abs(effectiveMargin - margin) < 0.01 : true;
+
     return {
       fob, fobBrl, estimatedTaxValue, estimatedTaxBrl, totalCost, totalCostBrl,
       sellingPrice, sellingPriceBrl, estimatedProfit, estimatedProfitBrl,
       effectiveMargin, minSellingPrice, minSellingPriceBrl, minProfit, minProfitBrl, minMarginPct: minMg,
-      hasDollar,
+      hasDollar, factor, marginCheck,
     };
   }, [fobCost, dollarRate, estimatedTaxPercent, desiredMargin, minMargin]);
 
@@ -397,7 +400,8 @@ const PriceCalculator = () => {
                       <Row label="Custo Total em BRL" value={formatCurrency(simulation.totalCostBrl)} />
                     )}
                     <Separator className="my-2" />
-                    <h3 className="text-sm font-semibold text-card-foreground">Margem Desejada ({formatPct(parseFloat(desiredMargin) || 0)})</h3>
+                    <p className="text-xs text-muted-foreground italic mb-1">Margem calculada sobre o preço de venda (margem por dentro)</p>
+                    <h3 className="text-sm font-semibold text-card-foreground">Margem Desejada ({formatPct(parseFloat(desiredMargin) || 0)}) — Fator: {simulation ? simulation.factor.toFixed(4) : "—"}</h3>
                     <Row label="Preço de Venda (USD)" value={simulation ? formatUsd(simulation.sellingPrice) : "US$ 0,00"} bold />
                     {simulation && simulation.hasDollar && (
                       <Row label="Preço de Venda (BRL)" value={formatCurrency(simulation.sellingPriceBrl)} />
@@ -405,6 +409,13 @@ const PriceCalculator = () => {
                     <Row label="Lucro Estimado (USD)" value={simulation ? formatUsd(simulation.estimatedProfit) : "US$ 0,00"} color="text-accent" bold />
                     {simulation && simulation.hasDollar && (
                       <Row label="Lucro Estimado (BRL)" value={formatCurrency(simulation.estimatedProfitBrl)} color="text-accent" />
+                    )}
+                    <Row label="Margem Verificada" value={simulation ? formatPct(simulation.effectiveMargin) : "—"} color={simulation && !simulation.marginCheck ? "text-destructive" : "text-accent"} />
+                    {simulation && !simulation.marginCheck && (
+                      <Alert variant="destructive" className="mt-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertDescription>Erro de cálculo: a margem verificada não corresponde à margem informada.</AlertDescription>
+                      </Alert>
                     )}
 
                     {simulation && simulation.minMarginPct > 0 && (
