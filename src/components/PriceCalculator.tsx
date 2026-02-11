@@ -140,18 +140,16 @@ const PriceCalculator = () => {
 
   const nationalized = useMemo(() => {
     if (!simulation) return null;
-    const realTax = parseFloat(realTaxValue);
-    if (isNaN(realTax) || realTax <= 0) return null;
-    // Impostos reais em BRL — lucro real = preço base BRL - FOB BRL (impostos reais são repasse)
-    // Mas na nacionalização, o custo real inclui FOB + impostos reais
-    const realTotalCost = simulation.fobBrl + realTax;
-    const realProfit = simulation.basePriceBrl - simulation.fobBrl; // lucro da máquina não muda (margem sobre FOB)
-    // Porém se impostos reais diferem, o preço final muda ou o lucro real absorve a diferença
-    // Na prática: preço final foi combinado, então lucro real = preço final BRL - FOB BRL - impostos reais
-    const realProfitAdjusted = simulation.finalPriceBrl - simulation.fobBrl - realTax;
+    const realTaxPct = parseFloat(realTaxValue);
+    if (isNaN(realTaxPct) || realTaxPct <= 0) return null;
+    // Impostos reais como percentual sobre o FOB em BRL
+    const realTaxAbsolute = simulation.fobBrl * (realTaxPct / 100);
+    const realTotalCost = simulation.fobBrl + realTaxAbsolute;
+    // Lucro real = preço final BRL - FOB BRL - impostos reais
+    const realProfitAdjusted = simulation.finalPriceBrl - simulation.fobBrl - realTaxAbsolute;
     const realMarginPct = simulation.basePriceBrl > 0 ? (realProfitAdjusted / simulation.basePriceBrl) * 100 : 0;
-    const taxDifference = realTax - simulation.estimatedTaxBrl;
-    return { realTotalCost, realProfit: realProfitAdjusted, realMarginPct, taxDifference };
+    const taxDifference = realTaxAbsolute - simulation.estimatedTaxBrl;
+    return { realTotalCost, realProfit: realProfitAdjusted, realMarginPct, taxDifference, realTaxAbsolute, realTaxPct };
   }, [simulation, realTaxValue]);
 
   const minMarginVal = parseFloat(minMargin) || 0;
@@ -182,7 +180,7 @@ const PriceCalculator = () => {
       desired_margin_percent: parseFloat(desiredMargin) || 0,
       selling_price: simulation.finalPrice,
       estimated_profit: simulation.profit,
-      real_tax_value: nationalized ? parseFloat(realTaxValue) : null,
+      real_tax_value: nationalized ? nationalized.realTaxAbsolute : null,
       real_profit: nationalized?.realProfit ?? null,
       real_margin_percent: nationalized?.realMarginPct ?? null,
       min_acceptable_margin: minMarginVal,
@@ -383,7 +381,7 @@ const PriceCalculator = () => {
                     <Receipt className="h-5 w-5" /> Venda Nacionalizada
                   </h2>
                   <div className="space-y-5">
-                    <InputField label="Impostos Reais da Nacionalização" icon={<DollarSign className="h-4 w-4" />} value={realTaxValue} onChange={setRealTaxValue} placeholder="0,00" prefix="R$" type="number" />
+                    <InputField label="Impostos Reais da Nacionalização" icon={<Percent className="h-4 w-4" />} value={realTaxValue} onChange={setRealTaxValue} placeholder="0,00" suffix="%" type="number" />
 
                     {isBelowMinMargin && (
                       <Alert variant="destructive">
@@ -497,7 +495,7 @@ const PriceCalculator = () => {
                   <Card className={`border-border p-6 shadow-sm ${isBelowMinMargin ? "bg-destructive/10 border-destructive/30" : "bg-card"}`}>
                     <h2 className="font-heading text-base font-semibold text-card-foreground mb-4">Resultado Nacionalizado</h2>
                     <div className="space-y-2.5">
-                      <Row label="Impostos Reais" value={formatCurrency(parseFloat(realTaxValue))} color="text-warning" />
+                      <Row label={`Impostos Reais (${formatPct(nationalized.realTaxPct)})`} value={formatCurrency(nationalized.realTaxAbsolute)} color="text-warning" />
                       <Row label="Diferença Impostos" value={formatCurrency(nationalized.taxDifference)} color={nationalized.taxDifference > 0 ? "text-destructive" : "text-accent"} />
                       <Separator className="my-2" />
                       <Row label="Custo Total Real" value={formatCurrency(nationalized.realTotalCost)} />
