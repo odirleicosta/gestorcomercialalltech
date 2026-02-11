@@ -142,8 +142,8 @@ const PriceCalculator = () => {
     if (!simulation) return null;
     const realTaxPct = parseFloat(realTaxValue);
     if (isNaN(realTaxPct) || realTaxPct <= 0) return null;
-    // Impostos reais como percentual sobre o FOB em BRL
-    const realTaxAbsolute = simulation.fobBrl * (realTaxPct / 100);
+    // Impostos reais como percentual sobre o Preço Final de Venda em BRL
+    const realTaxAbsolute = simulation.finalPriceBrl * (realTaxPct / 100);
     const realTotalCost = simulation.fobBrl + realTaxAbsolute;
     // Lucro real = preço final BRL - FOB BRL - impostos reais
     const realProfitAdjusted = simulation.finalPriceBrl - simulation.fobBrl - realTaxAbsolute;
