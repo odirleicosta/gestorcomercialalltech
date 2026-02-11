@@ -71,6 +71,42 @@ export type Database = {
         }
         Relationships: []
       }
+      machine_catalog: {
+        Row: {
+          created_at: string
+          custo_fob: number
+          id: string
+          informado_por: string | null
+          marca: string
+          modelo: string
+          tipo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          custo_fob?: number
+          id?: string
+          informado_por?: string | null
+          marca: string
+          modelo: string
+          tipo: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          custo_fob?: number
+          id?: string
+          informado_por?: string | null
+          marca?: string
+          modelo?: string
+          tipo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

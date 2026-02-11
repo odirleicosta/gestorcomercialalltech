@@ -16,6 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import CalculationHistory from "@/components/CalculationHistory";
 import ClientManager, { loadClients, saveClients, type Client } from "@/components/ClientManager";
 import MachineManager, { loadMachines, saveMachines, type Machine } from "@/components/MachineManager";
+import MachineCatalog, { loadCatalog, saveCatalog, type CatalogMachine } from "@/components/MachineCatalog";
+import { seedCatalogIfEmpty } from "@/data/machineCatalogSeed";
 
 export interface SavedCalculation {
   id: string;
@@ -63,12 +65,19 @@ const PriceCalculator = () => {
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
   const [machines, setMachines] = useState<Machine[]>(loadMachines);
   const [showMachineSuggestions, setShowMachineSuggestions] = useState(false);
+  const [catalog, setCatalog] = useState<CatalogMachine[]>(() => seedCatalogIfEmpty());
+  const [showCatalogSuggestions, setShowCatalogSuggestions] = useState(false);
 
   const filteredClients = clients.filter((c) =>
     c.name.toLowerCase().includes(clientName.toLowerCase())
   );
   const filteredMachines = machines.filter((m) =>
     m.name.toLowerCase().includes(machineName.toLowerCase())
+  );
+  const filteredCatalog = catalog.filter((m) =>
+    m.modelo.toLowerCase().includes(machineName.toLowerCase()) ||
+    m.marca.toLowerCase().includes(machineName.toLowerCase()) ||
+    m.tipo.toLowerCase().includes(machineName.toLowerCase())
   );
 
   useEffect(() => {
@@ -216,6 +225,9 @@ const PriceCalculator = () => {
             <TabsTrigger value="registry">
               <Building2 className="h-4 w-4 mr-1" /> Cadastros
             </TabsTrigger>
+            <TabsTrigger value="catalog">
+              <Package className="h-4 w-4 mr-1" /> Catálogo
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="simulation">
@@ -281,24 +293,50 @@ const PriceCalculator = () => {
                         <div className="relative flex-1">
                           <Input
                             value={machineName}
-                            onChange={(e) => { setMachineName(e.target.value); setShowMachineSuggestions(true); }}
-                            onFocus={() => setShowMachineSuggestions(true)}
-                            onBlur={() => setTimeout(() => setShowMachineSuggestions(false), 150)}
-                            placeholder="Ex: Torno CNC"
+                            onChange={(e) => { setMachineName(e.target.value); setShowMachineSuggestions(true); setShowCatalogSuggestions(true); }}
+                            onFocus={() => { setShowMachineSuggestions(true); setShowCatalogSuggestions(true); }}
+                            onBlur={() => setTimeout(() => { setShowMachineSuggestions(false); setShowCatalogSuggestions(false); }, 150)}
+                            placeholder="Ex: Torno CNC ou modelo do catálogo"
                             className="bg-secondary/50 border-border"
                           />
-                          {showMachineSuggestions && machineName && filteredMachines.length > 0 && (
-                            <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md max-h-40 overflow-y-auto">
-                              {filteredMachines.map((m) => (
-                                <button
-                                  key={m.id}
-                                  type="button"
-                                  className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
-                                  onMouseDown={() => { setMachineName(m.name); setShowMachineSuggestions(false); }}
-                                >
-                                  {m.name}
-                                </button>
-                              ))}
+                          {(showMachineSuggestions || showCatalogSuggestions) && machineName && (filteredMachines.length > 0 || filteredCatalog.length > 0) && (
+                            <div className="absolute z-10 mt-1 w-full rounded-md border border-border bg-popover shadow-md max-h-48 overflow-y-auto">
+                              {filteredCatalog.length > 0 && (
+                                <>
+                                  <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">Catálogo</div>
+                                  {filteredCatalog.slice(0, 8).map((m) => (
+                                    <button
+                                      key={m.id}
+                                      type="button"
+                                      className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground flex justify-between"
+                                      onMouseDown={() => {
+                                        setMachineName(`${m.marca} ${m.modelo}`);
+                                        if (m.custo_fob > 0) setFobCost(String(m.custo_fob));
+                                        setShowMachineSuggestions(false);
+                                        setShowCatalogSuggestions(false);
+                                      }}
+                                    >
+                                      <span>{m.marca} {m.modelo} <span className="text-muted-foreground">({m.tipo})</span></span>
+                                      {m.custo_fob > 0 && <span className="text-muted-foreground ml-2">$ {m.custo_fob.toLocaleString("pt-BR")}</span>}
+                                    </button>
+                                  ))}
+                                </>
+                              )}
+                              {filteredMachines.length > 0 && (
+                                <>
+                                  <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">Cadastros</div>
+                                  {filteredMachines.map((m) => (
+                                    <button
+                                      key={m.id}
+                                      type="button"
+                                      className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground"
+                                      onMouseDown={() => { setMachineName(m.name); setShowMachineSuggestions(false); setShowCatalogSuggestions(false); }}
+                                    >
+                                      {m.name}
+                                    </button>
+                                  ))}
+                                </>
+                              )}
                             </div>
                           )}
                         </div>
@@ -497,6 +535,10 @@ const PriceCalculator = () => {
               <ClientManager clients={clients} setClients={setClients} />
               <MachineManager machines={machines} setMachines={setMachines} />
             </div>
+          </TabsContent>
+
+          <TabsContent value="catalog">
+            <MachineCatalog catalog={catalog} setCatalog={setCatalog} />
           </TabsContent>
         </Tabs>
       </div>
