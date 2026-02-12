@@ -513,7 +513,9 @@ const PriceCalculator = () => {
 
                 {simulation && simulation.finalPrice > 0 && (
                   <Card className="border-primary/30 bg-primary/5 p-6 shadow-sm">
-                    <h2 className="font-heading text-base font-semibold text-primary mb-4">Resumo</h2>
+                    <h2 className="font-heading text-base font-semibold text-primary mb-4">
+                      Resumo{machineName ? ` — ${machineName}` : ""}
+                    </h2>
                     <div className="space-y-2.5">
                       <Row label="FOB + Impostos Internacionais (USD)" value={formatUsd(simulation.finalPrice)} bold />
                       {simulation.hasDollar && (
