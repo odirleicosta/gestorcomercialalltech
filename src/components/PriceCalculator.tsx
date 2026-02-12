@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   DollarSign, Percent, TrendingUp, Package, Receipt,
   Save, AlertTriangle, History, Calculator, RotateCcw, User, StickyNote,
-  Building2, Plus, Wrench,
+  Building2, Plus, Wrench, Share2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import CalculationHistory from "@/components/CalculationHistory";
@@ -197,6 +197,35 @@ const PriceCalculator = () => {
 
     setHistory((prev) => [entry, ...prev]);
     toast({ title: "Salvo!", description: "Cálculo salvo no histórico local." });
+  };
+
+  const handleShareWhatsApp = () => {
+    if (!simulation) return;
+    const lines: string[] = [];
+    lines.push(`📋 *Resumo de Precificação*`);
+    if (clientName.trim()) lines.push(`👤 Cliente: ${clientName}`);
+    if (machineName.trim()) lines.push(`🔧 Máquina: ${machineName}`);
+    lines.push("");
+    lines.push(`💵 *FOB + Impostos Internacionais*`);
+    lines.push(`  USD: ${formatUsd(simulation.finalPrice)}`);
+    if (simulation.hasDollar) {
+      lines.push(`  BRL: ${formatCurrency(simulation.finalPriceBrl)}`);
+    }
+    if (nationalized) {
+      lines.push("");
+      lines.push(`🇧🇷 *Preço Final Nacionalizada*`);
+      if (nationalized.hasDollar) {
+        lines.push(`  USD: ${formatUsd(nationalized.nationalizedPriceUsd)}`);
+      }
+      lines.push(`  BRL: ${formatCurrency(nationalized.nationalizedPrice)}`);
+    }
+    if (observation?.trim()) {
+      lines.push("");
+      lines.push(`📝 Obs: ${observation}`);
+    }
+    const text = lines.join("\n");
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(whatsappUrl, "_blank");
   };
 
   const handleDelete = (id: string) => {
@@ -416,6 +445,9 @@ const PriceCalculator = () => {
                 <div className="flex gap-3">
                   <Button className="flex-1" onClick={handleSave} disabled={!simulation}>
                     <Save className="h-4 w-4 mr-2" /> Salvar Cálculo
+                  </Button>
+                  <Button variant="secondary" onClick={handleShareWhatsApp} disabled={!simulation}>
+                    <Share2 className="h-4 w-4 mr-2" /> WhatsApp
                   </Button>
                   <Button variant="outline" onClick={() => {
                     setMachineName(""); setClientName(""); setFobCost(""); setDollarRate("");
