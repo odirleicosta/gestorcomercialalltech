@@ -15,11 +15,15 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
+export const MACHINE_TYPES = ["Centro de Usinagem", "Torno CNC", "Plu.go"] as const;
+export type MachineType = typeof MACHINE_TYPES[number];
+
 export interface Deal {
   id: string;
   user_id: string;
   client_name: string;
   machine_name: string;
+  machine_type: string;
   fob_cost: number;
   dollar_rate: number;
   estimated_tax_percent: number;
@@ -78,6 +82,7 @@ const DealManager = ({ userId }: Props) => {
   // Form state for new deal
   const [clientName, setClientName] = useState("");
   const [machineName, setMachineName] = useState("");
+  const [machineType, setMachineType] = useState("");
   const [fobCost, setFobCost] = useState("");
   const [dollarRate, setDollarRate] = useState("");
   const [estimatedTaxPercent, setEstimatedTaxPercent] = useState("");
@@ -188,6 +193,7 @@ const DealManager = ({ userId }: Props) => {
       user_id: userId,
       client_name: clientName.trim(),
       machine_name: machineName.trim(),
+      machine_type: machineType,
       fob_cost: simulation.fob,
       dollar_rate: simulation.dollar,
       estimated_tax_percent: parseFloat(estimatedTaxPercent) || 0,
@@ -220,7 +226,7 @@ const DealManager = ({ userId }: Props) => {
   };
 
   const resetForm = () => {
-    setClientName(""); setMachineName(""); setFobCost(""); setDollarRate("");
+    setClientName(""); setMachineName(""); setMachineType(""); setFobCost(""); setDollarRate("");
     setEstimatedTaxPercent(""); setDesiredMargin(""); setSellerPct("");
     setManagerPct(""); setObservation(""); setRepresentativeId(""); setShowForm(false);
   };
@@ -380,6 +386,15 @@ const DealManager = ({ userId }: Props) => {
               <Input value={machineName} onChange={(e) => setMachineName(e.target.value)} placeholder="Nome da máquina" className="bg-secondary/50 border-border" />
             </div>
             <div>
+              <Label className="mb-1.5 text-sm text-muted-foreground">Tipo da Máquina</Label>
+              <Select value={machineType} onValueChange={setMachineType}>
+                <SelectTrigger className="bg-secondary/50 border-border"><SelectValue placeholder="Selecionar tipo..." /></SelectTrigger>
+                <SelectContent>
+                  {MACHINE_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label className="mb-1.5 text-sm text-muted-foreground">Custo FOB (USD) *</Label>
               <Input type="number" step="0.01" min="0" value={fobCost} onChange={(e) => setFobCost(e.target.value)} placeholder="0,00" className="bg-secondary/50 border-border" />
             </div>
@@ -495,6 +510,7 @@ const DealManager = ({ userId }: Props) => {
                       </Badge>
                       <span className="font-semibold text-sm truncate">{deal.client_name}</span>
                       {deal.machine_name && <span className="text-xs text-muted-foreground truncate">— {deal.machine_name}</span>}
+                      {deal.machine_type && <Badge variant="outline" className="text-[10px] h-4">{deal.machine_type}</Badge>}
                       {deal.representative_id && repOptions.find(r => r.id === deal.representative_id) && (
                         <Badge variant="outline" className="text-[10px] h-4 ml-1">{repOptions.find(r => r.id === deal.representative_id)!.nome}</Badge>
                       )}

@@ -21,6 +21,7 @@ interface Representative {
   nome: string;
   regiao: string | null;
   meta_mensal_padrao: number;
+  meta_quantidade: number;
   comissao_padrao_pct: number;
   status: string;
   observacoes: string | null;
@@ -33,6 +34,7 @@ interface MonthlyGoal {
   mes: number;
   ano: number;
   meta_valor: number;
+  meta_quantidade: number;
 }
 
 interface DealRow {
@@ -73,6 +75,7 @@ const RepresentativeManager = ({ userId }: Props) => {
   const [nome, setNome] = useState("");
   const [regiao, setRegiao] = useState("");
   const [metaPadrao, setMetaPadrao] = useState("");
+  const [metaQtd, setMetaQtd] = useState("");
   const [comissaoPct, setComissaoPct] = useState("3");
   const [status, setStatus] = useState("ATIVO");
   const [observacoes, setObservacoes] = useState("");
@@ -80,6 +83,7 @@ const RepresentativeManager = ({ userId }: Props) => {
   // Goal editing
   const [editingGoal, setEditingGoal] = useState<string | null>(null);
   const [goalValue, setGoalValue] = useState("");
+  const [goalQtd, setGoalQtd] = useState("");
 
   const fetchAll = async () => {
     const [repsRes, goalsRes, dealsRes] = await Promise.all([
@@ -96,7 +100,7 @@ const RepresentativeManager = ({ userId }: Props) => {
   useEffect(() => { fetchAll(); }, []);
 
   const resetForm = () => {
-    setNome(""); setRegiao(""); setMetaPadrao(""); setComissaoPct("3");
+    setNome(""); setRegiao(""); setMetaPadrao(""); setMetaQtd(""); setComissaoPct("3");
     setStatus("ATIVO"); setObservacoes(""); setEditingId(null); setShowForm(false);
   };
 
@@ -110,6 +114,7 @@ const RepresentativeManager = ({ userId }: Props) => {
       nome: nome.trim(),
       regiao: regiao.trim() || null,
       meta_mensal_padrao: parseFloat(metaPadrao) || 0,
+      meta_quantidade: parseInt(metaQtd) || 0,
       comissao_padrao_pct: parseFloat(comissaoPct) || 3,
       status,
       observacoes: observacoes.trim() || null,
@@ -133,6 +138,7 @@ const RepresentativeManager = ({ userId }: Props) => {
     setNome(r.nome);
     setRegiao(r.regiao || "");
     setMetaPadrao(String(r.meta_mensal_padrao));
+    setMetaQtd(String(r.meta_quantidade || 0));
     setComissaoPct(String(r.comissao_padrao_pct));
     setStatus(r.status);
     setObservacoes(r.observacoes || "");
@@ -147,11 +153,12 @@ const RepresentativeManager = ({ userId }: Props) => {
 
   const handleSaveGoal = async (repId: string) => {
     const val = parseFloat(goalValue) || 0;
+    const qtd = parseInt(goalQtd) || 0;
     const existing = goals.find(g => g.representative_id === repId && g.mes === filterMonth && g.ano === filterYear);
     if (existing) {
-      await supabase.from("monthly_goals" as any).update({ meta_valor: val } as any).eq("id", existing.id);
+      await supabase.from("monthly_goals" as any).update({ meta_valor: val, meta_quantidade: qtd } as any).eq("id", existing.id);
     } else {
-      await supabase.from("monthly_goals" as any).insert({ user_id: userId, representative_id: repId, mes: filterMonth, ano: filterYear, meta_valor: val } as any);
+      await supabase.from("monthly_goals" as any).insert({ user_id: userId, representative_id: repId, mes: filterMonth, ano: filterYear, meta_valor: val, meta_quantidade: qtd } as any);
     }
     toast({ title: "Meta salva!" });
     setEditingGoal(null);
@@ -163,6 +170,7 @@ const RepresentativeManager = ({ userId }: Props) => {
     return reps.map(rep => {
       const goal = goals.find(g => g.representative_id === rep.id && g.mes === filterMonth && g.ano === filterYear);
       const metaValor = goal ? goal.meta_valor : rep.meta_mensal_padrao;
+      const metaQtd = goal ? goal.meta_quantidade : (rep.meta_quantidade || 0);
 
       const repDeals = deals.filter(d => {
         if (d.representative_id !== rep.id || d.status !== "closed" || !d.closed_at) return false;
@@ -182,8 +190,9 @@ const RepresentativeManager = ({ userId }: Props) => {
       const avgNetMargin = closedCount > 0 ? repDeals.reduce((s, d) => s + d.net_margin_percent, 0) / closedCount : 0;
       const closingRate = allCount > 0 ? (closedCount / allCount) * 100 : 0;
       const metaPct = metaValor > 0 ? (vendido / metaValor) * 100 : 0;
+      const metaQtdPct = metaQtd > 0 ? (closedCount / metaQtd) * 100 : 0;
 
-      return { rep, metaValor, vendido, metaPct, lucroBruto, lucroLiquido, comissaoTotal, avgGrossMargin, avgNetMargin, closingRate, closedCount };
+      return { rep, metaValor, metaQtd, vendido, metaPct, metaQtdPct, lucroBruto, lucroLiquido, comissaoTotal, avgGrossMargin, avgNetMargin, closingRate, closedCount };
     });
   }, [reps, goals, deals, filterMonth, filterYear]);
 
@@ -232,6 +241,10 @@ const RepresentativeManager = ({ userId }: Props) => {
             <div>
               <Label className="mb-1.5 text-sm text-muted-foreground">Meta Mensal Padrão (US$)</Label>
               <Input type="number" step="0.01" min="0" value={metaPadrao} onChange={e => setMetaPadrao(e.target.value)} placeholder="0,00" className="bg-secondary/50 border-border" />
+            </div>
+            <div>
+              <Label className="mb-1.5 text-sm text-muted-foreground">Meta Quantidade (máquinas/mês)</Label>
+              <Input type="number" step="1" min="0" value={metaQtd} onChange={e => setMetaQtd(e.target.value)} placeholder="0" className="bg-secondary/50 border-border" />
             </div>
             <div>
               <Label className="mb-1.5 text-sm text-muted-foreground">Comissão Padrão (%)</Label>
@@ -287,7 +300,7 @@ const RepresentativeManager = ({ userId }: Props) => {
       ) : (
         <ScrollArea className="h-[600px]">
           <div className="space-y-3">
-            {performance.map(({ rep, metaValor, vendido, metaPct, lucroBruto, lucroLiquido, comissaoTotal, avgGrossMargin, avgNetMargin, closingRate, closedCount }) => (
+            {performance.map(({ rep, metaValor, metaQtd, vendido, metaPct, metaQtdPct, lucroBruto, lucroLiquido, comissaoTotal, avgGrossMargin, avgNetMargin, closingRate, closedCount }) => (
               <Card key={rep.id} className={`border-border p-4 shadow-sm ${rep.status === "INATIVO" ? "bg-muted/30 opacity-60" : "bg-card"}`}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
@@ -317,6 +330,7 @@ const RepresentativeManager = ({ userId }: Props) => {
                               setEditingGoal(rep.id);
                               const g = goals.find(g => g.representative_id === rep.id && g.mes === filterMonth && g.ano === filterYear);
                               setGoalValue(String(g ? g.meta_valor : rep.meta_mensal_padrao));
+                              setGoalQtd(String(g ? g.meta_quantidade : (rep.meta_quantidade || 0)));
                             }
                           }}>
                             <Edit2 className="h-3 w-3" />
@@ -328,13 +342,25 @@ const RepresentativeManager = ({ userId }: Props) => {
                         <span>Realizado: {formatUsd(vendido)}</span>
                         <span>{closedCount} vendas</span>
                       </div>
+                      {metaQtd > 0 && (
+                        <div className="mt-2">
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="text-muted-foreground">Meta Qtd: {metaQtd} máquinas</span>
+                            <span className={`font-bold ${getMetaColor(metaQtdPct)}`}>{formatPct(metaQtdPct)}</span>
+                          </div>
+                          <Progress value={Math.min(metaQtdPct, 100)} className={`h-2 ${getMetaBg(metaQtdPct)}`} />
+                          <div className="text-xs text-muted-foreground mt-0.5">{closedCount} de {metaQtd} máquinas</div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Edit goal inline */}
                     {editingGoal === rep.id && (
-                      <div className="flex items-center gap-2 mb-3 p-2 rounded border border-border bg-secondary/30">
+                      <div className="flex items-center gap-2 mb-3 p-2 rounded border border-border bg-secondary/30 flex-wrap">
                         <Label className="text-xs text-muted-foreground whitespace-nowrap">Meta {MONTHS[filterMonth - 1]}/{filterYear}:</Label>
-                        <Input type="number" step="0.01" value={goalValue} onChange={e => setGoalValue(e.target.value)} className="h-7 text-xs w-32 bg-background" />
+                        <Input type="number" step="0.01" value={goalValue} onChange={e => setGoalValue(e.target.value)} className="h-7 text-xs w-32 bg-background" placeholder="Valor US$" />
+                        <Label className="text-xs text-muted-foreground whitespace-nowrap">Qtd:</Label>
+                        <Input type="number" step="1" value={goalQtd} onChange={e => setGoalQtd(e.target.value)} className="h-7 text-xs w-20 bg-background" placeholder="0" />
                         <Button size="sm" className="h-7 text-xs" onClick={() => handleSaveGoal(rep.id)}><Save className="h-3 w-3" /></Button>
                         <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditingGoal(null)}><X className="h-3 w-3" /></Button>
                       </div>

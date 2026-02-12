@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import {
   TrendingUp, TrendingDown, DollarSign, Percent, Target,
   BarChart3, Users, Lock, Unlock, Trophy, Building2, Package,
@@ -12,9 +14,14 @@ interface Props {
   userId: string;
 }
 
+const MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
 const ExecutiveDashboard = ({ userId }: Props) => {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
+  const now = new Date();
+  const [filterMonth, setFilterMonth] = useState(now.getMonth() + 1);
+  const [filterYear, setFilterYear] = useState(now.getFullYear());
 
   useEffect(() => {
     const fetch = async () => {
@@ -112,6 +119,29 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     `US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const formatPct = (v: number) =>
     v.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
+  // Type summary for selected month
+  const typeSummary = useMemo(() => {
+    const monthClosed = deals.filter(d => {
+      if (d.status !== "closed" || !d.closed_at) return false;
+      const dt = new Date(d.closed_at);
+      return (dt.getMonth() + 1) === filterMonth && dt.getFullYear() === filterYear;
+    });
+    const typeMap = new Map<string, { count: number; revenue: number; marginSum: number }>();
+    monthClosed.forEach(d => {
+      const type = d.machine_type || "Não classificado";
+      const t = typeMap.get(type) || { count: 0, revenue: 0, marginSum: 0 };
+      t.count++;
+      t.revenue += d.final_price;
+      t.marginSum += d.gross_margin_percent;
+      typeMap.set(type, t);
+    });
+    return Array.from(typeMap.entries()).map(([type, data]) => ({
+      type,
+      count: data.count,
+      revenue: data.revenue,
+      avgMargin: data.count > 0 ? data.marginSum / data.count : 0,
+    })).sort((a, b) => b.revenue - a.revenue);
+  }, [deals, filterMonth, filterYear]);
 
   if (loading) return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
   if (!stats) return <p className="text-muted-foreground text-center py-8">Nenhuma negociação registrada ainda.</p>;
@@ -123,6 +153,28 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       <h2 className="font-heading text-lg font-semibold text-foreground flex items-center gap-2">
         <BarChart3 className="h-5 w-5" /> Dashboard Executivo
       </h2>
+
+      {/* Month/Year filter */}
+      <div className="flex flex-wrap gap-3 items-end">
+        <div>
+          <Label className="text-xs text-muted-foreground">Mês</Label>
+          <Select value={String(filterMonth)} onValueChange={v => setFilterMonth(parseInt(v))}>
+            <SelectTrigger className="w-[150px] bg-secondary/50 border-border text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {MONTHS.map((m, i) => <SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Ano</Label>
+          <Select value={String(filterYear)} onValueChange={v => setFilterYear(parseInt(v))}>
+            <SelectTrigger className="w-[100px] bg-secondary/50 border-border text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {[2024, 2025, 2026, 2027].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       {/* Row 1: Key metrics */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
@@ -204,6 +256,37 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         </Card>
       </div>
 
+      {/* Type summary for selected month */}
+      {typeSummary.length > 0 && (
+        <Card className="border-border bg-card p-5 shadow-sm">
+          <h3 className="font-heading text-sm font-semibold text-card-foreground mb-3 flex items-center gap-2">
+            <Package className="h-4 w-4" /> Resumo por Tipo — {MONTHS[filterMonth - 1]}/{filterYear}
+          </h3>
+          <div className="overflow-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-xs text-muted-foreground">
+                  <th className="text-left py-2 font-medium">Tipo</th>
+                  <th className="text-right py-2 font-medium">Qtde Vendida</th>
+                  <th className="text-right py-2 font-medium">Faturamento</th>
+                  <th className="text-right py-2 font-medium">Margem Média</th>
+                </tr>
+              </thead>
+              <tbody>
+                {typeSummary.map(row => (
+                  <tr key={row.type} className="border-b border-border last:border-0">
+                    <td className="py-2 font-medium">{row.type}</td>
+                    <td className="py-2 text-right">{row.count}</td>
+                    <td className="py-2 text-right">{formatUsd(row.revenue)}</td>
+                    <td className="py-2 text-right">{formatPct(row.avgMargin)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
       {/* Recent closed deals */}
       {deals.filter((d) => d.status === "closed").length > 0 && (
         <Card className="border-border bg-card p-6 shadow-sm">
@@ -219,6 +302,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                   <div>
                     <span className="font-medium">{d.client_name}</span>
                     {d.machine_name && <span className="text-muted-foreground ml-2">— {d.machine_name}</span>}
+                    {d.machine_type && <Badge variant="outline" className="text-[10px] h-4 ml-2">{d.machine_type}</Badge>}
                   </div>
                   <div className="flex items-center gap-4 text-xs">
                     <span>{formatUsd(d.final_price)}</span>
