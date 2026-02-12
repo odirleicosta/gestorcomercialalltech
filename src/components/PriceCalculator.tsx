@@ -256,44 +256,74 @@ const PriceCalculator = () => {
   if (!user) return <Auth />;
 
   return (
-    <div className="min-h-screen bg-background px-4 py-8 md:py-12">
-      <div className="mx-auto max-w-6xl">
-        {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary">
-              <TrendingUp className="h-6 w-6 text-primary-foreground" />
-            </div>
-            <div>
-              <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">
-                Gestão Comercial
-              </h1>
-              <p className="text-sm text-muted-foreground">Máquinas Industriais</p>
-            </div>
+    <div className="min-h-screen bg-background flex">
+      {/* Sidebar vertical */}
+      <aside className="hidden md:flex w-56 shrink-0 flex-col border-r border-border bg-card p-4 gap-2">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
+            <TrendingUp className="h-5 w-5 text-primary-foreground" />
           </div>
-          <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()} className="text-muted-foreground">
-            <LogOut className="h-4 w-4 mr-1" /> Sair
-          </Button>
+          <div>
+            <h1 className="font-heading text-base font-bold tracking-tight text-foreground">Gestão Comercial</h1>
+            <p className="text-xs text-muted-foreground">Máquinas Industriais</p>
+          </div>
         </div>
+        <nav className="flex flex-col gap-1 flex-1">
+          {[
+            { value: "simulation", icon: Calculator, label: "Simulação" },
+            { value: "deals", icon: Users, label: "Vendas" },
+            { value: "dashboard", icon: BarChart3, label: "Dashboard" },
+            { value: "registry", icon: Building2, label: "Cadastros" },
+            { value: "catalog", icon: Package, label: "Catálogo" },
+          ].map(({ value, icon: Icon, label }) => (
+            <button
+              key={value}
+              onClick={() => setActiveTab(value)}
+              className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+                activeTab === value
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </button>
+          ))}
+        </nav>
+        <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()} className="text-muted-foreground justify-start mt-auto">
+          <LogOut className="h-4 w-4 mr-2" /> Sair
+        </Button>
+      </aside>
 
+      {/* Mobile header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border px-3 py-2 flex items-center gap-2 overflow-x-auto">
+        {[
+          { value: "simulation", icon: Calculator, label: "Simulação" },
+          { value: "deals", icon: Users, label: "Vendas" },
+          { value: "dashboard", icon: BarChart3, label: "Dashboard" },
+          { value: "registry", icon: Building2, label: "Cadastros" },
+          { value: "catalog", icon: Package, label: "Catálogo" },
+        ].map(({ value, icon: Icon, label }) => (
+          <button
+            key={value}
+            onClick={() => setActiveTab(value)}
+            className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors shrink-0 ${
+              activeTab === value
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-secondary"
+            }`}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Main content */}
+      <main className="flex-1 overflow-y-auto px-4 py-8 md:py-10 md:px-8 mt-12 md:mt-0">
+        <div className="mx-auto max-w-6xl">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6 flex-wrap">
-            <TabsTrigger value="simulation">
-              <Calculator className="h-4 w-4 mr-1" /> Simulação
-            </TabsTrigger>
-            <TabsTrigger value="deals">
-              <Users className="h-4 w-4 mr-1" /> Vendas
-            </TabsTrigger>
-            <TabsTrigger value="dashboard">
-              <BarChart3 className="h-4 w-4 mr-1" /> Dashboard
-            </TabsTrigger>
-            <TabsTrigger value="registry">
-              <Building2 className="h-4 w-4 mr-1" /> Cadastros
-            </TabsTrigger>
-            <TabsTrigger value="catalog">
-              <Package className="h-4 w-4 mr-1" /> Catálogo
-            </TabsTrigger>
-          </TabsList>
+          <div className="hidden"><TabsList><TabsTrigger value="simulation" /><TabsTrigger value="deals" /><TabsTrigger value="dashboard" /><TabsTrigger value="registry" /><TabsTrigger value="catalog" /></TabsList></div>
 
           <TabsContent value="simulation">
             <div className="grid gap-6 lg:grid-cols-5">
@@ -645,7 +675,8 @@ const PriceCalculator = () => {
             <MachineCatalog catalog={catalog} setCatalog={setCatalog} />
           </TabsContent>
         </Tabs>
-      </div>
+        </div>
+      </main>
     </div>
   );
 };
