@@ -126,6 +126,7 @@ export type Database = {
           gross_profit: number
           id: string
           machine_name: string
+          machine_type: string
           manager_commission_pct: number
           manager_commission_value: number
           net_margin_percent: number
@@ -154,6 +155,7 @@ export type Database = {
           gross_profit?: number
           id?: string
           machine_name?: string
+          machine_type?: string
           manager_commission_pct?: number
           manager_commission_value?: number
           net_margin_percent?: number
@@ -182,6 +184,7 @@ export type Database = {
           gross_profit?: number
           id?: string
           machine_name?: string
+          machine_type?: string
           manager_commission_pct?: number
           manager_commission_value?: number
           net_margin_percent?: number
@@ -246,6 +249,7 @@ export type Database = {
           created_at: string
           id: string
           mes: number
+          meta_quantidade: number
           meta_valor: number
           representative_id: string
           user_id: string
@@ -255,6 +259,7 @@ export type Database = {
           created_at?: string
           id?: string
           mes: number
+          meta_quantidade?: number
           meta_valor?: number
           representative_id: string
           user_id: string
@@ -264,6 +269,7 @@ export type Database = {
           created_at?: string
           id?: string
           mes?: number
+          meta_quantidade?: number
           meta_valor?: number
           representative_id?: string
           user_id?: string
@@ -320,6 +326,7 @@ export type Database = {
           created_at: string
           id: string
           meta_mensal_padrao: number
+          meta_quantidade: number
           nome: string
           observacoes: string | null
           regiao: string | null
@@ -332,6 +339,7 @@ export type Database = {
           created_at?: string
           id?: string
           meta_mensal_padrao?: number
+          meta_quantidade?: number
           nome: string
           observacoes?: string | null
           regiao?: string | null
@@ -344,6 +352,7 @@ export type Database = {
           created_at?: string
           id?: string
           meta_mensal_padrao?: number
+          meta_quantidade?: number
           nome?: string
           observacoes?: string | null
           regiao?: string | null
