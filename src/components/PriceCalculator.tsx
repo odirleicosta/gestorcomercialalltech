@@ -142,17 +142,18 @@ const PriceCalculator = () => {
     if (!simulation) return null;
     const realTaxPct = parseFloat(realTaxValue);
     if (isNaN(realTaxPct) || realTaxPct <= 0) return null;
-    // Impostos reais "por dentro": preço nacionalizado = preço final / (1 - taxa%)
     const divisor = 1 - realTaxPct / 100;
     const nationalizedPrice = divisor > 0 ? simulation.finalPriceBrl / divisor : simulation.finalPriceBrl;
+    const dollar = parseFloat(dollarRate) || 0;
+    const nationalizedPriceUsd = dollar > 0 ? nationalizedPrice / dollar : 0;
     const realTaxAbsolute = nationalizedPrice - simulation.finalPriceBrl;
+    const realTaxAbsoluteUsd = dollar > 0 ? realTaxAbsolute / dollar : 0;
     const realTotalCost = simulation.fobBrl + realTaxAbsolute;
-    // Lucro real = preço nacionalizado - FOB BRL - impostos reais
     const realProfitAdjusted = nationalizedPrice - simulation.fobBrl - realTaxAbsolute;
     const realMarginPct = simulation.basePriceBrl > 0 ? (realProfitAdjusted / simulation.basePriceBrl) * 100 : 0;
     const taxDifference = realTaxAbsolute - simulation.estimatedTaxBrl;
-    return { nationalizedPrice, realTotalCost, realProfit: realProfitAdjusted, realMarginPct, taxDifference, realTaxAbsolute, realTaxPct };
-  }, [simulation, realTaxValue]);
+    return { nationalizedPrice, nationalizedPriceUsd, realTotalCost, realProfit: realProfitAdjusted, realMarginPct, taxDifference, realTaxAbsolute, realTaxAbsoluteUsd, realTaxPct, hasDollar: simulation.hasDollar };
+  }, [simulation, realTaxValue, dollarRate]);
 
   const minMarginVal = parseFloat(minMargin) || 0;
   const isBelowMinMargin = nationalized
@@ -497,14 +498,15 @@ const PriceCalculator = () => {
                   <Card className={`border-border p-6 shadow-sm ${isBelowMinMargin ? "bg-destructive/10 border-destructive/30" : "bg-card"}`}>
                     <h2 className="font-heading text-base font-semibold text-card-foreground mb-4">Resultado Nacionalizado</h2>
                     <div className="space-y-2.5">
-                      <Row label="Preço de Venda Nacionalizada" value={formatCurrency(nationalized.nationalizedPrice)} color="text-primary" bold />
+                      {nationalized.hasDollar && (
+                        <Row label="Preço de Venda Nacionalizada (USD)" value={formatUsd(nationalized.nationalizedPriceUsd)} color="text-primary" bold />
+                      )}
+                      <Row label="Preço de Venda Nacionalizada (BRL)" value={formatCurrency(nationalized.nationalizedPrice)} color="text-primary" bold />
                       <Separator className="my-2" />
+                      {nationalized.hasDollar && (
+                        <Row label={`Impostos Reais (${formatPct(nationalized.realTaxPct)})`} value={formatUsd(nationalized.realTaxAbsoluteUsd)} color="text-warning" />
+                      )}
                       <Row label={`Impostos Reais (${formatPct(nationalized.realTaxPct)})`} value={formatCurrency(nationalized.realTaxAbsolute)} color="text-warning" />
-                      <Row label="Diferença Impostos" value={formatCurrency(nationalized.taxDifference)} color={nationalized.taxDifference > 0 ? "text-destructive" : "text-accent"} />
-                      <Separator className="my-2" />
-                      <Row label="Custo Total Real" value={formatCurrency(nationalized.realTotalCost)} />
-                      <Row label="Lucro Real" value={formatCurrency(nationalized.realProfit)} color={nationalized.realProfit >= 0 ? "text-accent" : "text-destructive"} bold />
-                      <Row label="Margem Real" value={formatPct(nationalized.realMarginPct)} color={isBelowMinMargin ? "text-destructive" : "text-accent"} bold />
                     </div>
                   </Card>
                 )}
