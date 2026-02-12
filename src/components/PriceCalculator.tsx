@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   DollarSign, Percent, TrendingUp, Package, Receipt,
   Save, AlertTriangle, History, Calculator, RotateCcw, User, StickyNote,
-  Building2, Plus, Wrench, Share2,
+  Building2, Plus, Wrench, Copy,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import CalculationHistory from "@/components/CalculationHistory";
@@ -224,8 +224,11 @@ const PriceCalculator = () => {
       lines.push(`📝 Obs: ${observation}`);
     }
     const text = lines.join("\n");
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(whatsappUrl, "_blank");
+    navigator.clipboard.writeText(text).then(() => {
+      toast({ title: "Copiado!", description: "Texto copiado para a área de transferência. Cole no WhatsApp." });
+    }).catch(() => {
+      toast({ title: "Erro", description: "Não foi possível copiar.", variant: "destructive" });
+    });
   };
 
   const handleDelete = (id: string) => {
@@ -447,7 +450,7 @@ const PriceCalculator = () => {
                     <Save className="h-4 w-4 mr-2" /> Salvar Cálculo
                   </Button>
                   <Button variant="secondary" onClick={handleShareWhatsApp} disabled={!simulation}>
-                    <Share2 className="h-4 w-4 mr-2" /> WhatsApp
+                    <Copy className="h-4 w-4 mr-2" /> Copiar Resumo
                   </Button>
                   <Button variant="outline" onClick={() => {
                     setMachineName(""); setClientName(""); setFobCost(""); setDollarRate("");
