@@ -7,6 +7,7 @@ import {
   TrendingUp, TrendingDown, DollarSign, Percent, Target,
   BarChart3, Users, Lock, Unlock, Trophy, Building2, Package,
 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import type { Deal } from "@/components/DealManager";
 
@@ -14,25 +15,33 @@ interface Props {
   userId: string;
 }
 
+interface RepOption {
+  id: string;
+  nome: string;
+}
+
 const MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
 const ExecutiveDashboard = ({ userId }: Props) => {
   const [deals, setDeals] = useState<Deal[]>([]);
+  const [reps, setReps] = useState<RepOption[]>([]);
   const [loading, setLoading] = useState(true);
   const now = new Date();
   const [filterMonth, setFilterMonth] = useState(now.getMonth() + 1);
   const [filterYear, setFilterYear] = useState(now.getFullYear());
+  const [filterRep, setFilterRep] = useState("all");
 
   useEffect(() => {
-    const fetch = async () => {
-      const { data } = await supabase
-        .from("deals" as any)
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (data) setDeals(data as unknown as Deal[]);
+    const fetchData = async () => {
+      const [dealsRes, repsRes] = await Promise.all([
+        supabase.from("deals" as any).select("*").order("created_at", { ascending: false }),
+        supabase.from("representatives" as any).select("id, nome").eq("status", "ATIVO").order("nome"),
+      ]);
+      if (dealsRes.data) setDeals(dealsRes.data as unknown as Deal[]);
+      if (repsRes.data) setReps(repsRes.data as unknown as RepOption[]);
       setLoading(false);
     };
-    fetch();
+    fetchData();
   }, []);
 
   const stats = useMemo(() => {
@@ -48,7 +57,6 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     const closedCount = closed.length;
     const closingRate = total > 0 ? (closedCount / total) * 100 : 0;
 
-    // Monthly commissions (closed deals this month)
     const thisMonthClosed = closed.filter((d) => {
       if (!d.closed_at) return false;
       const dt = new Date(d.closed_at);
@@ -80,7 +88,6 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       ? (recentClosed.reduce((s, d) => s + d.final_price, 0) / recentClosed.length) * forecast3m
       : 0;
 
-    // Rankings
     const modelMap = new Map<string, { count: number; revenue: number; profit: number }>();
     const clientMap = new Map<string, { count: number; revenue: number; profit: number }>();
 
@@ -115,33 +122,52 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     };
   }, [deals]);
 
-  const formatUsd = (v: number) =>
-    `US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const formatPct = (v: number) =>
-    v.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
-  // Type summary for selected month
-  const typeSummary = useMemo(() => {
+  // Type analysis for selected month/year/rep
+  const typeAnalysis = useMemo(() => {
     const monthClosed = deals.filter(d => {
       if (d.status !== "closed" || !d.closed_at) return false;
       const dt = new Date(d.closed_at);
-      return (dt.getMonth() + 1) === filterMonth && dt.getFullYear() === filterYear;
+      const matchMonth = (dt.getMonth() + 1) === filterMonth && dt.getFullYear() === filterYear;
+      const matchRep = filterRep === "all" || d.representative_id === filterRep;
+      return matchMonth && matchRep;
     });
-    const typeMap = new Map<string, { count: number; revenue: number; marginSum: number }>();
+
+    const typeMap = new Map<string, { count: number; revenue: number; grossProfit: number; netProfit: number; basePriceSum: number }>();
     monthClosed.forEach(d => {
       const type = d.machine_type || "Não classificado";
-      const t = typeMap.get(type) || { count: 0, revenue: 0, marginSum: 0 };
+      const t = typeMap.get(type) || { count: 0, revenue: 0, grossProfit: 0, netProfit: 0, basePriceSum: 0 };
       t.count++;
       t.revenue += d.final_price;
-      t.marginSum += d.gross_margin_percent;
+      t.grossProfit += d.gross_profit;
+      t.netProfit += d.net_profit;
+      t.basePriceSum += d.base_price;
       typeMap.set(type, t);
     });
+
     return Array.from(typeMap.entries()).map(([type, data]) => ({
       type,
       count: data.count,
       revenue: data.revenue,
-      avgMargin: data.count > 0 ? data.marginSum / data.count : 0,
+      grossProfit: data.grossProfit,
+      netProfit: data.netProfit,
+      netMargin: data.basePriceSum > 0 ? (data.netProfit / data.basePriceSum) * 100 : 0,
+      ticketMedio: data.count > 0 ? data.revenue / data.count : 0,
     })).sort((a, b) => b.revenue - a.revenue);
-  }, [deals, filterMonth, filterYear]);
+  }, [deals, filterMonth, filterYear, filterRep]);
+
+  // Chart data
+  const chartData = useMemo(() => {
+    return typeAnalysis.map(row => ({
+      name: row.type,
+      Faturamento: Math.round(row.revenue * 100) / 100,
+      "Lucro Líquido": Math.round(row.netProfit * 100) / 100,
+    }));
+  }, [typeAnalysis]);
+
+  const formatUsd = (v: number) =>
+    `US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatPct = (v: number) =>
+    v.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
 
   if (loading) return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
   if (!stats) return <p className="text-muted-foreground text-center py-8">Nenhuma negociação registrada ainda.</p>;
@@ -154,7 +180,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         <BarChart3 className="h-5 w-5" /> Dashboard Executivo
       </h2>
 
-      {/* Month/Year filter */}
+      {/* Filters */}
       <div className="flex flex-wrap gap-3 items-end">
         <div>
           <Label className="text-xs text-muted-foreground">Mês</Label>
@@ -171,6 +197,16 @@ const ExecutiveDashboard = ({ userId }: Props) => {
             <SelectTrigger className="w-[100px] bg-secondary/50 border-border text-sm"><SelectValue /></SelectTrigger>
             <SelectContent>
               {[2024, 2025, 2026, 2027].map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs text-muted-foreground">Representante</Label>
+          <Select value={filterRep} onValueChange={setFilterRep}>
+            <SelectTrigger className="w-[180px] bg-secondary/50 border-border text-sm"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {reps.map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -199,9 +235,80 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         <KpiCard icon={<Users className="h-5 w-5" />} label="Com. Gestor Total" value={formatUsd(stats.totalManagerComm)} />
       </div>
 
+      {/* Type Analysis */}
+      <Card className="border-border bg-card p-5 shadow-sm">
+        <h3 className="font-heading text-sm font-semibold text-card-foreground mb-4 flex items-center gap-2">
+          <Package className="h-4 w-4" /> Análise por Tipo — {MONTHS[filterMonth - 1]}/{filterYear}
+          {filterRep !== "all" && reps.find(r => r.id === filterRep) && (
+            <Badge variant="outline" className="text-[10px] ml-2">{reps.find(r => r.id === filterRep)!.nome}</Badge>
+          )}
+        </h3>
+        {typeAnalysis.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Nenhuma venda fechada no período selecionado.</p>
+        ) : (
+          <>
+            <div className="overflow-auto mb-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-xs text-muted-foreground">
+                    <th className="text-left py-2 font-medium">Tipo</th>
+                    <th className="text-right py-2 font-medium">Qtde</th>
+                    <th className="text-right py-2 font-medium">Faturamento</th>
+                    <th className="text-right py-2 font-medium">Lucro Bruto</th>
+                    <th className="text-right py-2 font-medium">Lucro Líquido</th>
+                    <th className="text-right py-2 font-medium">Margem Líquida</th>
+                    <th className="text-right py-2 font-medium">Ticket Médio</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {typeAnalysis.map(row => (
+                    <tr key={row.type} className="border-b border-border last:border-0">
+                      <td className="py-2 font-medium">{row.type}</td>
+                      <td className="py-2 text-right">{row.count}</td>
+                      <td className="py-2 text-right">{formatUsd(row.revenue)}</td>
+                      <td className="py-2 text-right text-accent">{formatUsd(row.grossProfit)}</td>
+                      <td className={`py-2 text-right font-semibold ${row.netProfit < 0 ? "text-destructive" : "text-accent"}`}>{formatUsd(row.netProfit)}</td>
+                      <td className={`py-2 text-right ${row.netMargin < 0 ? "text-destructive" : ""}`}>{formatPct(row.netMargin)}</td>
+                      <td className="py-2 text-right">{formatUsd(row.ticketMedio)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Bar charts */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2">Faturamento por Tipo</p>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+                    <YAxis tick={{ fontSize: 10 }} className="fill-muted-foreground" />
+                    <Tooltip formatter={(v: number) => formatUsd(v)} contentStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="Faturamento" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2">Lucro Líquido por Tipo</p>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+                    <YAxis tick={{ fontSize: 10 }} className="fill-muted-foreground" />
+                    <Tooltip formatter={(v: number) => formatUsd(v)} contentStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="Lucro Líquido" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </>
+        )}
+      </Card>
+
       {/* Rankings */}
       <div className="grid gap-4 md:grid-cols-2">
-        {/* Top Models */}
         <Card className="border-border bg-card p-5 shadow-sm">
           <h3 className="font-heading text-sm font-semibold text-card-foreground mb-3 flex items-center gap-2">
             <Trophy className="h-4 w-4 text-warning" /> Ranking por Modelo
@@ -228,7 +335,6 @@ const ExecutiveDashboard = ({ userId }: Props) => {
           )}
         </Card>
 
-        {/* Top Clients */}
         <Card className="border-border bg-card p-5 shadow-sm">
           <h3 className="font-heading text-sm font-semibold text-card-foreground mb-3 flex items-center gap-2">
             <Trophy className="h-4 w-4 text-warning" /> Ranking por Cliente
@@ -255,37 +361,6 @@ const ExecutiveDashboard = ({ userId }: Props) => {
           )}
         </Card>
       </div>
-
-      {/* Type summary for selected month */}
-      {typeSummary.length > 0 && (
-        <Card className="border-border bg-card p-5 shadow-sm">
-          <h3 className="font-heading text-sm font-semibold text-card-foreground mb-3 flex items-center gap-2">
-            <Package className="h-4 w-4" /> Resumo por Tipo — {MONTHS[filterMonth - 1]}/{filterYear}
-          </h3>
-          <div className="overflow-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-xs text-muted-foreground">
-                  <th className="text-left py-2 font-medium">Tipo</th>
-                  <th className="text-right py-2 font-medium">Qtde Vendida</th>
-                  <th className="text-right py-2 font-medium">Faturamento</th>
-                  <th className="text-right py-2 font-medium">Margem Média</th>
-                </tr>
-              </thead>
-              <tbody>
-                {typeSummary.map(row => (
-                  <tr key={row.type} className="border-b border-border last:border-0">
-                    <td className="py-2 font-medium">{row.type}</td>
-                    <td className="py-2 text-right">{row.count}</td>
-                    <td className="py-2 text-right">{formatUsd(row.revenue)}</td>
-                    <td className="py-2 text-right">{formatPct(row.avgMargin)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
 
       {/* Recent closed deals */}
       {deals.filter((d) => d.status === "closed").length > 0 && (
