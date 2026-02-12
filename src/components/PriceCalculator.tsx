@@ -204,7 +204,7 @@ const PriceCalculator = () => {
     const lines: string[] = [];
     lines.push(`📋 *Resumo de Precificação*`);
     if (clientName.trim()) lines.push(`👤 Cliente: ${clientName}`);
-    if (machineName.trim()) lines.push(`🔧 Máquina: ${machineName}`);
+    
     lines.push("");
     lines.push(`💵 *FOB + Impostos Internacionais*`);
     lines.push(`  USD: ${formatUsd(simulation.finalPrice)}`);
