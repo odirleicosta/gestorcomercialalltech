@@ -10,14 +10,18 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   DollarSign, Percent, TrendingUp, Package, Receipt,
   Save, AlertTriangle, History, Calculator, RotateCcw, User, StickyNote,
-  Building2, Plus, Wrench, Copy,
+  Building2, Plus, Wrench, Copy, Users, BarChart3, LogOut,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import CalculationHistory from "@/components/CalculationHistory";
 import ClientManager, { loadClients, saveClients, type Client } from "@/components/ClientManager";
 import MachineManager, { loadMachines, saveMachines, type Machine } from "@/components/MachineManager";
 import MachineCatalog, { loadCatalog, saveCatalog, type CatalogMachine } from "@/components/MachineCatalog";
 import { seedCatalogIfEmpty } from "@/data/machineCatalogSeed";
+import DealManager from "@/components/DealManager";
+import ExecutiveDashboard from "@/components/ExecutiveDashboard";
+import Auth from "@/components/Auth";
 
 export interface SavedCalculation {
   id: string;
@@ -46,6 +50,8 @@ const loadHistory = (): SavedCalculation[] => {
 
 const PriceCalculator = () => {
   const { toast } = useToast();
+  const [user, setUser] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
 
   const [machineName, setMachineName] = useState("");
   const [clientName, setClientName] = useState("");
@@ -67,6 +73,17 @@ const PriceCalculator = () => {
   const [showMachineSuggestions, setShowMachineSuggestions] = useState(false);
   const [catalog, setCatalog] = useState<CatalogMachine[]>(() => seedCatalogIfEmpty());
   const [showCatalogSuggestions, setShowCatalogSuggestions] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const filteredClients = clients.filter((c) =>
     c.name.toLowerCase().includes(clientName.toLowerCase())
@@ -235,26 +252,40 @@ const PriceCalculator = () => {
     setHistory((prev) => prev.filter((c) => c.id !== id));
   };
 
+  if (authLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Carregando...</p></div>;
+  if (!user) return <Auth />;
+
   return (
     <div className="min-h-screen bg-background px-4 py-8 md:py-12">
       <div className="mx-auto max-w-6xl">
         {/* Header */}
-        <div className="mb-8 flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary">
-            <TrendingUp className="h-6 w-6 text-primary-foreground" />
+        <div className="mb-8 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary">
+              <TrendingUp className="h-6 w-6 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">
+                Gestão Comercial
+              </h1>
+              <p className="text-sm text-muted-foreground">Máquinas Industriais</p>
+            </div>
           </div>
-          <div>
-            <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">
-              Preço de Venda
-            </h1>
-            <p className="text-sm text-muted-foreground">Máquinas Industriais</p>
-          </div>
+          <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()} className="text-muted-foreground">
+            <LogOut className="h-4 w-4 mr-1" /> Sair
+          </Button>
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 flex-wrap">
             <TabsTrigger value="simulation">
               <Calculator className="h-4 w-4 mr-1" /> Simulação
+            </TabsTrigger>
+            <TabsTrigger value="deals">
+              <Users className="h-4 w-4 mr-1" /> Vendas
+            </TabsTrigger>
+            <TabsTrigger value="dashboard">
+              <BarChart3 className="h-4 w-4 mr-1" /> Dashboard
             </TabsTrigger>
             <TabsTrigger value="history">
               <History className="h-4 w-4 mr-1" /> Histórico
@@ -590,6 +621,14 @@ const PriceCalculator = () => {
                 )}
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="deals">
+            <DealManager userId={user.id} />
+          </TabsContent>
+
+          <TabsContent value="dashboard">
+            <ExecutiveDashboard userId={user.id} />
           </TabsContent>
 
           <TabsContent value="history">

@@ -71,6 +71,90 @@ export type Database = {
         }
         Relationships: []
       }
+      deals: {
+        Row: {
+          base_price: number
+          client_name: string
+          closed_at: string | null
+          commission_base: string
+          created_at: string
+          desired_margin_percent: number
+          dollar_rate: number
+          estimated_tax_percent: number
+          estimated_tax_value: number
+          final_price: number
+          fob_cost: number
+          gross_margin_percent: number
+          gross_profit: number
+          id: string
+          machine_name: string
+          manager_commission_pct: number
+          manager_commission_value: number
+          net_margin_percent: number
+          net_profit: number
+          observation: string | null
+          seller_commission_pct: number
+          seller_commission_value: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          base_price?: number
+          client_name: string
+          closed_at?: string | null
+          commission_base?: string
+          created_at?: string
+          desired_margin_percent?: number
+          dollar_rate?: number
+          estimated_tax_percent?: number
+          estimated_tax_value?: number
+          final_price?: number
+          fob_cost?: number
+          gross_margin_percent?: number
+          gross_profit?: number
+          id?: string
+          machine_name?: string
+          manager_commission_pct?: number
+          manager_commission_value?: number
+          net_margin_percent?: number
+          net_profit?: number
+          observation?: string | null
+          seller_commission_pct?: number
+          seller_commission_value?: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          base_price?: number
+          client_name?: string
+          closed_at?: string | null
+          commission_base?: string
+          created_at?: string
+          desired_margin_percent?: number
+          dollar_rate?: number
+          estimated_tax_percent?: number
+          estimated_tax_value?: number
+          final_price?: number
+          fob_cost?: number
+          gross_margin_percent?: number
+          gross_profit?: number
+          id?: string
+          machine_name?: string
+          manager_commission_pct?: number
+          manager_commission_value?: number
+          net_margin_percent?: number
+          net_profit?: number
+          observation?: string | null
+          seller_commission_pct?: number
+          seller_commission_value?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       machine_catalog: {
         Row: {
           created_at: string
