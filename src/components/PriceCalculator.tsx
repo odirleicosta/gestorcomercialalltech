@@ -512,6 +512,18 @@ const PriceCalculator = () => {
                 )}
 
                 {simulation && simulation.finalPrice > 0 && (
+                  <Card className="border-primary/30 bg-primary/5 p-6 shadow-sm">
+                    <h2 className="font-heading text-base font-semibold text-primary mb-4">Resumo</h2>
+                    <div className="space-y-2.5">
+                      <Row label="Preço Final (FOB + Impostos de Importação)" value={simulation.hasDollar ? `${formatUsd(simulation.finalPrice)} / ${formatCurrency(simulation.finalPriceBrl)}` : formatUsd(simulation.finalPrice)} bold />
+                      {nationalized && (
+                        <Row label="Preço Final Nacionalizada" value={nationalized.hasDollar ? `${formatUsd(nationalized.nationalizedPriceUsd)} / ${formatCurrency(nationalized.nationalizedPrice)}` : formatCurrency(nationalized.nationalizedPrice)} color="text-primary" bold />
+                      )}
+                    </div>
+                  </Card>
+                )}
+
+                {simulation && simulation.finalPrice > 0 && (
                   <Card className="border-border bg-card p-6 shadow-sm">
                     <h2 className="font-heading text-sm font-semibold text-card-foreground mb-3">Distribuição Visual</h2>
                     <div className="flex h-6 w-full overflow-hidden rounded-lg">
