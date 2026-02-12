@@ -151,7 +151,7 @@ const PriceCalculator = () => {
     const realProfitAdjusted = nationalizedPrice - simulation.fobBrl - realTaxAbsolute;
     const realMarginPct = simulation.basePriceBrl > 0 ? (realProfitAdjusted / simulation.basePriceBrl) * 100 : 0;
     const taxDifference = realTaxAbsolute - simulation.estimatedTaxBrl;
-    return { realTotalCost, realProfit: realProfitAdjusted, realMarginPct, taxDifference, realTaxAbsolute, realTaxPct };
+    return { nationalizedPrice, realTotalCost, realProfit: realProfitAdjusted, realMarginPct, taxDifference, realTaxAbsolute, realTaxPct };
   }, [simulation, realTaxValue]);
 
   const minMarginVal = parseFloat(minMargin) || 0;
@@ -497,6 +497,8 @@ const PriceCalculator = () => {
                   <Card className={`border-border p-6 shadow-sm ${isBelowMinMargin ? "bg-destructive/10 border-destructive/30" : "bg-card"}`}>
                     <h2 className="font-heading text-base font-semibold text-card-foreground mb-4">Resultado Nacionalizado</h2>
                     <div className="space-y-2.5">
+                      <Row label="Preço de Venda Nacionalizada" value={formatCurrency(nationalized.nationalizedPrice)} color="text-primary" bold />
+                      <Separator className="my-2" />
                       <Row label={`Impostos Reais (${formatPct(nationalized.realTaxPct)})`} value={formatCurrency(nationalized.realTaxAbsolute)} color="text-warning" />
                       <Row label="Diferença Impostos" value={formatCurrency(nationalized.taxDifference)} color={nationalized.taxDifference > 0 ? "text-destructive" : "text-accent"} />
                       <Separator className="my-2" />
