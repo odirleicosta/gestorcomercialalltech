@@ -169,6 +169,10 @@ const PriceCalculator = () => {
 
   const handleSave = () => {
     if (!simulation) return;
+    if (!clientName.trim()) {
+      toast({ title: "Cliente obrigatório", description: "Informe o nome do cliente antes de salvar.", variant: "destructive" });
+      return;
+    }
     if (isBelowMinMargin && !observation.trim()) {
       toast({ title: "Observação obrigatória", description: "A margem está abaixo do mínimo. Informe uma observação.", variant: "destructive" });
       return;
