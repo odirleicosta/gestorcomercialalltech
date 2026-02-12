@@ -39,8 +39,14 @@ export interface Deal {
   status: "open" | "closed";
   closed_at: string | null;
   observation: string | null;
+  representative_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+interface RepOption {
+  id: string;
+  nome: string;
 }
 
 interface CommissionLog {
@@ -80,6 +86,8 @@ const DealManager = ({ userId }: Props) => {
   const [sellerPct, setSellerPct] = useState("");
   const [managerPct, setManagerPct] = useState("");
   const [observation, setObservation] = useState("");
+  const [representativeId, setRepresentativeId] = useState("");
+  const [repOptions, setRepOptions] = useState<RepOption[]>([]);
   const [showForm, setShowForm] = useState(false);
 
   // Edit commission state
@@ -95,17 +103,17 @@ const DealManager = ({ userId }: Props) => {
   // Load profile defaults
   useEffect(() => {
     const loadDefaults = async () => {
-      const { data } = await supabase
-        .from("profiles" as any)
-        .select("default_seller_commission_pct, default_manager_commission_pct, default_commission_base")
-        .eq("id", userId)
-        .single();
-      if (data) {
-        const d = data as any;
+      const [profileRes, repsRes] = await Promise.all([
+        supabase.from("profiles" as any).select("default_seller_commission_pct, default_manager_commission_pct, default_commission_base").eq("id", userId).single(),
+        supabase.from("representatives" as any).select("id, nome").eq("status", "ATIVO").order("nome"),
+      ]);
+      if (profileRes.data) {
+        const d = profileRes.data as any;
         setDefaultSellerPct(d.default_seller_commission_pct ?? 3);
         setDefaultManagerPct(d.default_manager_commission_pct ?? 1);
         setDefaultCommBase(d.default_commission_base ?? "FOB");
       }
+      if (repsRes.data) setRepOptions(repsRes.data as unknown as RepOption[]);
     };
     loadDefaults();
   }, [userId]);
@@ -197,6 +205,7 @@ const DealManager = ({ userId }: Props) => {
       net_profit: simulation.netProfit,
       net_margin_percent: simulation.netMargin,
       observation: observation.trim() || null,
+      representative_id: representativeId || null,
     };
 
     const { error } = await supabase.from("deals" as any).insert(insert as any);
@@ -213,7 +222,7 @@ const DealManager = ({ userId }: Props) => {
   const resetForm = () => {
     setClientName(""); setMachineName(""); setFobCost(""); setDollarRate("");
     setEstimatedTaxPercent(""); setDesiredMargin(""); setSellerPct("");
-    setManagerPct(""); setObservation(""); setShowForm(false);
+    setManagerPct(""); setObservation(""); setRepresentativeId(""); setShowForm(false);
   };
 
   const handleClose = async (deal: Deal) => {
@@ -404,7 +413,17 @@ const DealManager = ({ userId }: Props) => {
               <Label className="mb-1.5 text-sm text-muted-foreground">Comissão Gestor (%)</Label>
               <Input type="number" step="0.01" min="0" value={managerPct} onChange={(e) => setManagerPct(e.target.value)} placeholder="0,00" className="bg-secondary/50 border-border" />
             </div>
-            <div className="md:col-span-2 lg:col-span-3">
+            <div>
+              <Label className="mb-1.5 text-sm text-muted-foreground">Representante</Label>
+              <Select value={representativeId} onValueChange={setRepresentativeId}>
+                <SelectTrigger className="bg-secondary/50 border-border"><SelectValue placeholder="Selecionar..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Nenhum</SelectItem>
+                  {repOptions.map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="md:col-span-2 lg:col-span-2">
               <Label className="mb-1.5 text-sm text-muted-foreground">Observação</Label>
               <Textarea value={observation} onChange={(e) => setObservation(e.target.value)} placeholder="Observações sobre a negociação..." className="bg-secondary/50 border-border" />
             </div>
@@ -476,6 +495,9 @@ const DealManager = ({ userId }: Props) => {
                       </Badge>
                       <span className="font-semibold text-sm truncate">{deal.client_name}</span>
                       {deal.machine_name && <span className="text-xs text-muted-foreground truncate">— {deal.machine_name}</span>}
+                      {deal.representative_id && repOptions.find(r => r.id === deal.representative_id) && (
+                        <Badge variant="outline" className="text-[10px] h-4 ml-1">{repOptions.find(r => r.id === deal.representative_id)!.nome}</Badge>
+                      )}
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
                       <div><span className="text-muted-foreground">Preço Base:</span> <span className="font-medium">{formatUsd(deal.base_price)}</span></div>

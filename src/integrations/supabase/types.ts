@@ -131,6 +131,7 @@ export type Database = {
           net_margin_percent: number
           net_profit: number
           observation: string | null
+          representative_id: string | null
           seller_commission_pct: number
           seller_commission_value: number
           status: string
@@ -158,6 +159,7 @@ export type Database = {
           net_margin_percent?: number
           net_profit?: number
           observation?: string | null
+          representative_id?: string | null
           seller_commission_pct?: number
           seller_commission_value?: number
           status?: string
@@ -185,13 +187,22 @@ export type Database = {
           net_margin_percent?: number
           net_profit?: number
           observation?: string | null
+          representative_id?: string | null
           seller_commission_pct?: number
           seller_commission_value?: number
           status?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "deals_representative_id_fkey"
+            columns: ["representative_id"]
+            isOneToOne: false
+            referencedRelation: "representatives"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       machine_catalog: {
         Row: {
@@ -229,6 +240,44 @@ export type Database = {
         }
         Relationships: []
       }
+      monthly_goals: {
+        Row: {
+          ano: number
+          created_at: string
+          id: string
+          mes: number
+          meta_valor: number
+          representative_id: string
+          user_id: string
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          id?: string
+          mes: number
+          meta_valor?: number
+          representative_id: string
+          user_id: string
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          id?: string
+          mes?: number
+          meta_valor?: number
+          representative_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_goals_representative_id_fkey"
+            columns: ["representative_id"]
+            isOneToOne: false
+            referencedRelation: "representatives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -262,6 +311,45 @@ export type Database = {
           id?: string
           min_acceptable_margin?: number | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      representatives: {
+        Row: {
+          comissao_padrao_pct: number
+          created_at: string
+          id: string
+          meta_mensal_padrao: number
+          nome: string
+          observacoes: string | null
+          regiao: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          comissao_padrao_pct?: number
+          created_at?: string
+          id?: string
+          meta_mensal_padrao?: number
+          nome: string
+          observacoes?: string | null
+          regiao?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          comissao_padrao_pct?: number
+          created_at?: string
+          id?: string
+          meta_mensal_padrao?: number
+          nome?: string
+          observacoes?: string | null
+          regiao?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

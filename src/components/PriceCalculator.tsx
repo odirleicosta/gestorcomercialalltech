@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   DollarSign, Percent, TrendingUp, Package, Receipt,
   Save, AlertTriangle, History, Calculator, RotateCcw, User, StickyNote,
-  Building2, Plus, Wrench, Copy, Users, BarChart3, LogOut,
+  Building2, Plus, Wrench, Copy, Users, BarChart3, LogOut, UserPlus,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,6 +21,7 @@ import MachineCatalog, { loadCatalog, saveCatalog, type CatalogMachine } from "@
 import { seedCatalogIfEmpty } from "@/data/machineCatalogSeed";
 import DealManager from "@/components/DealManager";
 import ExecutiveDashboard from "@/components/ExecutiveDashboard";
+import RepresentativeManager from "@/components/RepresentativeManager";
 import Auth from "@/components/Auth";
 
 export interface SavedCalculation {
@@ -272,6 +273,7 @@ const PriceCalculator = () => {
           {[
             { value: "simulation", icon: Calculator, label: "Simulação" },
             { value: "deals", icon: Users, label: "Vendas" },
+            { value: "reps", icon: UserPlus, label: "Representantes" },
             { value: "dashboard", icon: BarChart3, label: "Dashboard" },
             { value: "registry", icon: Building2, label: "Cadastros" },
             { value: "catalog", icon: Package, label: "Catálogo" },
@@ -300,6 +302,7 @@ const PriceCalculator = () => {
         {[
           { value: "simulation", icon: Calculator, label: "Simulação" },
           { value: "deals", icon: Users, label: "Vendas" },
+          { value: "reps", icon: UserPlus, label: "Representantes" },
           { value: "dashboard", icon: BarChart3, label: "Dashboard" },
           { value: "registry", icon: Building2, label: "Cadastros" },
           { value: "catalog", icon: Package, label: "Catálogo" },
@@ -323,7 +326,7 @@ const PriceCalculator = () => {
       <main className="flex-1 overflow-y-auto px-4 py-8 md:py-10 md:px-8 mt-12 md:mt-0">
         <div className="mx-auto max-w-6xl">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="hidden"><TabsList><TabsTrigger value="simulation" /><TabsTrigger value="deals" /><TabsTrigger value="dashboard" /><TabsTrigger value="registry" /><TabsTrigger value="catalog" /></TabsList></div>
+          <div className="hidden"><TabsList><TabsTrigger value="simulation" /><TabsTrigger value="deals" /><TabsTrigger value="reps" /><TabsTrigger value="dashboard" /><TabsTrigger value="registry" /><TabsTrigger value="catalog" /></TabsList></div>
 
           <TabsContent value="simulation">
             <div className="grid gap-6 lg:grid-cols-5">
@@ -658,6 +661,10 @@ const PriceCalculator = () => {
               </h2>
               <CalculationHistory calculations={history} onDelete={handleDelete} />
             </div>
+          </TabsContent>
+
+          <TabsContent value="reps">
+            <RepresentativeManager userId={user.id} />
           </TabsContent>
 
           <TabsContent value="dashboard">
