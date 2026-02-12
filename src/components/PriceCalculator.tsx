@@ -142,11 +142,13 @@ const PriceCalculator = () => {
     if (!simulation) return null;
     const realTaxPct = parseFloat(realTaxValue);
     if (isNaN(realTaxPct) || realTaxPct <= 0) return null;
-    // Impostos reais como percentual sobre o Preço Final de Venda em BRL
-    const realTaxAbsolute = simulation.finalPriceBrl * (realTaxPct / 100);
+    // Impostos reais "por dentro": preço nacionalizado = preço final / (1 - taxa%)
+    const divisor = 1 - realTaxPct / 100;
+    const nationalizedPrice = divisor > 0 ? simulation.finalPriceBrl / divisor : simulation.finalPriceBrl;
+    const realTaxAbsolute = nationalizedPrice - simulation.finalPriceBrl;
     const realTotalCost = simulation.fobBrl + realTaxAbsolute;
-    // Lucro real = preço final BRL - FOB BRL - impostos reais
-    const realProfitAdjusted = simulation.finalPriceBrl - simulation.fobBrl - realTaxAbsolute;
+    // Lucro real = preço nacionalizado - FOB BRL - impostos reais
+    const realProfitAdjusted = nationalizedPrice - simulation.fobBrl - realTaxAbsolute;
     const realMarginPct = simulation.basePriceBrl > 0 ? (realProfitAdjusted / simulation.basePriceBrl) * 100 : 0;
     const taxDifference = realTaxAbsolute - simulation.estimatedTaxBrl;
     return { realTotalCost, realProfit: realProfitAdjusted, realMarginPct, taxDifference, realTaxAbsolute, realTaxPct };
