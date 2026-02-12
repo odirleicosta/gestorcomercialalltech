@@ -71,6 +71,44 @@ export type Database = {
         }
         Relationships: []
       }
+      commission_history: {
+        Row: {
+          changed_at: string
+          deal_id: string
+          field_changed: string
+          id: string
+          new_value: number
+          old_value: number
+          user_id: string
+        }
+        Insert: {
+          changed_at?: string
+          deal_id: string
+          field_changed: string
+          id?: string
+          new_value: number
+          old_value: number
+          user_id: string
+        }
+        Update: {
+          changed_at?: string
+          deal_id?: string
+          field_changed?: string
+          id?: string
+          new_value?: number
+          old_value?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_history_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deals: {
         Row: {
           base_price: number
@@ -194,6 +232,9 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          default_commission_base: string
+          default_manager_commission_pct: number
+          default_seller_commission_pct: number
           display_name: string | null
           email: string | null
           id: string
@@ -202,6 +243,9 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          default_commission_base?: string
+          default_manager_commission_pct?: number
+          default_seller_commission_pct?: number
           display_name?: string | null
           email?: string | null
           id: string
@@ -210,6 +254,9 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          default_commission_base?: string
+          default_manager_commission_pct?: number
+          default_seller_commission_pct?: number
           display_name?: string | null
           email?: string | null
           id?: string

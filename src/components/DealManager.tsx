@@ -7,11 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   DollarSign, Percent, TrendingUp, TrendingDown, Package, Receipt,
-  Save, Lock, Unlock, Trash2, Search, Eye, EyeOff, Users,
+  Save, Lock, Unlock, Trash2, Search, Eye, EyeOff, Users, History, Clock,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,6 +43,15 @@ export interface Deal {
   updated_at: string;
 }
 
+interface CommissionLog {
+  id: string;
+  deal_id: string;
+  field_changed: string;
+  old_value: number;
+  new_value: number;
+  changed_at: string;
+}
+
 interface Props {
   userId: string;
 }
@@ -55,6 +63,11 @@ const DealManager = ({ userId }: Props) => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+
+  // Default commission from profile
+  const [defaultSellerPct, setDefaultSellerPct] = useState(3);
+  const [defaultManagerPct, setDefaultManagerPct] = useState(1);
+  const [defaultCommBase, setDefaultCommBase] = useState<"FOB" | "PRECO_VENDA">("FOB");
 
   // Form state for new deal
   const [clientName, setClientName] = useState("");
@@ -75,6 +88,28 @@ const DealManager = ({ userId }: Props) => {
   const [editManagerPct, setEditManagerPct] = useState("");
   const [editCommissionBase, setEditCommissionBase] = useState<"FOB" | "PRECO_VENDA">("FOB");
 
+  // Commission history
+  const [commissionLogs, setCommissionLogs] = useState<CommissionLog[]>([]);
+  const [showLogsForDeal, setShowLogsForDeal] = useState<string | null>(null);
+
+  // Load profile defaults
+  useEffect(() => {
+    const loadDefaults = async () => {
+      const { data } = await supabase
+        .from("profiles" as any)
+        .select("default_seller_commission_pct, default_manager_commission_pct, default_commission_base")
+        .eq("id", userId)
+        .single();
+      if (data) {
+        const d = data as any;
+        setDefaultSellerPct(d.default_seller_commission_pct ?? 3);
+        setDefaultManagerPct(d.default_manager_commission_pct ?? 1);
+        setDefaultCommBase(d.default_commission_base ?? "FOB");
+      }
+    };
+    loadDefaults();
+  }, [userId]);
+
   const fetchDeals = async () => {
     const { data, error } = await supabase
       .from("deals" as any)
@@ -85,6 +120,23 @@ const DealManager = ({ userId }: Props) => {
   };
 
   useEffect(() => { fetchDeals(); }, []);
+
+  const fetchCommissionLogs = async (dealId: string) => {
+    const { data } = await supabase
+      .from("commission_history" as any)
+      .select("*")
+      .eq("deal_id", dealId)
+      .order("changed_at", { ascending: false });
+    if (data) setCommissionLogs(data as unknown as CommissionLog[]);
+  };
+
+  // Pre-fill defaults when opening form
+  const openForm = () => {
+    setSellerPct(String(defaultSellerPct));
+    setManagerPct(String(defaultManagerPct));
+    setCommissionBase(defaultCommBase);
+    setShowForm(true);
+  };
 
   const simulation = useMemo(() => {
     const fob = parseFloat(fobCost) || 0;
@@ -196,6 +248,19 @@ const DealManager = ({ userId }: Props) => {
     const netProfit = deal.gross_profit - sellerComm - managerComm;
     const netMargin = deal.base_price > 0 ? (netProfit / deal.base_price) * 100 : 0;
 
+    // Log changes
+    const logs: any[] = [];
+    if (deal.seller_commission_pct !== sPct) {
+      logs.push({ deal_id: deal.id, user_id: userId, field_changed: "seller_commission_pct", old_value: deal.seller_commission_pct, new_value: sPct });
+    }
+    if (deal.manager_commission_pct !== mPct) {
+      logs.push({ deal_id: deal.id, user_id: userId, field_changed: "manager_commission_pct", old_value: deal.manager_commission_pct, new_value: mPct });
+    }
+
+    if (logs.length > 0) {
+      await supabase.from("commission_history" as any).insert(logs as any);
+    }
+
     const { error } = await supabase
       .from("deals" as any)
       .update({
@@ -213,9 +278,26 @@ const DealManager = ({ userId }: Props) => {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
       return;
     }
-    toast({ title: "Comissões atualizadas!" });
+    toast({ title: "Comissões atualizadas! Histórico registrado." });
     setEditingCommission(null);
     fetchDeals();
+  };
+
+  // Save default commission settings
+  const handleSaveDefaults = async () => {
+    const { error } = await supabase
+      .from("profiles" as any)
+      .update({
+        default_seller_commission_pct: defaultSellerPct,
+        default_manager_commission_pct: defaultManagerPct,
+        default_commission_base: defaultCommBase,
+      } as any)
+      .eq("id", userId);
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Padrões de comissão salvos!" });
+    }
   };
 
   const filtered = useMemo(() => {
@@ -235,15 +317,45 @@ const DealManager = ({ userId }: Props) => {
 
   return (
     <div className="space-y-6">
-      {/* Toggle form */}
-      <div className="flex items-center justify-between">
+      {/* Header + defaults */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="font-heading text-lg font-semibold text-foreground flex items-center gap-2">
           <Users className="h-5 w-5" /> Negociações
         </h2>
-        <Button onClick={() => setShowForm(!showForm)} variant={showForm ? "secondary" : "default"}>
+        <Button onClick={() => showForm ? resetForm() : openForm()} variant={showForm ? "secondary" : "default"}>
           {showForm ? "Fechar Formulário" : "Nova Negociação"}
         </Button>
       </div>
+
+      {/* Default commission settings */}
+      <Card className="border-border bg-card p-4 shadow-sm">
+        <h3 className="text-sm font-semibold text-card-foreground mb-3 flex items-center gap-2">
+          <Percent className="h-4 w-4" /> Comissões Padrão
+        </h3>
+        <div className="flex flex-wrap gap-3 items-end">
+          <div>
+            <Label className="text-xs text-muted-foreground">Base</Label>
+            <Select value={defaultCommBase} onValueChange={(v) => setDefaultCommBase(v as "FOB" | "PRECO_VENDA")}>
+              <SelectTrigger className="w-[140px] h-8 text-xs bg-secondary/50 border-border"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="FOB">FOB</SelectItem>
+                <SelectItem value="PRECO_VENDA">Preço Venda</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Vendedor (%)</Label>
+            <Input type="number" step="0.01" value={defaultSellerPct} onChange={(e) => setDefaultSellerPct(parseFloat(e.target.value) || 0)} className="w-24 h-8 text-xs bg-secondary/50 border-border" />
+          </div>
+          <div>
+            <Label className="text-xs text-muted-foreground">Gestor (%)</Label>
+            <Input type="number" step="0.01" value={defaultManagerPct} onChange={(e) => setDefaultManagerPct(parseFloat(e.target.value) || 0)} className="w-24 h-8 text-xs bg-secondary/50 border-border" />
+          </div>
+          <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleSaveDefaults}>
+            <Save className="h-3 w-3 mr-1" /> Salvar Padrões
+          </Button>
+        </div>
+      </Card>
 
       {/* New deal form */}
       {showForm && (
@@ -307,10 +419,10 @@ const DealManager = ({ userId }: Props) => {
                 <div><span className="text-muted-foreground">Preço Final:</span> <span className="font-semibold">{formatUsd(simulation.finalPrice)}</span></div>
                 <div><span className="text-muted-foreground">Lucro Bruto:</span> <span className="font-semibold text-accent">{formatUsd(simulation.grossProfit)}</span></div>
                 <div><span className="text-muted-foreground">Margem Bruta:</span> <span className="font-semibold">{formatPct(simulation.grossMargin)}</span></div>
-                <div><span className="text-muted-foreground">Com. Vendedor:</span> <span className="font-semibold text-warning">{formatUsd(simulation.sellerComm)}</span></div>
-                <div><span className="text-muted-foreground">Com. Gestor:</span> <span className="font-semibold text-warning">{formatUsd(simulation.managerComm)}</span></div>
-                <div><span className="text-muted-foreground">Lucro Líquido:</span> <span className={`font-semibold ${simulation.netProfit < 0 ? "text-destructive" : "text-accent"}`}>{formatUsd(simulation.netProfit)}</span></div>
-                <div><span className="text-muted-foreground">Margem Líquida:</span> <span className={`font-semibold ${simulation.netMargin < 0 ? "text-destructive" : ""}`}>{formatPct(simulation.netMargin)}</span></div>
+                <div><span className="text-muted-foreground">Com. Vendedor ({formatPct(parseFloat(sellerPct) || 0)}):</span> <span className="font-semibold text-warning">{formatUsd(simulation.sellerComm)}</span></div>
+                <div><span className="text-muted-foreground">Com. Gestor ({formatPct(parseFloat(managerPct) || 0)}):</span> <span className="font-semibold text-warning">{formatUsd(simulation.managerComm)}</span></div>
+                <div className="bg-accent/10 rounded px-2 py-1 -mx-2"><span className="text-muted-foreground">Lucro Líquido:</span> <span className={`font-bold text-base ${simulation.netProfit < 0 ? "text-destructive" : "text-accent"}`}>{formatUsd(simulation.netProfit)}</span></div>
+                <div className="bg-accent/10 rounded px-2 py-1 -mx-2"><span className="text-muted-foreground">Margem Líquida:</span> <span className={`font-bold text-base ${simulation.netMargin < 0 ? "text-destructive" : "text-accent"}`}>{formatPct(simulation.netMargin)}</span></div>
               </div>
               {simulation.hasDollar && (
                 <div className="mt-2 text-xs text-muted-foreground">
@@ -370,15 +482,20 @@ const DealManager = ({ userId }: Props) => {
                       <div><span className="text-muted-foreground">Preço Final:</span> <span className="font-medium">{formatUsd(deal.final_price)}</span></div>
                       <div><span className="text-muted-foreground">Lucro Bruto:</span> <span className="font-medium text-accent">{formatUsd(deal.gross_profit)}</span></div>
                       <div><span className="text-muted-foreground">M. Bruta:</span> <span className="font-medium">{formatPct(deal.gross_margin_percent)}</span></div>
-                      <div><span className="text-muted-foreground">Com. Vend.:</span> <span className="font-medium">{formatUsd(deal.seller_commission_value)}</span></div>
-                      <div><span className="text-muted-foreground">Com. Gest.:</span> <span className="font-medium">{formatUsd(deal.manager_commission_value)}</span></div>
-                      <div><span className="text-muted-foreground">Lucro Líq.:</span> <span className={`font-medium ${deal.net_profit < 0 ? "text-destructive" : "text-accent"}`}>{formatUsd(deal.net_profit)}</span></div>
-                      <div><span className="text-muted-foreground">M. Líquida:</span> <span className={`font-medium ${deal.net_margin_percent < 0 ? "text-destructive" : ""}`}>{formatPct(deal.net_margin_percent)}</span></div>
+                      <div><span className="text-muted-foreground">Com. Vend. ({formatPct(deal.seller_commission_pct)}):</span> <span className="font-medium text-warning">{formatUsd(deal.seller_commission_value)}</span></div>
+                      <div><span className="text-muted-foreground">Com. Gest. ({formatPct(deal.manager_commission_pct)}):</span> <span className="font-medium text-warning">{formatUsd(deal.manager_commission_value)}</span></div>
+                      <div className="bg-accent/10 rounded px-1"><span className="text-muted-foreground">Lucro Líq.:</span> <span className={`font-bold ${deal.net_profit < 0 ? "text-destructive" : "text-accent"}`}>{formatUsd(deal.net_profit)}</span></div>
+                      <div className="bg-accent/10 rounded px-1"><span className="text-muted-foreground">M. Líquida:</span> <span className={`font-bold ${deal.net_margin_percent < 0 ? "text-destructive" : "text-accent"}`}>{formatPct(deal.net_margin_percent)}</span></div>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExpandedId(expandedId === deal.id ? null : deal.id)}>
                       {expandedId === deal.id ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+                      if (showLogsForDeal === deal.id) { setShowLogsForDeal(null); } else { setShowLogsForDeal(deal.id); fetchCommissionLogs(deal.id); }
+                    }} title="Histórico de comissões">
+                      <Clock className="h-4 w-4" />
                     </Button>
                     {deal.status === "open" && (
                       <>
@@ -400,6 +517,30 @@ const DealManager = ({ userId }: Props) => {
                     )}
                   </div>
                 </div>
+
+                {/* Commission history logs */}
+                {showLogsForDeal === deal.id && (
+                  <div className="mt-3 p-3 border border-border rounded-md bg-muted/30">
+                    <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1"><History className="h-3 w-3" /> Histórico de Alterações</p>
+                    {commissionLogs.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">Nenhuma alteração registrada.</p>
+                    ) : (
+                      <div className="space-y-1">
+                        {commissionLogs.map((log) => (
+                          <div key={log.id} className="text-xs flex items-center gap-2">
+                            <span className="text-muted-foreground">{new Date(log.changed_at).toLocaleString("pt-BR")}</span>
+                            <Badge variant="outline" className="text-[10px] h-5">
+                              {log.field_changed === "seller_commission_pct" ? "Vendedor" : "Gestor"}
+                            </Badge>
+                            <span className="text-destructive line-through">{formatPct(log.old_value)}</span>
+                            <span>→</span>
+                            <span className="text-accent font-medium">{formatPct(log.new_value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Edit commission inline */}
                 {editingCommission === deal.id && deal.status === "open" && (
@@ -437,7 +578,7 @@ const DealManager = ({ userId }: Props) => {
                   <div className="mt-3 pt-3 border-t border-border text-xs space-y-1 text-muted-foreground">
                     <div>FOB: {formatUsd(deal.fob_cost)} | Impostos: {formatPct(deal.estimated_tax_percent)} = {formatUsd(deal.estimated_tax_value)}</div>
                     <div>Margem: {formatPct(deal.desired_margin_percent)} | Base Comissão: {deal.commission_base === "FOB" ? "FOB" : "Preço Venda"}</div>
-                    <div>Com. Vendedor: {formatPct(deal.seller_commission_pct)} | Com. Gestor: {formatPct(deal.manager_commission_pct)}</div>
+                    <div>Com. Vendedor: {formatPct(deal.seller_commission_pct)} = {formatUsd(deal.seller_commission_value)} | Com. Gestor: {formatPct(deal.manager_commission_pct)} = {formatUsd(deal.manager_commission_value)}</div>
                     {deal.observation && <div>Obs: {deal.observation}</div>}
                     <div>Criado: {new Date(deal.created_at).toLocaleString("pt-BR")} {deal.closed_at && `| Fechado: ${new Date(deal.closed_at).toLocaleString("pt-BR")}`}</div>
                   </div>
