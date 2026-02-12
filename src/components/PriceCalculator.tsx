@@ -287,9 +287,6 @@ const PriceCalculator = () => {
             <TabsTrigger value="dashboard">
               <BarChart3 className="h-4 w-4 mr-1" /> Dashboard
             </TabsTrigger>
-            <TabsTrigger value="history">
-              <History className="h-4 w-4 mr-1" /> Histórico
-            </TabsTrigger>
             <TabsTrigger value="registry">
               <Building2 className="h-4 w-4 mr-1" /> Cadastros
             </TabsTrigger>
@@ -625,14 +622,16 @@ const PriceCalculator = () => {
 
           <TabsContent value="deals">
             <DealManager userId={user.id} />
+            <div className="mt-8">
+              <h2 className="font-heading text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
+                <History className="h-5 w-5" /> Histórico de Simulações
+              </h2>
+              <CalculationHistory calculations={history} onDelete={handleDelete} />
+            </div>
           </TabsContent>
 
           <TabsContent value="dashboard">
             <ExecutiveDashboard userId={user.id} />
-          </TabsContent>
-
-          <TabsContent value="history">
-            <CalculationHistory calculations={history} onDelete={handleDelete} />
           </TabsContent>
 
           <TabsContent value="registry">
