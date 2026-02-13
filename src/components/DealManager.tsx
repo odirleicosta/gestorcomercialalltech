@@ -103,7 +103,6 @@ const DealManager = ({ userId }: Props) => {
   // Default commission from profile
   const [defaultSellerPct, setDefaultSellerPct] = useState(3);
   const [defaultManagerPct, setDefaultManagerPct] = useState(1);
-  const [defaultCommBase, setDefaultCommBase] = useState<"FOB" | "PRECO_VENDA">("FOB");
 
   // Structured data sources
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
@@ -118,7 +117,6 @@ const DealManager = ({ userId }: Props) => {
   const [dollarRate, setDollarRate] = useState("");
   const [estimatedTaxPercent, setEstimatedTaxPercent] = useState("");
   const [desiredMargin, setDesiredMargin] = useState("");
-  const [commissionBase, setCommissionBase] = useState<"FOB" | "PRECO_VENDA">("FOB");
   const [sellerPct, setSellerPct] = useState("");
   const [managerPct, setManagerPct] = useState("");
   const [observation, setObservation] = useState("");
@@ -138,7 +136,6 @@ const DealManager = ({ userId }: Props) => {
   const [editingCommission, setEditingCommission] = useState<string | null>(null);
   const [editSellerPct, setEditSellerPct] = useState("");
   const [editManagerPct, setEditManagerPct] = useState("");
-  const [editCommissionBase, setEditCommissionBase] = useState<"FOB" | "PRECO_VENDA">("FOB");
 
   // Commission history
   const [commissionLogs, setCommissionLogs] = useState<CommissionLog[]>([]);
@@ -148,7 +145,7 @@ const DealManager = ({ userId }: Props) => {
   useEffect(() => {
     const loadData = async () => {
       const [profileRes, repsRes, empresasRes, modelosRes] = await Promise.all([
-        supabase.from("profiles" as any).select("default_seller_commission_pct, default_manager_commission_pct, default_commission_base").eq("id", userId).single(),
+        supabase.from("profiles" as any).select("default_seller_commission_pct, default_manager_commission_pct").eq("id", userId).single(),
         supabase.from("representatives" as any).select("id, nome, comissao_padrao_pct, comissao_gestor_pct").eq("status", "ATIVO").order("nome"),
         supabase.from("empresas" as any).select("id, nome").order("nome"),
         supabase.from("machine_catalog" as any).select("id, marca, modelo, tipo, custo_fob").order("marca"),
@@ -157,7 +154,6 @@ const DealManager = ({ userId }: Props) => {
         const d = profileRes.data as any;
         setDefaultSellerPct(d.default_seller_commission_pct ?? 3);
         setDefaultManagerPct(d.default_manager_commission_pct ?? 1);
-        setDefaultCommBase(d.default_commission_base ?? "FOB");
       }
       if (repsRes.data) setRepOptions(repsRes.data as unknown as RepOption[]);
       if (empresasRes.data) setEmpresas(empresasRes.data as unknown as Empresa[]);
@@ -190,7 +186,6 @@ const DealManager = ({ userId }: Props) => {
   const openForm = () => {
     setSellerPct(String(defaultSellerPct));
     setManagerPct(String(defaultManagerPct));
-    setCommissionBase(defaultCommBase);
     setShowForm(true);
   };
 
@@ -258,23 +253,28 @@ const DealManager = ({ userId }: Props) => {
     const grossProfit = basePrice - fob;
     const grossMargin = (grossProfit / basePrice) * 100;
 
-    const commBase = commissionBase === "FOB" ? fob : basePrice;
-    const sellerComm = commBase * (sPct / 100);
-    const managerComm = commBase * (mPct / 100);
+    // Commission always based on FOB (base_price = preço_venda_fob)
+    const sellerComm = basePrice * (sPct / 100);
+    const managerComm = basePrice * (mPct / 100);
     const netProfit = grossProfit - sellerComm - managerComm;
     const netMargin = basePrice > 0 ? (netProfit / basePrice) * 100 : 0;
 
     const dollar = parseFloat(dollarRate) || 0;
     const hasDollar = dollar > 0;
 
+    // Commission in BRL
+    const sellerCommBrl = sellerComm * dollar;
+    const managerCommBrl = managerComm * dollar;
+
     return {
       fob, taxValue, basePrice, finalPrice, grossProfit, grossMargin,
-      sellerComm, managerComm, netProfit, netMargin, commBase,
+      sellerComm, managerComm, netProfit, netMargin,
       dollar, hasDollar,
+      sellerCommBrl, managerCommBrl,
       basePriceBrl: hasDollar ? basePrice * dollar : 0,
       finalPriceBrl: hasDollar ? finalPrice * dollar : 0,
     };
-  }, [fobCost, estimatedTaxPercent, desiredMargin, sellerPct, managerPct, commissionBase, dollarRate]);
+  }, [fobCost, estimatedTaxPercent, desiredMargin, sellerPct, managerPct, dollarRate]);
 
   const handleSave = async () => {
     if (!simulation || !empresaId) {
@@ -298,7 +298,7 @@ const DealManager = ({ userId }: Props) => {
       final_price: simulation.finalPrice,
       gross_profit: simulation.grossProfit,
       gross_margin_percent: simulation.grossMargin,
-      commission_base: commissionBase,
+      commission_base: "FOB",
       seller_commission_pct: parseFloat(sellerPct) || 0,
       manager_commission_pct: parseFloat(managerPct) || 0,
       seller_commission_value: simulation.sellerComm,
@@ -354,9 +354,9 @@ const DealManager = ({ userId }: Props) => {
   const handleUpdateCommission = async (deal: Deal) => {
     const sPct = parseFloat(editSellerPct) || 0;
     const mPct = parseFloat(editManagerPct) || 0;
-    const commBase = editCommissionBase === "FOB" ? deal.fob_cost : deal.base_price;
-    const sellerComm = commBase * (sPct / 100);
-    const managerComm = commBase * (mPct / 100);
+    // Always use base_price (preço_venda_fob) as commission base
+    const sellerComm = deal.base_price * (sPct / 100);
+    const managerComm = deal.base_price * (mPct / 100);
     const netProfit = deal.gross_profit - sellerComm - managerComm;
     const netMargin = deal.base_price > 0 ? (netProfit / deal.base_price) * 100 : 0;
 
@@ -375,7 +375,7 @@ const DealManager = ({ userId }: Props) => {
     const { error } = await supabase
       .from("deals" as any)
       .update({
-        commission_base: editCommissionBase,
+        commission_base: "FOB",
         seller_commission_pct: sPct,
         manager_commission_pct: mPct,
         seller_commission_value: sellerComm,
@@ -400,7 +400,6 @@ const DealManager = ({ userId }: Props) => {
       .update({
         default_seller_commission_pct: defaultSellerPct,
         default_manager_commission_pct: defaultManagerPct,
-        default_commission_base: defaultCommBase,
       } as any)
       .eq("id", userId);
     if (error) {
@@ -445,13 +444,7 @@ const DealManager = ({ userId }: Props) => {
         <div className="flex flex-wrap gap-3 items-end">
           <div>
             <Label className="text-xs text-muted-foreground">Base</Label>
-            <Select value={defaultCommBase} onValueChange={(v) => setDefaultCommBase(v as "FOB" | "PRECO_VENDA")}>
-              <SelectTrigger className="w-[140px] h-8 text-xs bg-secondary/50 border-border"><SelectValue /></SelectTrigger>
-              <SelectContent className="bg-popover border-border z-50">
-                <SelectItem value="FOB">FOB</SelectItem>
-                <SelectItem value="PRECO_VENDA">Preço Venda</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center h-8 px-3 text-xs bg-muted/50 border border-border rounded-md text-muted-foreground">FOB (fixo)</div>
           </div>
           <div>
             <Label className="text-xs text-muted-foreground">Vendedor (%)</Label>
@@ -562,16 +555,6 @@ const DealManager = ({ userId }: Props) => {
               <Label className="mb-1.5 text-sm text-muted-foreground">Margem Desejada (%)</Label>
               <Input type="number" step="0.01" min="0" value={desiredMargin} onChange={(e) => setDesiredMargin(e.target.value)} placeholder="0,00" className="bg-secondary/50 border-border" />
             </div>
-            <div>
-              <Label className="mb-1.5 text-sm text-muted-foreground">Base da Comissão</Label>
-              <Select value={commissionBase} onValueChange={(v) => setCommissionBase(v as "FOB" | "PRECO_VENDA")}>
-                <SelectTrigger className="bg-secondary/50 border-border"><SelectValue /></SelectTrigger>
-                <SelectContent className="bg-popover border-border z-50">
-                  <SelectItem value="FOB">FOB (Custo)</SelectItem>
-                  <SelectItem value="PRECO_VENDA">Preço de Venda (Base)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
 
             {/* Representante (searchable combobox with auto-fill) */}
             <div>
@@ -613,10 +596,20 @@ const DealManager = ({ userId }: Props) => {
             <div>
               <Label className="mb-1.5 text-sm text-muted-foreground">Comissão Vendedor (%)</Label>
               <Input type="number" step="0.01" min="0" value={sellerPct} onChange={(e) => setSellerPct(e.target.value)} placeholder="0,00" className="bg-secondary/50 border-border" />
+              {simulation && simulation.hasDollar && (
+                <p className="text-xs text-warning mt-1 font-medium">
+                  = {simulation.sellerCommBrl.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </p>
+              )}
             </div>
             <div>
               <Label className="mb-1.5 text-sm text-muted-foreground">Comissão Gestor (%)</Label>
               <Input type="number" step="0.01" min="0" value={managerPct} onChange={(e) => setManagerPct(e.target.value)} placeholder="0,00" className="bg-secondary/50 border-border" />
+              {simulation && simulation.hasDollar && (
+                <p className="text-xs text-warning mt-1 font-medium">
+                  = {simulation.managerCommBrl.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                </p>
+              )}
             </div>
 
             <div className="md:col-span-2 lg:col-span-2">
@@ -634,8 +627,8 @@ const DealManager = ({ userId }: Props) => {
                 <div><span className="text-muted-foreground">Preço Final:</span> <span className="font-semibold">{formatUsd(simulation.finalPrice)}</span></div>
                 <div><span className="text-muted-foreground">Lucro Bruto:</span> <span className="font-semibold text-accent">{formatUsd(simulation.grossProfit)}</span></div>
                 <div><span className="text-muted-foreground">Margem Bruta:</span> <span className="font-semibold">{formatPct(simulation.grossMargin)}</span></div>
-                <div><span className="text-muted-foreground">Com. Vendedor ({formatPct(parseFloat(sellerPct) || 0)}):</span> <span className="font-semibold text-warning">{formatUsd(simulation.sellerComm)}</span></div>
-                <div><span className="text-muted-foreground">Com. Gestor ({formatPct(parseFloat(managerPct) || 0)}):</span> <span className="font-semibold text-warning">{formatUsd(simulation.managerComm)}</span></div>
+                <div><span className="text-muted-foreground">Com. Vendedor ({formatPct(parseFloat(sellerPct) || 0)}):</span> <span className="font-semibold text-warning">{formatUsd(simulation.sellerComm)}{simulation.hasDollar && ` (${simulation.sellerCommBrl.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })})`}</span></div>
+                <div><span className="text-muted-foreground">Com. Gestor ({formatPct(parseFloat(managerPct) || 0)}):</span> <span className="font-semibold text-warning">{formatUsd(simulation.managerComm)}{simulation.hasDollar && ` (${simulation.managerCommBrl.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })})`}</span></div>
                 <div className="bg-accent/10 rounded px-2 py-1 -mx-2"><span className="text-muted-foreground">Lucro Líquido:</span> <span className={`font-bold text-base ${simulation.netProfit < 0 ? "text-destructive" : "text-accent"}`}>{formatUsd(simulation.netProfit)}</span></div>
                 <div className="bg-accent/10 rounded px-2 py-1 -mx-2"><span className="text-muted-foreground">Margem Líquida:</span> <span className={`font-bold text-base ${simulation.netMargin < 0 ? "text-destructive" : "text-accent"}`}>{formatPct(simulation.netMargin)}</span></div>
               </div>
@@ -743,7 +736,6 @@ const DealManager = ({ userId }: Props) => {
                           setEditingCommission(deal.id);
                           setEditSellerPct(String(deal.seller_commission_pct));
                           setEditManagerPct(String(deal.manager_commission_pct));
-                          setEditCommissionBase(deal.commission_base as "FOB" | "PRECO_VENDA");
                         }}>
                           <Percent className="h-4 w-4" />
                         </Button>
@@ -786,17 +778,7 @@ const DealManager = ({ userId }: Props) => {
                 {editingCommission === deal.id && deal.status === "open" && (
                   <div className="mt-3 p-3 border border-border rounded-md bg-secondary/30">
                     <p className="text-xs font-semibold text-muted-foreground mb-2">Editar Comissões</p>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Base</Label>
-                        <Select value={editCommissionBase} onValueChange={(v) => setEditCommissionBase(v as "FOB" | "PRECO_VENDA")}>
-                          <SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
-                          <SelectContent className="bg-popover border-border z-50">
-                            <SelectItem value="FOB">FOB</SelectItem>
-                            <SelectItem value="PRECO_VENDA">Preço Venda</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
                         <Label className="text-xs text-muted-foreground">Vendedor (%)</Label>
                         <Input type="number" step="0.01" value={editSellerPct} onChange={(e) => setEditSellerPct(e.target.value)} className="h-8 text-xs bg-background" />
