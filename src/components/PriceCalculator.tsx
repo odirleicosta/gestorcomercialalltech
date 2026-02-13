@@ -667,16 +667,18 @@ const PriceCalculator = () => {
                 )}
               </div>
             </div>
-          </TabsContent>
 
-          <TabsContent value="deals">
-            <DealManager userId={user.id} />
+            {/* Histórico de Simulações como sub-seção */}
             <div className="mt-8">
               <h2 className="font-heading text-lg font-semibold text-foreground flex items-center gap-2 mb-4">
                 <History className="h-5 w-5" /> Histórico de Simulações
               </h2>
               <CalculationHistory calculations={history} onDelete={handleDelete} />
             </div>
+          </TabsContent>
+
+          <TabsContent value="deals">
+            <DealManager userId={user.id} />
           </TabsContent>
 
           <TabsContent value="reps">
