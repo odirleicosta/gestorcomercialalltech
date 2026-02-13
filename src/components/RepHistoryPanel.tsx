@@ -118,6 +118,10 @@ const RepHistoryPanel = ({ repId, repName, deals, repsWithGoals, monthlyGoals, f
     return { total: Math.min(100, total), metaScore: Math.round(metaScore), growthScore: Math.round(growthScore), constancyScore: Math.round(constancyScore), volumeScore: Math.round(volumeScore) };
   }, [financials, indicators, evo6m, deals, filterYear, repsWithGoals, monthlyGoals]);
 
+  const formatUsd = (v: number) => `US$ ${v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+  const formatPct = (v: number) => v.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})+"%";
+  const formatCompact = (v: number) => v >= 1000 ? `US$ ${(v/1000).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}k` : formatUsd(v);
+
   // ── 5) Resumo Automático ──
   const resumo = useMemo(() => {
     const lines: string[] = [];
@@ -151,10 +155,6 @@ const RepHistoryPanel = ({ repId, repName, deals, repsWithGoals, monthlyGoals, f
 
     return lines;
   }, [repName, score, indicators, financials]);
-
-  const formatUsd = (v: number) => `US$ ${v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
-  const formatPct = (v: number) => v.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})+"%";
-  const formatCompact = (v: number) => v >= 1000 ? `US$ ${(v/1000).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}k` : formatUsd(v);
 
   const scoreColor = score.total >= 80 ? "#22C55E" : score.total >= 60 ? "#3B82F6" : score.total >= 40 ? "#F97316" : "#EF4444";
   const scoreLabel = score.total >= 80 ? "Excelente" : score.total >= 60 ? "Bom" : score.total >= 40 ? "Regular" : "Crítico";
