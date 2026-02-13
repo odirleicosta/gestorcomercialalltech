@@ -1,10 +1,9 @@
 import { useState, useMemo, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
 import {
   TrendingUp, DollarSign, Target, BarChart3, Users,
-  AlertTriangle, Medal, Calendar,
+  AlertTriangle,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -14,12 +13,16 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Deal } from "@/components/DealManager";
 
 interface Props { userId: string; }
-
 interface RepOption { id: string; nome: string; }
-
 interface RepWithGoals extends RepOption {
   meta_mensal_padrao: number;
   meta_quantidade: number;
+}
+interface MonthlyGoal {
+  representative_id: string;
+  meta_quantidade: number;
+  meta_valor: number;
+  machine_type: string;
 }
 
 const MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
@@ -28,6 +31,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [reps, setReps] = useState<RepOption[]>([]);
   const [repsWithGoals, setRepsWithGoals] = useState<RepWithGoals[]>([]);
+  const [monthlyGoals, setMonthlyGoals] = useState<MonthlyGoal[]>([]);
   const [loading, setLoading] = useState(true);
   const now = new Date();
   const [filterMonth, setFilterMonth] = useState(now.getMonth() + 1);
@@ -36,9 +40,10 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [dealsRes, repsRes] = await Promise.all([
+      const [dealsRes, repsRes, goalsRes] = await Promise.all([
         supabase.from("deals" as any).select("*").order("created_at", { ascending: false }),
         supabase.from("representatives" as any).select("id, nome, meta_mensal_padrao, meta_quantidade").eq("status", "ATIVO").order("nome"),
+        supabase.from("monthly_goals" as any).select("representative_id, meta_quantidade, meta_valor, machine_type"),
       ]);
       if (dealsRes.data) setDeals(dealsRes.data as unknown as Deal[]);
       if (repsRes.data) {
@@ -46,10 +51,24 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         setReps(r.map(x => ({ id: x.id, nome: x.nome })));
         setRepsWithGoals(r);
       }
+      if (goalsRes.data) setMonthlyGoals(goalsRes.data as unknown as MonthlyGoal[]);
       setLoading(false);
     };
     fetchData();
   }, []);
+
+  // Fetch monthly goals when month/year changes
+  useEffect(() => {
+    const fetchGoals = async () => {
+      const res = await supabase
+        .from("monthly_goals" as any)
+        .select("representative_id, meta_quantidade, meta_valor, machine_type")
+        .eq("mes", filterMonth)
+        .eq("ano", filterYear);
+      if (res.data) setMonthlyGoals(res.data as unknown as MonthlyGoal[]);
+    };
+    fetchGoals();
+  }, [filterMonth, filterYear]);
 
   const getMonthClosed = (month: number, year: number, repFilter = "all") => {
     return deals.filter(d => {
@@ -61,26 +80,31 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     });
   };
 
+  // Get meta for a rep: use monthly_goals if exists, fallback to rep default
+  const getRepMeta = (repId: string) => {
+    const goals = monthlyGoals.filter(g => g.representative_id === repId);
+    if (goals.length > 0) {
+      return {
+        metaQtd: goals.reduce((s, g) => s + g.meta_quantidade, 0),
+        metaVal: goals.reduce((s, g) => s + g.meta_valor, 0),
+      };
+    }
+    const rep = repsWithGoals.find(r => r.id === repId);
+    return {
+      metaQtd: rep?.meta_quantidade || 0,
+      metaVal: rep?.meta_mensal_padrao || 0,
+    };
+  };
+
   const monthStats = useMemo(() => {
     const current = getMonthClosed(filterMonth, filterYear, filterRep);
-    const prevMonth = filterMonth === 1 ? 12 : filterMonth - 1;
-    const prevYear = filterMonth === 1 ? filterYear - 1 : filterYear;
-    const previous = getMonthClosed(prevMonth, prevYear, filterRep);
-
     const calc = (arr: Deal[]) => ({
       count: arr.length,
       revenue: arr.reduce((s, d) => s + d.final_price, 0),
-      grossProfit: arr.reduce((s, d) => s + d.gross_profit, 0),
       netProfit: arr.reduce((s, d) => s + d.net_profit, 0),
-      avgNetMargin: arr.length > 0 ? arr.reduce((s, d) => s + d.net_margin_percent, 0) / arr.length : 0,
-      avgGrossMargin: arr.length > 0 ? arr.reduce((s, d) => s + d.gross_margin_percent, 0) / arr.length : 0,
-      sellerComm: arr.reduce((s, d) => s + d.seller_commission_value, 0),
-      managerComm: arr.reduce((s, d) => s + d.manager_commission_value, 0),
-      ticketMedio: arr.length > 0 ? arr.reduce((s, d) => s + d.final_price, 0) / arr.length : 0,
       fobTotal: arr.reduce((s, d) => s + d.fob_cost, 0),
     });
-
-    return { current: calc(current), previous: calc(previous), currentDeals: current };
+    return { current: calc(current), currentDeals: current };
   }, [deals, filterMonth, filterYear, filterRep]);
 
   // Rep ranking for the month
@@ -91,14 +115,12 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       const revenue = repDeals.reduce((s, d) => s + d.final_price, 0);
       const fobTotal = repDeals.reduce((s, d) => s + d.fob_cost, 0);
       const count = repDeals.length;
-      const metaVal = rep.meta_mensal_padrao || 0;
-      const metaQtd = rep.meta_quantidade || 0;
-      const pctVal = metaVal > 0 ? (revenue / metaVal) * 100 : 0;
+      const { metaQtd, metaVal } = getRepMeta(rep.id);
       const pctQtd = metaQtd > 0 ? (count / metaQtd) * 100 : 0;
-      return { ...rep, revenue, fobTotal, count, pctVal, pctQtd, metaVal, metaQtd };
-    }).filter(r => r.count > 0 || r.metaVal > 0 || r.metaQtd > 0)
-      .sort((a, b) => b.revenue - a.revenue);
-  }, [repsWithGoals, deals, filterMonth, filterYear]);
+      return { ...rep, revenue, fobTotal, count, pctQtd, metaQtd, metaVal };
+    }).filter(r => r.count > 0 || r.metaQtd > 0)
+      .sort((a, b) => b.count - a.count);
+  }, [repsWithGoals, deals, filterMonth, filterYear, monthlyGoals]);
 
   // Pipeline data
   const pipelineData = useMemo(() => {
@@ -139,11 +161,8 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     const progressPct = (dayOfMonth / daysInMonth) * 100;
 
     repRanking.forEach(rep => {
-      if (rep.metaVal > 0 && rep.pctVal < progressPct * 0.8) {
-        alerts.push(`⚠️ ${rep.nome}: faturamento em ${rep.pctVal.toFixed(0)}% da meta (esperado ~${progressPct.toFixed(0)}%)`);
-      }
       if (rep.metaQtd > 0 && rep.pctQtd < progressPct * 0.8) {
-        alerts.push(`⚠️ ${rep.nome}: quantidade em ${rep.pctQtd.toFixed(0)}% da meta (${rep.count}/${rep.metaQtd})`);
+        alerts.push(`⚠️ ${rep.nome}: ${rep.pctQtd.toFixed(0)}% da meta (${rep.count}/${rep.metaQtd})`);
       }
     });
     return alerts;
@@ -160,7 +179,6 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
   const { current: cur } = monthStats;
 
-  // Totals for meta do mês
   const totalMetaQtd = repRanking.reduce((s, r) => s + r.metaQtd, 0);
   const totalSold = cur.count;
   const pctAtingido = totalMetaQtd > 0 ? (totalSold / totalMetaQtd) * 100 : 0;
@@ -232,7 +250,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border/50">
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nome</th>
+                    <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Representante</th>
                     <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Meta</th>
                     <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Vendidas</th>
                     <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">FOB</th>
@@ -279,9 +297,10 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       {/* ─── BLOCO 4: PIPELINE ─── */}
       <section>
         <SectionTitle icon={<BarChart3 className="h-4 w-4" />} title="Pipeline" />
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-          <CleanCard label="Em Negociação" value={String(pipelineData.totalOpen)} sub={`Valor total: ${formatCompact(pipelineData.totalValue)}`} color="text-warning" />
-          <CleanCard label="Previsão Ponderada" value={formatCompact(pipelineData.weightedForecast)} sub="50% do valor aberto" color="text-info" />
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+          <CleanCard label="Em Negociação" value={String(pipelineData.totalOpen)} sub="negociações abertas" color="text-warning" />
+          <CleanCard label="Valor Total" value={formatCompact(pipelineData.totalValue)} sub="em aberto" color="text-info" />
+          <CleanCard label="Previsão Ponderada" value={formatCompact(pipelineData.weightedForecast)} sub="50% do valor aberto" color="text-accent" />
         </div>
       </section>
 
