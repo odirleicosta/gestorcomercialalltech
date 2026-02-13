@@ -197,13 +197,12 @@ const DealManager = ({ userId }: Props) => {
     setShowForm(true);
   };
 
-  // Auto-fill when selecting a model
+  // Auto-fill when selecting a model (only type, NOT cost)
   const handleModeloSelect = (id: string) => {
     setModeloId(id);
     setModeloOpen(false);
     const modelo = modelos.find(m => m.id === id);
     if (modelo) {
-      setFobCost(String(modelo.custo_fob));
       setMachineType(modelo.tipo);
     }
   };
