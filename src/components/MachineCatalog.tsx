@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Trash2, Search, Package, Hash, Pencil, X, Check, DollarSign } from "lucide-react";
+import { Plus, Trash2, Search, Package, Hash, Pencil, X, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export interface CatalogMachine {
@@ -16,6 +16,7 @@ export interface CatalogMachine {
   marca: string;
   modelo: string;
   custo_fob: number;
+  preco_venda_fob: number;
   informado_por?: string;
   created_at: string;
   updated_at: string;
@@ -43,6 +44,15 @@ interface Props {
 const TIPOS = ["Centro de Usinagem", "Torno CNC", "4º eixo"];
 const MARCAS = ["HARTFORD", "SINO", "DMTG", "Feiya", "Timeway", "TAKISAWA", "ZMAT", "GSA"];
 
+interface EditState {
+  tipo: string;
+  marca: string;
+  modelo: string;
+  custo_fob: string;
+  preco_venda_fob: string;
+  informado_por: string;
+}
+
 const MachineCatalog = ({ catalog, setCatalog }: Props) => {
   const { toast } = useToast();
 
@@ -50,6 +60,7 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
   const [newMarca, setNewMarca] = useState("");
   const [newModelo, setNewModelo] = useState("");
   const [newFob, setNewFob] = useState("");
+  const [newPrecoVenda, setNewPrecoVenda] = useState("");
   const [newInformadoPor, setNewInformadoPor] = useState("");
 
   const [search, setSearch] = useState("");
@@ -57,9 +68,8 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
   const [filterMarca, setFilterMarca] = useState("all");
 
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editFob, setEditFob] = useState("");
+  const [editState, setEditState] = useState<EditState>({ tipo: "", marca: "", modelo: "", custo_fob: "", preco_venda_fob: "", informado_por: "" });
 
-  // Derive unique tipos/marcas from data
   const tipos = useMemo(() => {
     const set = new Set(catalog.map((m) => m.tipo));
     TIPOS.forEach((t) => set.add(t));
@@ -93,8 +103,17 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
     const marca = newMarca.trim();
     const modelo = newModelo.trim();
     const fob = parseFloat(newFob) || 0;
+    const precoVenda = parseFloat(newPrecoVenda) || 0;
     if (!tipo || !marca || !modelo) {
       toast({ title: "Preencha Tipo, Marca e Modelo", variant: "destructive" });
+      return;
+    }
+    if (fob < 0 || precoVenda < 0) {
+      toast({ title: "Preços não podem ser negativos", variant: "destructive" });
+      return;
+    }
+    if (precoVenda <= 0) {
+      toast({ title: "Preço de Venda FOB é obrigatório", variant: "destructive" });
       return;
     }
     if (catalog.some((m) => m.modelo.toLowerCase() === modelo.toLowerCase() && m.marca.toLowerCase() === marca.toLowerCase())) {
@@ -108,6 +127,7 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
       marca,
       modelo,
       custo_fob: fob,
+      preco_venda_fob: precoVenda,
       informado_por: newInformadoPor.trim() || undefined,
       created_at: now,
       updated_at: now,
@@ -119,6 +139,7 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
     setNewMarca("");
     setNewModelo("");
     setNewFob("");
+    setNewPrecoVenda("");
     setNewInformadoPor("");
     toast({ title: "Máquina cadastrada no catálogo!" });
   };
@@ -129,16 +150,64 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
     saveCatalog(updated);
   };
 
+  const startEditing = (m: CatalogMachine) => {
+    setEditingId(m.id);
+    setEditState({
+      tipo: m.tipo,
+      marca: m.marca,
+      modelo: m.modelo,
+      custo_fob: String(m.custo_fob),
+      preco_venda_fob: String(m.preco_venda_fob || 0),
+      informado_por: m.informado_por || "",
+    });
+  };
+
   const handleEditSave = (id: string) => {
-    const fob = parseFloat(editFob) || 0;
+    const tipo = editState.tipo.trim();
+    const marca = editState.marca.trim();
+    const modelo = editState.modelo.trim();
+    const fob = parseFloat(editState.custo_fob) || 0;
+    const precoVenda = parseFloat(editState.preco_venda_fob) || 0;
+
+    if (!tipo || !marca || !modelo) {
+      toast({ title: "Tipo, Marca e Modelo são obrigatórios", variant: "destructive" });
+      return;
+    }
+    if (fob < 0 || precoVenda < 0) {
+      toast({ title: "Preços não podem ser negativos", variant: "destructive" });
+      return;
+    }
+    if (precoVenda <= 0) {
+      toast({ title: "Preço de Venda FOB é obrigatório", variant: "destructive" });
+      return;
+    }
+    // Check duplicate (exclude current)
+    if (catalog.some((m) => m.id !== id && m.modelo.toLowerCase() === modelo.toLowerCase() && m.marca.toLowerCase() === marca.toLowerCase())) {
+      toast({ title: "Modelo já cadastrado para esta marca", variant: "destructive" });
+      return;
+    }
+
     const updated = catalog.map((m) =>
-      m.id === id ? { ...m, custo_fob: fob, updated_at: new Date().toISOString() } : m
+      m.id === id
+        ? {
+            ...m,
+            tipo,
+            marca,
+            modelo,
+            custo_fob: fob,
+            preco_venda_fob: precoVenda,
+            informado_por: editState.informado_por.trim() || undefined,
+            updated_at: new Date().toISOString(),
+          }
+        : m
     );
     setCatalog(updated);
     saveCatalog(updated);
     setEditingId(null);
-    toast({ title: "Custo FOB atualizado!" });
+    toast({ title: "Máquina atualizada!" });
   };
+
+  const editInputClass = "h-7 text-sm bg-secondary/50 border-border";
 
   return (
     <Card className="border-border bg-card p-6 shadow-sm">
@@ -152,7 +221,7 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
       </div>
 
       {/* Add form */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-5">
+      <div className="grid grid-cols-2 md:grid-cols-7 gap-3 mb-5">
         <div>
           <Label className="mb-1 text-xs text-muted-foreground">Tipo</Label>
           <Input value={newTipo} onChange={(e) => setNewTipo(e.target.value)} placeholder="Ex: Torno CNC" className="bg-secondary/50 border-border text-sm" list="tipos-list" />
@@ -174,6 +243,10 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
         <div>
           <Label className="mb-1 text-xs text-muted-foreground">Custo FOB (USD)</Label>
           <Input type="number" step="0.01" min="0" value={newFob} onChange={(e) => setNewFob(e.target.value)} placeholder="0,00" className="bg-secondary/50 border-border text-sm" />
+        </div>
+        <div>
+          <Label className="mb-1 text-xs text-muted-foreground">Preço Venda FOB (USD)</Label>
+          <Input type="number" step="0.01" min="0" value={newPrecoVenda} onChange={(e) => setNewPrecoVenda(e.target.value)} placeholder="0,00" className="bg-secondary/50 border-border text-sm" />
         </div>
         <div>
           <Label className="mb-1 text-xs text-muted-foreground">Informado por</Label>
@@ -225,6 +298,7 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
                 <TableHead>Marca</TableHead>
                 <TableHead>Modelo</TableHead>
                 <TableHead className="text-right">Custo FOB (USD)</TableHead>
+                <TableHead className="text-right">Preço Venda FOB (USD)</TableHead>
                 <TableHead>Informado por</TableHead>
                 <TableHead>Atualização</TableHead>
                 <TableHead className="w-20"></TableHead>
@@ -234,25 +308,47 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
               {filtered.map((m, i) => (
                 <TableRow key={m.id}>
                   <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
-                  <TableCell className="text-sm">{m.tipo}</TableCell>
-                  <TableCell className="text-sm font-medium">{m.marca}</TableCell>
-                  <TableCell className="text-sm font-medium">{m.modelo}</TableCell>
-                  <TableCell className="text-right">
+
+                  {editingId === m.id ? (
+                    <>
+                      <TableCell>
+                        <Input value={editState.tipo} onChange={(e) => setEditState(s => ({ ...s, tipo: e.target.value }))} className={editInputClass} list="tipos-list-edit" />
+                        <datalist id="tipos-list-edit">{tipos.map((t) => <option key={t} value={t} />)}</datalist>
+                      </TableCell>
+                      <TableCell>
+                        <Input value={editState.marca} onChange={(e) => setEditState(s => ({ ...s, marca: e.target.value }))} className={editInputClass} list="marcas-list-edit" />
+                        <datalist id="marcas-list-edit">{marcas.map((m) => <option key={m} value={m} />)}</datalist>
+                      </TableCell>
+                      <TableCell>
+                        <Input value={editState.modelo} onChange={(e) => setEditState(s => ({ ...s, modelo: e.target.value }))} className={editInputClass} />
+                      </TableCell>
+                      <TableCell>
+                        <Input type="number" step="0.01" min="0" value={editState.custo_fob} onChange={(e) => setEditState(s => ({ ...s, custo_fob: e.target.value }))} className={`${editInputClass} w-28 text-right`} />
+                      </TableCell>
+                      <TableCell>
+                        <Input type="number" step="0.01" min="0" value={editState.preco_venda_fob} onChange={(e) => setEditState(s => ({ ...s, preco_venda_fob: e.target.value }))} className={`${editInputClass} w-28 text-right`} />
+                      </TableCell>
+                      <TableCell>
+                        <Input value={editState.informado_por} onChange={(e) => setEditState(s => ({ ...s, informado_por: e.target.value }))} className={editInputClass} />
+                      </TableCell>
+                    </>
+                  ) : (
+                    <>
+                      <TableCell className="text-sm">{m.tipo}</TableCell>
+                      <TableCell className="text-sm font-medium">{m.marca}</TableCell>
+                      <TableCell className="text-sm font-medium">{m.modelo}</TableCell>
+                      <TableCell className="text-right text-sm">{m.custo_fob > 0 ? formatUsd(m.custo_fob) : "—"}</TableCell>
+                      <TableCell className="text-right text-sm">{(m.preco_venda_fob || 0) > 0 ? formatUsd(m.preco_venda_fob) : "—"}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{m.informado_por || "—"}</TableCell>
+                    </>
+                  )}
+
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                    {new Date(m.updated_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                  </TableCell>
+                  <TableCell>
                     {editingId === m.id ? (
-                      <div className="flex items-center gap-1 justify-end">
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={editFob}
-                          onChange={(e) => setEditFob(e.target.value)}
-                          className="w-28 h-7 text-sm bg-secondary/50 border-border"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleEditSave(m.id);
-                            if (e.key === "Escape") setEditingId(null);
-                          }}
-                        />
+                      <div className="flex gap-1">
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditSave(m.id)}>
                           <Check className="h-3.5 w-3.5 text-accent" />
                         </Button>
@@ -261,28 +357,15 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
                         </Button>
                       </div>
                     ) : (
-                      <span
-                        className="cursor-pointer hover:text-primary transition-colors text-sm"
-                        onClick={() => { setEditingId(m.id); setEditFob(String(m.custo_fob)); }}
-                        title="Clique para editar"
-                      >
-                        {m.custo_fob > 0 ? formatUsd(m.custo_fob) : "—"}
-                      </span>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEditing(m)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(m.id)}>
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </Button>
+                      </div>
                     )}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{m.informado_por || "—"}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                    {new Date(m.updated_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" })}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setEditingId(m.id); setEditFob(String(m.custo_fob)); }}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(m.id)}>
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
-                    </div>
                   </TableCell>
                 </TableRow>
               ))}

@@ -78,6 +78,7 @@ interface Modelo {
   modelo: string;
   tipo: string;
   custo_fob: number;
+  preco_venda_fob: number;
 }
 
 interface CommissionLog {
@@ -165,6 +166,7 @@ const DealManager = ({ userId }: Props) => {
         modelo: c.modelo,
         tipo: c.tipo,
         custo_fob: c.custo_fob,
+        preco_venda_fob: c.preco_venda_fob || 0,
       })));
     };
     loadData();
@@ -197,13 +199,14 @@ const DealManager = ({ userId }: Props) => {
     setShowForm(true);
   };
 
-  // Auto-fill when selecting a model (only type, NOT cost)
+  // Auto-fill when selecting a model
   const handleModeloSelect = (id: string) => {
     setModeloId(id);
     setModeloOpen(false);
     const modelo = modelos.find(m => m.id === id);
     if (modelo) {
       setMachineType(modelo.tipo);
+      setFobCost(String(modelo.custo_fob));
     }
   };
 
