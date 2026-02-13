@@ -7,6 +7,10 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Plus, Trash2, Search, Package, Hash, Pencil, X, Check, Download, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as XLSX from "xlsx";
@@ -70,6 +74,10 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editState, setEditState] = useState<EditState>({ tipo: "", marca: "", modelo: "", custo_fob: "", preco_venda_fob: "", informado_por: "" });
+
+  // Import preview state
+  const [pendingImport, setPendingImport] = useState<CatalogMachine[] | null>(null);
+  const [importStats, setImportStats] = useState({ total: 0, new: 0, updated: 0, skipped: 0 });
 
   const tipos = useMemo(() => {
     const set = new Set(catalog.map((m) => m.tipo));
@@ -267,9 +275,10 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
         const rows = XLSX.utils.sheet_to_json<Record<string, any>>(ws);
 
         const now = new Date().toISOString();
-        let added = 0;
+        let newCount = 0;
+        let updatedCount = 0;
         let skipped = 0;
-        const newCatalog = [...catalog];
+        const resultCatalog = [...catalog];
 
         for (const row of rows) {
           const tipo = String(row["Tipo"] || "").trim();
@@ -282,26 +291,21 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
           if (!tipo || !marca || !modelo) { skipped++; continue; }
           if (precoVenda < 0 || custoFob < 0) { skipped++; continue; }
 
-          // Check duplicate
-          const exists = newCatalog.some(
+          const idx = resultCatalog.findIndex(
             (m) => m.modelo.toLowerCase() === modelo.toLowerCase() && m.marca.toLowerCase() === marca.toLowerCase()
           );
-          if (exists) {
-            // Update existing
-            const idx = newCatalog.findIndex(
-              (m) => m.modelo.toLowerCase() === modelo.toLowerCase() && m.marca.toLowerCase() === marca.toLowerCase()
-            );
-            newCatalog[idx] = {
-              ...newCatalog[idx],
+          if (idx >= 0) {
+            resultCatalog[idx] = {
+              ...resultCatalog[idx],
               tipo,
               custo_fob: custoFob,
               preco_venda_fob: precoVenda,
               informado_por: informadoPor || undefined,
               updated_at: now,
             };
-            added++;
+            updatedCount++;
           } else {
-            newCatalog.unshift({
+            resultCatalog.unshift({
               id: crypto.randomUUID(),
               tipo, marca, modelo,
               custo_fob: custoFob,
@@ -310,13 +314,12 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
               created_at: now,
               updated_at: now,
             });
-            added++;
+            newCount++;
           }
         }
 
-        setCatalog(newCatalog);
-        saveCatalog(newCatalog);
-        toast({ title: `Importação concluída: ${added} processados, ${skipped} ignorados` });
+        setPendingImport(resultCatalog);
+        setImportStats({ total: rows.length, new: newCount, updated: updatedCount, skipped });
       } catch {
         toast({ title: "Erro ao ler o arquivo Excel", variant: "destructive" });
       }
@@ -325,7 +328,17 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
     e.target.value = "";
   };
 
+  const confirmImport = () => {
+    if (pendingImport) {
+      setCatalog(pendingImport);
+      saveCatalog(pendingImport);
+      toast({ title: `Importação concluída: ${importStats.new} novos, ${importStats.updated} atualizados, ${importStats.skipped} ignorados` });
+      setPendingImport(null);
+    }
+  };
+
   return (
+    <>
     <Card className="border-border bg-card p-6 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-heading text-lg font-semibold text-card-foreground flex items-center gap-2">
@@ -523,6 +536,30 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
         </ScrollArea>
       )}
     </Card>
+
+      <AlertDialog open={!!pendingImport} onOpenChange={(open) => { if (!open) setPendingImport(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar importação</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>O arquivo contém <strong>{importStats.total}</strong> linha(s):</p>
+                <ul className="list-disc pl-5 text-sm space-y-1">
+                  <li><strong>{importStats.new}</strong> modelo(s) novo(s) serão adicionados</li>
+                  <li><strong>{importStats.updated}</strong> modelo(s) existente(s) serão atualizados</li>
+                  {importStats.skipped > 0 && <li><strong>{importStats.skipped}</strong> linha(s) ignorada(s) (dados inválidos)</li>}
+                </ul>
+                <p className="text-sm font-medium pt-2">Modelos existentes terão seus dados sobrescritos. Deseja continuar?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmImport}>Confirmar Importação</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 
