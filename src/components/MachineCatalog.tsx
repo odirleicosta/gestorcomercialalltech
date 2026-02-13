@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,9 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Trash2, Search, Package, Hash, Pencil, X, Check, Download, Upload } from "lucide-react";
+import { Plus, Trash2, Search, Package, Hash, Pencil, X, Check, Download, Upload, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import * as XLSX from "xlsx";
 
 export interface CatalogMachine {
@@ -22,21 +23,38 @@ export interface CatalogMachine {
   modelo: string;
   custo_fob: number;
   preco_venda_fob: number;
-  informado_por?: string;
+  informado_por?: string | null;
   created_at: string;
   updated_at: string;
+  user_id?: string;
 }
 
-const CATALOG_KEY = "price-calc-machine-catalog";
-
-export const loadCatalog = (): CatalogMachine[] => {
-  try {
-    return JSON.parse(localStorage.getItem(CATALOG_KEY) || "[]");
-  } catch {
-    return [];
-  }
+// Supabase-based fetch
+export const fetchCatalog = async (): Promise<CatalogMachine[]> => {
+  const { data, error } = await supabase
+    .from("machine_catalog")
+    .select("*")
+    .order("marca", { ascending: true });
+  if (error) throw error;
+  return (data || []).map((m: any) => ({
+    id: m.id,
+    tipo: m.tipo,
+    marca: m.marca,
+    modelo: m.modelo,
+    custo_fob: m.custo_fob,
+    preco_venda_fob: m.preco_venda_fob,
+    informado_por: m.informado_por,
+    created_at: m.created_at,
+    updated_at: m.updated_at,
+    user_id: m.user_id,
+  }));
 };
 
+// Keep legacy localStorage helpers for migration only
+const CATALOG_KEY = "price-calc-machine-catalog";
+export const loadCatalog = (): CatalogMachine[] => {
+  try { return JSON.parse(localStorage.getItem(CATALOG_KEY) || "[]"); } catch { return []; }
+};
 export const saveCatalog = (catalog: CatalogMachine[]) => {
   localStorage.setItem(CATALOG_KEY, JSON.stringify(catalog));
 };
@@ -44,6 +62,7 @@ export const saveCatalog = (catalog: CatalogMachine[]) => {
 interface Props {
   catalog: CatalogMachine[];
   setCatalog: React.Dispatch<React.SetStateAction<CatalogMachine[]>>;
+  userId: string;
 }
 
 const TIPOS = ["Centro de Usinagem", "Torno CNC", "4º eixo"];
@@ -58,8 +77,9 @@ interface EditState {
   informado_por: string;
 }
 
-const MachineCatalog = ({ catalog, setCatalog }: Props) => {
+const MachineCatalog = ({ catalog, setCatalog, userId }: Props) => {
   const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
 
   const [newTipo, setNewTipo] = useState("");
   const [newMarca, setNewMarca] = useState("");
@@ -124,7 +144,7 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
   const formatUsd = (v: number) =>
     `$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     const tipo = newTipo.trim();
     const marca = newMarca.trim();
     const modelo = newModelo.trim();
@@ -150,34 +170,51 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
       toast({ title: "Modelo já cadastrado para esta marca", variant: "destructive" });
       return;
     }
-    const now = new Date().toISOString();
+
+    setSaving(true);
+    const { data, error } = await supabase
+      .from("machine_catalog")
+      .insert({
+        user_id: userId,
+        tipo,
+        marca,
+        modelo,
+        custo_fob: fob,
+        preco_venda_fob: precoVenda,
+        informado_por: newInformadoPor.trim() || null,
+      } as any)
+      .select("*")
+      .single();
+    setSaving(false);
+
+    if (error) {
+      toast({ title: "Erro ao cadastrar", description: error.message, variant: "destructive" });
+      return;
+    }
+
     const entry: CatalogMachine = {
-      id: crypto.randomUUID(),
-      tipo,
-      marca,
-      modelo,
-      custo_fob: fob,
-      preco_venda_fob: precoVenda,
-      informado_por: newInformadoPor.trim() || undefined,
-      created_at: now,
-      updated_at: now,
+      id: (data as any).id,
+      tipo: (data as any).tipo,
+      marca: (data as any).marca,
+      modelo: (data as any).modelo,
+      custo_fob: (data as any).custo_fob,
+      preco_venda_fob: (data as any).preco_venda_fob,
+      informado_por: (data as any).informado_por,
+      created_at: (data as any).created_at,
+      updated_at: (data as any).updated_at,
     };
-    const updated = [entry, ...catalog];
-    setCatalog(updated);
-    saveCatalog(updated);
-    setNewTipo("");
-    setNewMarca("");
-    setNewModelo("");
-    setNewFob("");
-    setNewPrecoVenda("");
-    setNewInformadoPor("");
+    setCatalog(prev => [entry, ...prev]);
+    setNewTipo(""); setNewMarca(""); setNewModelo(""); setNewFob(""); setNewPrecoVenda(""); setNewInformadoPor("");
     toast({ title: "Máquina cadastrada no catálogo!" });
   };
 
-  const handleDelete = (id: string) => {
-    const updated = catalog.filter((m) => m.id !== id);
-    setCatalog(updated);
-    saveCatalog(updated);
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from("machine_catalog").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+      return;
+    }
+    setCatalog(prev => prev.filter((m) => m.id !== id));
   };
 
   const startEditing = (m: CatalogMachine) => {
@@ -192,7 +229,7 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
     });
   };
 
-  const handleEditSave = (id: string) => {
+  const handleEditSave = async (id: string) => {
     const tipo = editState.tipo.trim();
     const marca = editState.marca.trim();
     const modelo = editState.modelo.trim();
@@ -215,28 +252,33 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
       toast({ title: "Preço de venda não pode ser menor que o custo", variant: "destructive" });
       return;
     }
-    // Check duplicate (exclude current)
     if (catalog.some((m) => m.id !== id && m.modelo.toLowerCase() === modelo.toLowerCase() && m.marca.toLowerCase() === marca.toLowerCase())) {
       toast({ title: "Modelo já cadastrado para esta marca", variant: "destructive" });
       return;
     }
 
-    const updated = catalog.map((m) =>
+    const { error } = await supabase
+      .from("machine_catalog")
+      .update({
+        tipo,
+        marca,
+        modelo,
+        custo_fob: fob,
+        preco_venda_fob: precoVenda,
+        informado_por: editState.informado_por.trim() || null,
+      } as any)
+      .eq("id", id);
+
+    if (error) {
+      toast({ title: "Erro ao atualizar", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    setCatalog(prev => prev.map((m) =>
       m.id === id
-        ? {
-            ...m,
-            tipo,
-            marca,
-            modelo,
-            custo_fob: fob,
-            preco_venda_fob: precoVenda,
-            informado_por: editState.informado_por.trim() || undefined,
-            updated_at: new Date().toISOString(),
-          }
+        ? { ...m, tipo, marca, modelo, custo_fob: fob, preco_venda_fob: precoVenda, informado_por: editState.informado_por.trim() || undefined, updated_at: new Date().toISOString() }
         : m
-    );
-    setCatalog(updated);
-    saveCatalog(updated);
+    ));
     setEditingId(null);
     toast({ title: "Máquina atualizada!" });
   };
@@ -253,7 +295,6 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
       "Informado por": m.informado_por || "",
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
-    // Set column widths
     ws["!cols"] = [
       { wch: 22 }, { wch: 14 }, { wch: 30 }, { wch: 16 }, { wch: 22 }, { wch: 16 },
     ];
@@ -267,18 +308,16 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    reader.onload = async (evt) => {
       try {
         const data = new Uint8Array(evt.target?.result as ArrayBuffer);
         const wb = XLSX.read(data, { type: "array" });
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json<Record<string, any>>(ws);
 
-        const now = new Date().toISOString();
         let newCount = 0;
         let updatedCount = 0;
         let skipped = 0;
-        const resultCatalog = [...catalog];
 
         for (const row of rows) {
           const tipo = String(row["Tipo"] || "").trim();
@@ -291,50 +330,34 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
           if (!tipo || !marca || !modelo) { skipped++; continue; }
           if (precoVenda < 0 || custoFob < 0) { skipped++; continue; }
 
-          const idx = resultCatalog.findIndex(
+          const existing = catalog.find(
             (m) => m.modelo.toLowerCase() === modelo.toLowerCase() && m.marca.toLowerCase() === marca.toLowerCase()
           );
-          if (idx >= 0) {
-            resultCatalog[idx] = {
-              ...resultCatalog[idx],
-              tipo,
-              custo_fob: custoFob,
-              preco_venda_fob: precoVenda,
-              informado_por: informadoPor || undefined,
-              updated_at: now,
-            };
+
+          if (existing) {
+            await supabase.from("machine_catalog").update({
+              tipo, custo_fob: custoFob, preco_venda_fob: precoVenda, informado_por: informadoPor || null,
+            } as any).eq("id", existing.id);
             updatedCount++;
           } else {
-            resultCatalog.unshift({
-              id: crypto.randomUUID(),
-              tipo, marca, modelo,
-              custo_fob: custoFob,
-              preco_venda_fob: precoVenda,
-              informado_por: informadoPor || undefined,
-              created_at: now,
-              updated_at: now,
-            });
+            await supabase.from("machine_catalog").insert({
+              user_id: userId, tipo, marca, modelo, custo_fob: custoFob, preco_venda_fob: precoVenda, informado_por: informadoPor || null,
+            } as any);
             newCount++;
           }
         }
 
-        setPendingImport(resultCatalog);
-        setImportStats({ total: rows.length, new: newCount, updated: updatedCount, skipped });
+        // Reload from DB
+        const refreshed = await fetchCatalog();
+        setCatalog(refreshed);
+
+        toast({ title: `Importação concluída: ${newCount} novos, ${updatedCount} atualizados, ${skipped} ignorados` });
       } catch {
         toast({ title: "Erro ao ler o arquivo Excel", variant: "destructive" });
       }
     };
     reader.readAsArrayBuffer(file);
     e.target.value = "";
-  };
-
-  const confirmImport = () => {
-    if (pendingImport) {
-      setCatalog(pendingImport);
-      saveCatalog(pendingImport);
-      toast({ title: `Importação concluída: ${importStats.new} novos, ${importStats.updated} atualizados, ${importStats.skipped} ignorados` });
-      setPendingImport(null);
-    }
   };
 
   return (
@@ -402,8 +425,8 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
           <Input value={newInformadoPor} onChange={(e) => setNewInformadoPor(e.target.value)} placeholder="Nome" className="bg-secondary/50 border-border text-sm" />
         </div>
         <div className="flex items-end">
-          <Button className="w-full" onClick={handleAdd} disabled={!newTipo.trim() || !newMarca.trim() || !newModelo.trim()}>
-            <Plus className="h-4 w-4 mr-1" /> Adicionar
+          <Button className="w-full" onClick={handleAdd} disabled={!newTipo.trim() || !newMarca.trim() || !newModelo.trim() || saving}>
+            {saving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />} Adicionar
           </Button>
         </div>
       </div>
@@ -478,14 +501,14 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
                       <TableCell>
                         <Input type="number" step="0.01" min="0" value={editState.preco_venda_fob} onChange={(e) => setEditState(s => ({ ...s, preco_venda_fob: e.target.value }))} className={`${editInputClass} w-28 text-right`} />
                       </TableCell>
-                      <TableCell>
-                        <Input value={editState.informado_por} onChange={(e) => setEditState(s => ({ ...s, informado_por: e.target.value }))} className={editInputClass} />
-                      </TableCell>
                       <TableCell className="text-right">
                         {(() => {
                           const mg = calcMargin(parseFloat(editState.custo_fob) || 0, parseFloat(editState.preco_venda_fob) || 0);
                           return <span className={`text-sm font-semibold ${marginColor(mg)}`}>{formatMargin(mg)}</span>;
                         })()}
+                      </TableCell>
+                      <TableCell>
+                        <Input value={editState.informado_por} onChange={(e) => setEditState(s => ({ ...s, informado_por: e.target.value }))} className={editInputClass} />
                       </TableCell>
                     </>
                   ) : (
@@ -536,29 +559,6 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
         </ScrollArea>
       )}
     </Card>
-
-      <AlertDialog open={!!pendingImport} onOpenChange={(open) => { if (!open) setPendingImport(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar importação</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-2">
-                <p>O arquivo contém <strong>{importStats.total}</strong> linha(s):</p>
-                <ul className="list-disc pl-5 text-sm space-y-1">
-                  <li><strong>{importStats.new}</strong> modelo(s) novo(s) serão adicionados</li>
-                  <li><strong>{importStats.updated}</strong> modelo(s) existente(s) serão atualizados</li>
-                  {importStats.skipped > 0 && <li><strong>{importStats.skipped}</strong> linha(s) ignorada(s) (dados inválidos)</li>}
-                </ul>
-                <p className="text-sm font-medium pt-2">Modelos existentes terão seus dados sobrescritos. Deseja continuar?</p>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmImport}>Confirmar Importação</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 };

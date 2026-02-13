@@ -17,8 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import CalculationHistory from "@/components/CalculationHistory";
 import ClientManager, { fetchClients, type Client } from "@/components/ClientManager";
 import MachineManager, { loadMachines, saveMachines, type Machine } from "@/components/MachineManager";
-import MachineCatalog, { loadCatalog, saveCatalog, type CatalogMachine } from "@/components/MachineCatalog";
-import { seedCatalogIfEmpty } from "@/data/machineCatalogSeed";
+import MachineCatalog, { fetchCatalog, type CatalogMachine } from "@/components/MachineCatalog";
 import DealManager from "@/components/DealManager";
 import ExecutiveDashboard from "@/components/ExecutiveDashboard";
 import RepresentativeManager from "@/components/RepresentativeManager";
@@ -72,7 +71,7 @@ const PriceCalculator = () => {
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
   const [machines, setMachines] = useState<Machine[]>(loadMachines);
   const [showMachineSuggestions, setShowMachineSuggestions] = useState(false);
-  const [catalog, setCatalog] = useState<CatalogMachine[]>(() => seedCatalogIfEmpty());
+  const [catalog, setCatalog] = useState<CatalogMachine[]>([]);
   const [showCatalogSuggestions, setShowCatalogSuggestions] = useState(false);
 
   useEffect(() => {
@@ -89,6 +88,7 @@ const PriceCalculator = () => {
   useEffect(() => {
     if (user) {
       fetchClients().then(setClients).catch(() => {});
+      fetchCatalog().then(setCatalog).catch(() => {});
     }
   }, [user]);
 
@@ -708,7 +708,7 @@ const PriceCalculator = () => {
           </TabsContent>
 
           <TabsContent value="catalog">
-            <MachineCatalog catalog={catalog} setCatalog={setCatalog} />
+            <MachineCatalog catalog={catalog} setCatalog={setCatalog} userId={user.id} />
           </TabsContent>
         </Tabs>
         </div>
