@@ -1,0 +1,1 @@
+ALTER TABLE public.calculations ADD COLUMN client_name text DEFAULT '';
