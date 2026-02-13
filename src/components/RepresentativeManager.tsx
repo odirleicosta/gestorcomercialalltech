@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   UserPlus, Edit2, Trash2, Save, X, Target, TrendingUp, DollarSign,
   Percent, Users, MapPin, CheckCircle, XCircle,
@@ -35,6 +36,7 @@ interface MonthlyGoal {
   ano: number;
   meta_valor: number;
   meta_quantidade: number;
+  machine_type: string;
 }
 
 interface DealRow {
@@ -49,6 +51,7 @@ interface DealRow {
   manager_commission_value: number;
   status: string;
   closed_at: string | null;
+  machine_type: string;
 }
 
 interface Props {
@@ -56,6 +59,7 @@ interface Props {
 }
 
 const MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const MACHINE_TYPES = ["Centro de Usinagem", "Torno CNC", "Plu.go"];
 
 const RepresentativeManager = ({ userId }: Props) => {
   const { toast } = useToast();
@@ -82,14 +86,13 @@ const RepresentativeManager = ({ userId }: Props) => {
 
   // Goal editing
   const [editingGoal, setEditingGoal] = useState<string | null>(null);
-  const [goalValue, setGoalValue] = useState("");
-  const [goalQtd, setGoalQtd] = useState("");
+  const [goalByType, setGoalByType] = useState<Record<string, string>>({});
 
   const fetchAll = async () => {
     const [repsRes, goalsRes, dealsRes] = await Promise.all([
       supabase.from("representatives" as any).select("*").order("nome"),
       supabase.from("monthly_goals" as any).select("*"),
-      supabase.from("deals" as any).select("id, representative_id, final_price, gross_profit, net_profit, gross_margin_percent, net_margin_percent, seller_commission_value, manager_commission_value, status, closed_at"),
+      supabase.from("deals" as any).select("id, representative_id, final_price, gross_profit, net_profit, gross_margin_percent, net_margin_percent, seller_commission_value, manager_commission_value, status, closed_at, machine_type"),
     ]);
     if (repsRes.data) setReps(repsRes.data as unknown as Representative[]);
     if (goalsRes.data) setGoals(goalsRes.data as unknown as MonthlyGoal[]);
@@ -151,16 +154,18 @@ const RepresentativeManager = ({ userId }: Props) => {
     fetchAll();
   };
 
-  const handleSaveGoal = async (repId: string) => {
-    const val = parseFloat(goalValue) || 0;
-    const qtd = parseInt(goalQtd) || 0;
-    const existing = goals.find(g => g.representative_id === repId && g.mes === filterMonth && g.ano === filterYear);
-    if (existing) {
-      await supabase.from("monthly_goals" as any).update({ meta_valor: val, meta_quantidade: qtd } as any).eq("id", existing.id);
-    } else {
-      await supabase.from("monthly_goals" as any).insert({ user_id: userId, representative_id: repId, mes: filterMonth, ano: filterYear, meta_valor: val, meta_quantidade: qtd } as any);
+  const handleSaveGoals = async (repId: string) => {
+    for (const mt of MACHINE_TYPES) {
+      const qtd = parseInt(goalByType[mt] || "0") || 0;
+      if (qtd <= 0) continue;
+      const existing = goals.find(g => g.representative_id === repId && g.mes === filterMonth && g.ano === filterYear && g.machine_type === mt);
+      if (existing) {
+        await supabase.from("monthly_goals" as any).update({ meta_quantidade: qtd } as any).eq("id", existing.id);
+      } else {
+        await supabase.from("monthly_goals" as any).insert({ user_id: userId, representative_id: repId, mes: filterMonth, ano: filterYear, meta_valor: 0, meta_quantidade: qtd, machine_type: mt } as any);
+      }
     }
-    toast({ title: "Meta salva!" });
+    toast({ title: "Metas salvas!" });
     setEditingGoal(null);
     fetchAll();
   };
@@ -168,9 +173,27 @@ const RepresentativeManager = ({ userId }: Props) => {
   // Compute performance per representative for selected month/year
   const performance = useMemo(() => {
     return reps.map(rep => {
-      const goal = goals.find(g => g.representative_id === rep.id && g.mes === filterMonth && g.ano === filterYear);
-      const metaValor = goal ? goal.meta_valor : rep.meta_mensal_padrao;
-      const metaQtd = goal ? goal.meta_quantidade : (rep.meta_quantidade || 0);
+      const repGoals = goals.filter(g => g.representative_id === rep.id && g.mes === filterMonth && g.ano === filterYear);
+
+      // Goals by machine type
+      const goalsByType = MACHINE_TYPES.map(mt => {
+        const g = repGoals.find(g => g.machine_type === mt);
+        const metaQtd = g ? g.meta_quantidade : 0;
+
+        const closedDeals = deals.filter(d => {
+          if (d.representative_id !== rep.id || d.status !== "closed" || !d.closed_at) return false;
+          const dt = new Date(d.closed_at);
+          return (dt.getMonth() + 1) === filterMonth && dt.getFullYear() === filterYear && d.machine_type === mt;
+        });
+        const vendido = closedDeals.length;
+        const pct = metaQtd > 0 ? (vendido / metaQtd) * 100 : 0;
+        return { type: mt, metaQtd, vendido, pct };
+      });
+
+      // Totals
+      const totalMeta = goalsByType.reduce((s, g) => s + g.metaQtd, 0);
+      const totalVendido = goalsByType.reduce((s, g) => s + g.vendido, 0);
+      const totalPct = totalMeta > 0 ? (totalVendido / totalMeta) * 100 : 0;
 
       const repDeals = deals.filter(d => {
         if (d.representative_id !== rep.id || d.status !== "closed" || !d.closed_at) return false;
@@ -178,9 +201,8 @@ const RepresentativeManager = ({ userId }: Props) => {
         return (dt.getMonth() + 1) === filterMonth && dt.getFullYear() === filterYear;
       });
 
-      const totalDeals = deals.filter(d => d.representative_id === rep.id && ((d.closed_at && (() => { const dt = new Date(d.closed_at!); return (dt.getMonth() + 1) === filterMonth && dt.getFullYear() === filterYear; })()) || (d.status === "open")));
+      const allCount = deals.filter(d => d.representative_id === rep.id && ((d.closed_at && (() => { const dt = new Date(d.closed_at!); return (dt.getMonth() + 1) === filterMonth && dt.getFullYear() === filterYear; })()) || (d.status === "open"))).length;
       const closedCount = repDeals.length;
-      const allCount = totalDeals.length;
 
       const vendido = repDeals.reduce((s, d) => s + d.final_price, 0);
       const lucroBruto = repDeals.reduce((s, d) => s + d.gross_profit, 0);
@@ -189,10 +211,8 @@ const RepresentativeManager = ({ userId }: Props) => {
       const avgGrossMargin = closedCount > 0 ? repDeals.reduce((s, d) => s + d.gross_margin_percent, 0) / closedCount : 0;
       const avgNetMargin = closedCount > 0 ? repDeals.reduce((s, d) => s + d.net_margin_percent, 0) / closedCount : 0;
       const closingRate = allCount > 0 ? (closedCount / allCount) * 100 : 0;
-      const metaPct = metaValor > 0 ? (vendido / metaValor) * 100 : 0;
-      const metaQtdPct = metaQtd > 0 ? (closedCount / metaQtd) * 100 : 0;
 
-      return { rep, metaValor, metaQtd, vendido, metaPct, metaQtdPct, lucroBruto, lucroLiquido, comissaoTotal, avgGrossMargin, avgNetMargin, closingRate, closedCount };
+      return { rep, goalsByType, totalMeta, totalVendido, totalPct, vendido, lucroBruto, lucroLiquido, comissaoTotal, avgGrossMargin, avgNetMargin, closingRate, closedCount };
     });
   }, [reps, goals, deals, filterMonth, filterYear]);
 
@@ -294,13 +314,13 @@ const RepresentativeManager = ({ userId }: Props) => {
         </div>
       </div>
 
-      {/* Performance table */}
+      {/* Performance cards */}
       {performance.length === 0 ? (
         <p className="text-muted-foreground text-center py-8">Nenhum representante cadastrado.</p>
       ) : (
-        <ScrollArea className="h-[600px]">
+        <ScrollArea className="h-[700px]">
           <div className="space-y-3">
-            {performance.map(({ rep, metaValor, metaQtd, vendido, metaPct, metaQtdPct, lucroBruto, lucroLiquido, comissaoTotal, avgGrossMargin, avgNetMargin, closingRate, closedCount }) => (
+            {performance.map(({ rep, goalsByType, totalMeta, totalVendido, totalPct, vendido, lucroBruto, lucroLiquido, comissaoTotal, avgGrossMargin, avgNetMargin, closingRate, closedCount }) => (
               <Card key={rep.id} className={`border-border p-4 shadow-sm ${rep.status === "INATIVO" ? "bg-muted/30 opacity-60" : "bg-card"}`}>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
@@ -317,63 +337,76 @@ const RepresentativeManager = ({ userId }: Props) => {
                       )}
                     </div>
 
-                    {/* Meta progress */}
+                    {/* Meta por tipo de máquina */}
                     <div className="mb-3">
-                      <div className="flex items-center justify-between text-xs mb-1">
+                      <div className="flex items-center justify-between text-xs mb-2">
                         <span className="text-muted-foreground flex items-center gap-1">
-                          <Target className="h-3 w-3" /> Meta: {formatUsd(metaValor)}
+                          <Target className="h-3 w-3" /> Meta Total: {totalMeta} máquinas
                         </span>
                         <div className="flex items-center gap-2">
-                          <span className={`font-bold ${getMetaColor(metaPct)}`}>{formatPct(metaPct)}</span>
+                          <span className={`font-bold ${getMetaColor(totalPct)}`}>{formatPct(totalPct)}</span>
+                          <span className="text-muted-foreground">({totalVendido}/{totalMeta})</span>
                           <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => {
                             if (editingGoal === rep.id) { setEditingGoal(null); } else {
                               setEditingGoal(rep.id);
-                              const g = goals.find(g => g.representative_id === rep.id && g.mes === filterMonth && g.ano === filterYear);
-                              setGoalValue(String(g ? g.meta_valor : rep.meta_mensal_padrao));
-                              setGoalQtd(String(g ? g.meta_quantidade : (rep.meta_quantidade || 0)));
+                              const byType: Record<string, string> = {};
+                              MACHINE_TYPES.forEach(mt => {
+                                const g = goals.find(g => g.representative_id === rep.id && g.mes === filterMonth && g.ano === filterYear && g.machine_type === mt);
+                                byType[mt] = String(g ? g.meta_quantidade : 0);
+                              });
+                              setGoalByType(byType);
                             }
                           }}>
                             <Edit2 className="h-3 w-3" />
                           </Button>
                         </div>
                       </div>
-                      <Progress value={Math.min(metaPct, 100)} className={`h-2 ${getMetaBg(metaPct)}`} />
-                      <div className="flex justify-between text-xs text-muted-foreground mt-0.5">
-                        <span>Realizado: {formatUsd(vendido)}</span>
-                        <span>{closedCount} vendas</span>
-                      </div>
-                      {metaQtd > 0 && (
-                        <div className="mt-2">
-                          <div className="flex items-center justify-between text-xs mb-1">
-                            <span className="text-muted-foreground">Meta Qtd: {metaQtd} máquinas</span>
-                            <span className={`font-bold ${getMetaColor(metaQtdPct)}`}>{formatPct(metaQtdPct)}</span>
+                      <Progress value={Math.min(totalPct, 100)} className={`h-2 ${getMetaBg(totalPct)}`} />
+
+                      {/* Breakdown by type */}
+                      <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+                        {goalsByType.map(({ type, metaQtd, vendido: v, pct }) => (
+                          <div key={type} className="rounded border border-border p-1.5 bg-secondary/20">
+                            <div className="font-medium truncate">{type}</div>
+                            <div className="flex items-center justify-between mt-0.5">
+                              <span className="text-muted-foreground">{v}/{metaQtd}</span>
+                              {metaQtd > 0 && <span className={`font-bold ${getMetaColor(pct)}`}>{formatPct(pct)}</span>}
+                            </div>
+                            {metaQtd > 0 && <Progress value={Math.min(pct, 100)} className={`h-1 mt-1 ${getMetaBg(pct)}`} />}
                           </div>
-                          <Progress value={Math.min(metaQtdPct, 100)} className={`h-2 ${getMetaBg(metaQtdPct)}`} />
-                          <div className="text-xs text-muted-foreground mt-0.5">{closedCount} de {metaQtd} máquinas</div>
-                        </div>
-                      )}
+                        ))}
+                      </div>
                     </div>
 
-                    {/* Edit goal inline */}
+                    {/* Edit goals inline */}
                     {editingGoal === rep.id && (
-                      <div className="flex items-center gap-2 mb-3 p-2 rounded border border-border bg-secondary/30 flex-wrap">
-                        <Label className="text-xs text-muted-foreground whitespace-nowrap">Meta {MONTHS[filterMonth - 1]}/{filterYear}:</Label>
-                        <Input type="number" step="0.01" value={goalValue} onChange={e => setGoalValue(e.target.value)} className="h-7 text-xs w-32 bg-background" placeholder="Valor US$" />
-                        <Label className="text-xs text-muted-foreground whitespace-nowrap">Qtd:</Label>
-                        <Input type="number" step="1" value={goalQtd} onChange={e => setGoalQtd(e.target.value)} className="h-7 text-xs w-20 bg-background" placeholder="0" />
-                        <Button size="sm" className="h-7 text-xs" onClick={() => handleSaveGoal(rep.id)}><Save className="h-3 w-3" /></Button>
-                        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditingGoal(null)}><X className="h-3 w-3" /></Button>
+                      <div className="mb-3 p-2 rounded border border-border bg-secondary/30">
+                        <Label className="text-xs text-muted-foreground mb-2 block">Metas {MONTHS[filterMonth - 1]}/{filterYear} por tipo:</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {MACHINE_TYPES.map(mt => (
+                            <div key={mt}>
+                              <Label className="text-xs text-muted-foreground">{mt}</Label>
+                              <Input type="number" step="1" min="0" value={goalByType[mt] || "0"} onChange={e => setGoalByType(prev => ({ ...prev, [mt]: e.target.value }))} className="h-7 text-xs bg-background" />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex gap-2 mt-2">
+                          <Button size="sm" className="h-7 text-xs" onClick={() => handleSaveGoals(rep.id)}><Save className="h-3 w-3 mr-1" /> Salvar</Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditingGoal(null)}><X className="h-3 w-3" /></Button>
+                        </div>
                       </div>
                     )}
 
                     {/* KPIs grid */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
+                      <div><span className="text-muted-foreground">Faturamento:</span> <span className="font-medium">{formatUsd(vendido)}</span></div>
                       <div><span className="text-muted-foreground">Lucro Bruto:</span> <span className="font-medium text-accent">{formatUsd(lucroBruto)}</span></div>
                       <div className="bg-accent/10 rounded px-1"><span className="text-muted-foreground">Lucro Líquido:</span> <span className={`font-bold ${lucroLiquido < 0 ? "text-destructive" : "text-accent"}`}>{formatUsd(lucroLiquido)}</span></div>
                       <div><span className="text-muted-foreground">Comissão Total:</span> <span className="font-medium">{formatUsd(comissaoTotal)}</span></div>
                       <div><span className="text-muted-foreground">Taxa Fechamento:</span> <span className="font-medium">{formatPct(closingRate)}</span></div>
                       <div><span className="text-muted-foreground">M. Bruta Média:</span> <span className="font-medium">{formatPct(avgGrossMargin)}</span></div>
                       <div className="bg-accent/10 rounded px-1"><span className="text-muted-foreground">M. Líquida Média:</span> <span className={`font-bold ${avgNetMargin < 0 ? "text-destructive" : "text-accent"}`}>{formatPct(avgNetMargin)}</span></div>
+                      <div><span className="text-muted-foreground">Vendas:</span> <span className="font-medium">{closedCount}</span></div>
                     </div>
                   </div>
 
