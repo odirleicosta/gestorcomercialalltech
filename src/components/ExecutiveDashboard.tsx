@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Users,
   AlertTriangle, ArrowUpRight, ArrowDownRight, Gauge, CheckCircle2, XCircle,
+  Flame, Trophy, Zap, AlertCircle,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -203,20 +204,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     return data;
   }, [deals, activeMonths, filterYear, filterRep]);
 
-  // Goal alerts
-  const goalAlerts = useMemo(() => {
-    const alerts: string[] = [];
-    if (filterMode !== "month") return alerts;
-    const dayOfMonth = now.getDate();
-    const daysInMonth = new Date(filterYear, filterMonth, 0).getDate();
-    const progressPct = (dayOfMonth / daysInMonth) * 100;
-    repRanking.forEach(rep => {
-      if (rep.metaQtd > 0 && rep.pctQtd < progressPct * 0.8) {
-        alerts.push(`⚠️ ${rep.nome}: ${rep.pctQtd.toFixed(0)}% da meta (${rep.count}/${rep.metaQtd})`);
-      }
-    });
-    return alerts;
-  }, [repRanking, filterMonth, filterYear, filterMode]);
+
 
   // Historical weekly average (last 3 months)
   const historicalAvg = useMemo(() => {
@@ -257,6 +245,39 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     }
     return { totalDaysPeriod: total, elapsedDays: elapsed };
   }, [activeMonths, filterYear, isCurrentYear, currentMonthNum]);
+
+  // Commission totals for faturamento block
+  const commissionTotal = useMemo(() => {
+    const current = getMultiMonthClosed(activeMonths, filterYear, filterRep);
+    return current.reduce((s, d) => s + d.seller_commission_value + d.manager_commission_value, 0);
+  }, [deals, activeMonths, filterYear, filterRep]);
+
+  // Smart alerts (pre-computed, used in render)
+  const smartAlertsMemo = useMemo(() => {
+    const alerts: string[] = [];
+    if (filterMode !== "month") return alerts;
+    const dayOfMonth = now.getDate();
+    const daysInMonth = new Date(filterYear, filterMonth, 0).getDate();
+    const progressPct = (dayOfMonth / daysInMonth) * 100;
+    const totalMeta = repRanking.reduce((s, r) => s + r.metaQtd, 0);
+    const totalSoldCalc = getMultiMonthClosed(activeMonths, filterYear, filterRep).length;
+    repRanking.forEach(rep => {
+      if (rep.metaQtd > 0) {
+        const faltaRep = Math.max(0, rep.metaQtd - rep.count);
+        if (faltaRep > 0 && rep.pctQtd < progressPct * 0.8) {
+          alerts.push(`${rep.nome} precisa vender +${faltaRep} máquina${faltaRep > 1 ? "s" : ""} para atingir a meta`);
+        }
+      }
+    });
+    if (totalMeta > 0) {
+      const teamPct = (totalSoldCalc / totalMeta) * 100;
+      if (teamPct < progressPct) {
+        const diff = Math.round(progressPct - teamPct);
+        alerts.push(`Equipe está ${diff}% abaixo do ritmo necessário`);
+      }
+    }
+    return alerts;
+  }, [repRanking, filterMonth, filterYear, filterMode, activeMonths, filterRep, deals]);
 
   if (loading) return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
 
@@ -302,32 +323,45 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     setFilterQuarter(null);
   };
 
+  // Add rhythm alert to smart alerts (not a hook - computed after early return)
+  const smartAlerts = [...smartAlertsMemo];
+  if (!noRitmo && diasRestantes > 0) {
+    smartAlerts.push(`Ritmo atual: ${ritmoAtual.toFixed(1)}/sem — necessário: ${ritmoNecessario.toFixed(1)}/sem`);
+  }
+
+  const pctColor = pctAtingido >= 80 ? "text-[hsl(142,71%,45%)]" : pctAtingido >= 50 ? "text-[hsl(38,92%,50%)]" : "text-[hsl(0,72%,51%)]";
+  const pctBg = pctAtingido >= 80 ? "bg-[hsl(142,71%,45%)]" : pctAtingido >= 50 ? "bg-[hsl(38,92%,50%)]" : "bg-[hsl(0,72%,51%)]";
+  const pctGlow = pctAtingido >= 80 ? "wr-card-glow-green" : pctAtingido >= 50 ? "wr-card-glow-yellow" : "wr-card-glow-red";
+
   return (
-    <div className="space-y-8 animate-fade-in">
+    <div className="war-room space-y-6 animate-fade-in rounded-xl p-6 -mx-2">
       {/* Header */}
-      <div>
-        <h2 className="font-heading text-2xl font-bold text-foreground">Dashboard Comercial</h2>
-        <p className="text-sm text-muted-foreground mt-0.5">{periodLabel}</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-heading text-2xl font-bold text-[hsl(var(--wr-text))] flex items-center gap-2">
+            <Zap className="h-6 w-6 text-[hsl(var(--wr-yellow))]" />
+            WAR ROOM
+          </h2>
+          <p className="text-sm text-[hsl(var(--wr-text-muted))] mt-0.5">{periodLabel}</p>
+        </div>
       </div>
 
       {/* ─── FILTROS ─── */}
       <div className="space-y-3">
-        {/* Ano */}
         <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide w-10">Ano</span>
+          <span className="text-xs font-semibold text-[hsl(var(--wr-text-muted))] uppercase tracking-wide w-10">Ano</span>
           <div className="flex gap-1.5">
             {[2025, 2026, 2027].map(y => (
               <button key={y} onClick={() => setFilterYear(y)}
                 className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                  filterYear === y ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  filterYear === y ? "bg-[hsl(var(--wr-blue))] text-white shadow-sm" : "bg-[hsl(var(--wr-card-highlight))] text-[hsl(var(--wr-text-muted))] hover:bg-[hsl(var(--wr-card))]"
                 }`}>{y}</button>
             ))}
           </div>
         </div>
 
-        {/* Mês */}
         <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide w-10">Mês</span>
+          <span className="text-xs font-semibold text-[hsl(var(--wr-text-muted))] uppercase tracking-wide w-10">Mês</span>
           <div className="flex flex-wrap gap-1.5">
             {SHORT_MONTHS.map((m, i) => {
               const monthNum = i + 1;
@@ -336,39 +370,39 @@ const ExecutiveDashboard = ({ userId }: Props) => {
               return (
                 <button key={i} onClick={() => handleMonthClick(monthNum)}
                   className={`px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                    isActive ? "bg-primary text-primary-foreground shadow-sm"
-                    : isInRange ? "bg-primary/15 text-primary"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    isActive ? "bg-[hsl(var(--wr-blue))] text-white shadow-sm"
+                    : isInRange ? "bg-[hsl(var(--wr-blue))]/20 text-[hsl(var(--wr-blue))]"
+                    : "bg-[hsl(var(--wr-card-highlight))] text-[hsl(var(--wr-text-muted))] hover:bg-[hsl(var(--wr-card))]"
                   }`}>{m}</button>
               );
             })}
           </div>
         </div>
 
-        {/* Trimestre */}
         <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide w-10">Período</span>
+          <span className="text-xs font-semibold text-[hsl(var(--wr-text-muted))] uppercase tracking-wide w-10">Período</span>
           <div className="flex gap-1.5">
             {QUARTERS.map((q, i) => (
               <button key={i} onClick={() => handleQuarterClick(i)}
                 className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                  filterMode === "quarter" && filterQuarter === i ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  filterMode === "quarter" && filterQuarter === i ? "bg-[hsl(var(--wr-blue))] text-white shadow-sm" : "bg-[hsl(var(--wr-card-highlight))] text-[hsl(var(--wr-text-muted))] hover:bg-[hsl(var(--wr-card))]"
                 }`}>{q.label}</button>
             ))}
             <button onClick={handleYearClick}
               className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                filterMode === "year" ? "bg-primary text-primary-foreground shadow-sm" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                filterMode === "year" ? "bg-[hsl(var(--wr-blue))] text-white shadow-sm" : "bg-[hsl(var(--wr-card-highlight))] text-[hsl(var(--wr-text-muted))] hover:bg-[hsl(var(--wr-card))]"
               }`}>Ano Completo</button>
           </div>
         </div>
 
-        {/* Rep filter — kept as small select */}
         {reps.length > 0 && (
           <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide w-10">Rep.</span>
+            <span className="text-xs font-semibold text-[hsl(var(--wr-text-muted))] uppercase tracking-wide w-10">Rep.</span>
             <Select value={filterRep} onValueChange={setFilterRep}>
-              <SelectTrigger className="w-[180px] bg-card border-border text-sm h-8 rounded-full"><SelectValue /></SelectTrigger>
-              <SelectContent className="bg-popover border-border z-50">
+              <SelectTrigger className="w-[180px] bg-[hsl(var(--wr-card))] border-[hsl(var(--wr-border))] text-[hsl(var(--wr-text))] text-sm h-8 rounded-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-[hsl(var(--wr-card))] border-[hsl(var(--wr-border))] text-[hsl(var(--wr-text))]">
                 <SelectItem value="all">Todos</SelectItem>
                 {reps.map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
               </SelectContent>
@@ -377,221 +411,241 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         )}
       </div>
 
-      {/* Goal Alerts */}
-      {goalAlerts.length > 0 && (
-        <div className="bg-warning/5 border border-warning/20 rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="h-4 w-4 text-warning" />
-            <span className="text-sm font-semibold text-foreground">Alertas de Metas</span>
+      {/* ═══ BLOCO 1: STATUS GLOBAL (Grande) ═══ */}
+      <section className={`wr-card ${pctGlow}`}>
+        <div className="flex items-center gap-2 mb-4">
+          <Target className="h-5 w-5 text-[hsl(var(--wr-blue))]" />
+          <h3 className="font-heading text-lg font-bold text-[hsl(var(--wr-text))] uppercase tracking-wide">Status Global</h3>
+        </div>
+        <div className="grid grid-cols-3 gap-6 mb-6">
+          <div className="text-center">
+            <p className="text-xs font-medium text-[hsl(var(--wr-text-muted))] uppercase tracking-wide mb-1">Meta</p>
+            <p className="font-heading text-4xl font-black text-[hsl(var(--wr-text))]">{totalMetaQtd}</p>
+            <p className="text-xs text-[hsl(var(--wr-text-muted))]">máquinas</p>
           </div>
-          <div className="space-y-1">
-            {goalAlerts.map((a, i) => (
-              <p key={i} className="text-xs text-muted-foreground">{a}</p>
-            ))}
+          <div className="text-center">
+            <p className="text-xs font-medium text-[hsl(var(--wr-text-muted))] uppercase tracking-wide mb-1">Vendido</p>
+            <p className="font-heading text-4xl font-black text-[hsl(142,71%,45%)]">{totalSold}</p>
+            <p className="text-xs text-[hsl(var(--wr-text-muted))]">fechadas</p>
+          </div>
+          <div className="text-center">
+            <p className="text-xs font-medium text-[hsl(var(--wr-text-muted))] uppercase tracking-wide mb-1">% Atingido</p>
+            <p className={`font-heading text-4xl font-black ${pctColor}`}>{formatPct(pctAtingido)}</p>
+            <p className="text-xs text-[hsl(var(--wr-text-muted))]">
+              {faltam > 0 ? `faltam ${faltam}` : "Meta batida! 🎉"}
+            </p>
           </div>
         </div>
-      )}
-
-      {/* ─── BLOCO 1: META GLOBAL DO MÊS ─── */}
-      <section>
-        <SectionTitle icon={<Target className="h-4 w-4" />} title="Meta Global" />
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-          <CleanCard label="Meta" value={String(totalMetaQtd)} sub="máquinas" color="text-info" />
-          <CleanCard label="Vendidas" value={String(totalSold)} sub="fechadas" color="text-accent" variation={vendasVar} />
-          <CleanCard label="% Atingido" value={formatPct(pctAtingido)} color={pctAtingido >= 100 ? "text-accent" : pctAtingido >= 75 ? "text-warning" : "text-destructive"} variation={metaVar} />
-          <CleanCard label="Faltam" value={String(faltam)} sub="para bater" color={faltam === 0 ? "text-accent" : "text-muted-foreground"} />
-        </div>
+        {/* Thermometer */}
         {totalMetaQtd > 0 && (
-          <Card className="bg-card border-border/50 shadow-sm rounded-lg p-5 mt-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground">Progresso Global</span>
-              <span className={`text-xs font-semibold ${pctAtingido >= 100 ? "text-accent" : pctAtingido >= 70 ? "text-warning" : "text-destructive"}`}>
-                {formatPct(pctAtingido)}
-              </span>
-            </div>
-            <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all duration-500 ${pctAtingido >= 100 ? "bg-accent" : pctAtingido >= 70 ? "bg-warning" : "bg-destructive"}`}
-                style={{ width: `${Math.min(pctAtingido, 100)}%` }}
-              />
+          <div>
+            <div className="wr-thermometer">
+              <div className={`wr-thermometer-fill ${pctBg}`} style={{ width: `${Math.min(pctAtingido, 100)}%` }} />
             </div>
             <div className="flex justify-between mt-2">
-              <span className="text-xs text-muted-foreground">Vendido: {totalSold}</span>
-              <span className="text-xs text-muted-foreground">
-                {totalSold >= totalMetaQtd ? `Excedeu em ${totalSold - totalMetaQtd}` : `Faltam ${faltam}`}
-              </span>
-              <span className="text-xs text-muted-foreground">Meta: {totalMetaQtd}</span>
+              <span className="text-xs text-[hsl(var(--wr-text-muted))]">0%</span>
+              <span className="text-xs text-[hsl(var(--wr-text-muted))]">50%</span>
+              <span className="text-xs text-[hsl(var(--wr-text-muted))]">100%</span>
             </div>
-          </Card>
+          </div>
         )}
       </section>
 
-      {/* ─── RITMO COMERCIAL ─── */}
-      {totalMetaQtd > 0 && diasRestantes > 0 && (
+      {/* ═══ BLOCO 2: RANKING DA EQUIPE ═══ */}
+      {repRanking.length > 0 && (
         <section>
-          <SectionTitle icon={<Gauge className="h-4 w-4" />} title="Ritmo Comercial" />
-          <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
-            <CleanCard label="Ritmo Atual" value={`${ritmoAtual.toFixed(1)}/sem`} sub={`${totalSold} em ${semanasPassadas.toFixed(1)} semanas`} color="text-info" />
-            <CleanCard label="Ritmo Necessário" value={`${ritmoNecessario.toFixed(1)}/sem`} sub={`${faltam} em ${semanasRestantes.toFixed(1)} semanas`} color={noRitmo ? "text-accent" : "text-destructive"} />
-            <Card className={`border-border/50 shadow-sm rounded-lg p-5 ${noRitmo ? "bg-accent/5 border-accent/20" : "bg-destructive/5 border-destructive/20"}`}>
-              <p className="text-xs font-medium text-muted-foreground mb-1">Status</p>
-              <div className="flex items-center gap-2">
-                {noRitmo
-                  ? <CheckCircle2 className="h-5 w-5 text-accent" />
-                  : <XCircle className="h-5 w-5 text-destructive" />
-                }
-                <p className={`font-heading text-sm font-bold ${noRitmo ? "text-accent" : "text-destructive"}`}>
-                  {faltam <= 0 ? "Meta batida! 🎉" : noRitmo ? "No ritmo para bater meta" : "Abaixo do ritmo necessário"}
-                </p>
-              </div>
-              {!noRitmo && <p className="text-xs text-muted-foreground mt-1">Necessário {ritmoDiario.toFixed(1)} vendas/dia</p>}
-            </Card>
+          <div className="flex items-center gap-2 mb-4">
+            <Trophy className="h-5 w-5 text-[hsl(var(--wr-yellow))]" />
+            <h3 className="font-heading text-lg font-bold text-[hsl(var(--wr-text))] uppercase tracking-wide">Ranking da Equipe</h3>
+          </div>
+          <div className="space-y-3">
+            {[...repRanking]
+              .sort((a, b) => b.pctQtd - a.pctQtd)
+              .map((rep, idx) => {
+                const faltamRep = Math.max(0, rep.metaQtd - rep.count);
+                const pctRep = rep.metaQtd > 0 ? (rep.count / rep.metaQtd) * 100 : 0;
+                const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}º`;
+                const statusColor = pctRep >= 100 ? "text-[hsl(142,71%,45%)]" : pctRep >= 70 ? "text-[hsl(38,92%,50%)]" : "text-[hsl(0,72%,51%)]";
+                const statusLabel = pctRep >= 100 ? "META BATIDA ✓" : pctRep >= 70 ? "ATENÇÃO" : "ABAIXO";
+                const glowClass = pctRep >= 100 ? "wr-card-glow-green" : pctRep >= 70 ? "wr-card-glow-yellow" : "wr-card-glow-red";
+
+                return (
+                  <div key={rep.id} className={`wr-card ${idx < 3 ? glowClass : ""} flex items-center gap-4`}>
+                    <span className="text-2xl w-10 text-center flex-shrink-0">{medal}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-heading font-bold text-[hsl(var(--wr-text))] truncate">{rep.nome}</p>
+                      <div className="flex items-center gap-4 mt-1">
+                        <span className="text-xs text-[hsl(var(--wr-text-muted))]">Meta: {rep.metaQtd}</span>
+                        <span className="text-xs text-[hsl(var(--wr-text))] font-semibold">Vendido: {rep.count}</span>
+                        <span className={`text-xs font-bold ${statusColor}`}>{formatPct(pctRep)}</span>
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      <span className={`text-xs font-black uppercase tracking-wider ${statusColor}`}>{statusLabel}</span>
+                      {faltamRep > 0 && (
+                        <p className="text-xs text-[hsl(var(--wr-text-muted))] mt-0.5">falta{faltamRep > 1 ? "m" : ""} {faltamRep}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         </section>
       )}
 
-      {/* ─── META x VENDIDO POR REPRESENTANTE ─── */}
-      {repRanking.length > 0 && (
+      {/* ═══ BLOCO 3: RITMO DE BATALHA ═══ */}
+      {totalMetaQtd > 0 && diasRestantes > 0 && (
         <section>
-          <SectionTitle icon={<Users className="h-4 w-4" />} title="Meta x Vendido por Representante" />
-          <Card className="bg-card border-border/50 shadow-sm rounded-lg overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border/50">
-                    <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Representante</th>
-                    <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Meta</th>
-                    <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Vendido</th>
-                    <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">% Atingido</th>
-                    <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Diferença</th>
-                    <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ritmo Atual</th>
-                    <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ritmo Nec.</th>
-                    <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...repRanking]
-                    .map(rep => {
-                      const faltamRep = Math.max(0, rep.metaQtd - rep.count);
-                      const pctRep = rep.metaQtd > 0 ? (rep.count / rep.metaQtd) * 100 : 0;
-                      const diffRep = rep.count - rep.metaQtd;
-                      const ritmoAtualRep = semanasPassadas > 0 ? rep.count / semanasPassadas : 0;
-                      const ritmoNecRep = semanasRestantes > 0 ? faltamRep / semanasRestantes : 0;
-                      const noRitmoRep = faltamRep <= 0 || ritmoAtualRep >= ritmoNecRep;
-                      return { ...rep, faltamRep, pctRep, diffRep, ritmoAtualRep, ritmoNecRep, noRitmoRep };
-                    })
-                    .sort((a, b) => a.pctRep - b.pctRep)
-                    .map((rep) => (
-                    <tr key={rep.id} className="border-b border-border/30 last:border-b-0 hover:bg-muted/30 transition-colors">
-                      <td className="py-3 px-4">
-                        <span className="font-medium text-foreground">{rep.nome}</span>
-                      </td>
-                      <td className="py-3 px-4 text-center text-muted-foreground">{rep.metaQtd}</td>
-                      <td className="py-3 px-4 text-center font-semibold text-foreground">{rep.count}</td>
-                      <td className="py-3 px-4 text-center">
-                        <span className={`text-sm font-semibold ${rep.pctRep >= 100 ? "text-accent" : rep.pctRep >= 70 ? "text-warning" : "text-destructive"}`}>
-                          {rep.metaQtd > 0 ? formatPct(rep.pctRep) : "—"}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <span className={`text-sm font-medium ${rep.diffRep >= 0 ? "text-accent" : "text-destructive"}`}>
-                          {rep.metaQtd > 0 ? (rep.diffRep >= 0 ? `+${rep.diffRep}` : String(rep.diffRep)) : "—"}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-center text-info font-medium">{rep.ritmoAtualRep.toFixed(1)}/sem</td>
-                      <td className="py-3 px-4 text-center font-medium text-muted-foreground">{rep.faltamRep > 0 ? `${rep.ritmoNecRep.toFixed(1)}/sem` : "—"}</td>
-                      <td className="py-3 px-4 text-center">
-                        {rep.metaQtd > 0 ? (
-                          <span className={`inline-flex items-center gap-1 text-xs font-semibold ${rep.noRitmoRep ? "text-accent" : "text-destructive"}`}>
-                            {rep.noRitmoRep ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
-                            {rep.faltamRep <= 0 ? "Batida ✓" : rep.noRitmoRep ? "No ritmo" : "Abaixo"}
-                          </span>
-                        ) : "—"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <div className="flex items-center gap-2 mb-4">
+            <Gauge className="h-5 w-5 text-[hsl(var(--wr-blue))]" />
+            <h3 className="font-heading text-lg font-bold text-[hsl(var(--wr-text))] uppercase tracking-wide">Ritmo de Batalha</h3>
+          </div>
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+            <div className="wr-card wr-card-glow-blue text-center">
+              <p className="text-xs font-medium text-[hsl(var(--wr-text-muted))] uppercase mb-2">Ritmo Atual</p>
+              <p className="font-heading text-3xl font-black text-[hsl(var(--wr-blue))]">{ritmoAtual.toFixed(1)}<span className="text-lg">/sem</span></p>
+              <p className="text-xs text-[hsl(var(--wr-text-muted))] mt-1">{totalSold} em {semanasPassadas.toFixed(1)} semanas</p>
             </div>
-          </Card>
+            <div className="wr-card text-center">
+              <p className="text-xs font-medium text-[hsl(var(--wr-text-muted))] uppercase mb-2">Ritmo Necessário</p>
+              <p className={`font-heading text-3xl font-black ${noRitmo ? "text-[hsl(142,71%,45%)]" : "text-[hsl(0,72%,51%)]"}`}>{ritmoNecessario.toFixed(1)}<span className="text-lg">/sem</span></p>
+              <p className="text-xs text-[hsl(var(--wr-text-muted))] mt-1">{faltam} em {semanasRestantes.toFixed(1)} semanas</p>
+            </div>
+            <div className={`wr-card text-center ${faltam <= 0 ? "wr-card-glow-green" : noRitmo ? "wr-card-glow-green" : ritmoAtual > 0 ? "wr-card-glow-red" : "wr-card-glow-yellow"}`}>
+              <p className="text-xs font-medium text-[hsl(var(--wr-text-muted))] uppercase mb-2">Status</p>
+              <p className="text-5xl mb-1">
+                {faltam <= 0 ? "🔥" : noRitmo ? "🟢" : "🔴"}
+              </p>
+              <p className={`font-heading text-sm font-black uppercase ${faltam <= 0 ? "text-[hsl(142,71%,45%)]" : noRitmo ? "text-[hsl(142,71%,45%)]" : "text-[hsl(0,72%,51%)]"}`}>
+                {faltam <= 0 ? "Meta batida!" : noRitmo ? "No ritmo" : "Abaixo do ritmo"}
+              </p>
+              {!noRitmo && <p className="text-xs text-[hsl(var(--wr-text-muted))] mt-1">Precisa {ritmoDiario.toFixed(1)} vendas/dia</p>}
+            </div>
+          </div>
         </section>
       )}
 
-      {/* ─── BLOCO 3: FATURAMENTO ─── */}
+      {/* ═══ BLOCO 4: FATURAMENTO ═══ */}
       <section>
-        <SectionTitle icon={<DollarSign className="h-4 w-4" />} title="Faturamento" />
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-          <CleanCard label="FOB Total" value={formatCompact(cur.fobTotal)} sub={`${cur.count} negociações fechadas`} color="text-info" variation={fobVar} />
-          <CleanCard label="CIF Total" value={formatCompact(cur.revenue)} sub={`Lucro Líq: ${formatCompact(cur.netProfit)}`} color="text-accent" variation={cifVar} />
+        <div className="flex items-center gap-2 mb-4">
+          <DollarSign className="h-5 w-5 text-[hsl(142,71%,45%)]" />
+          <h3 className="font-heading text-lg font-bold text-[hsl(var(--wr-text))] uppercase tracking-wide">Faturamento</h3>
+        </div>
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+          <WrMetricCard label="FOB Total" value={formatCompact(cur.fobTotal)} glow="blue" variation={fobVar} />
+          <WrMetricCard label="CIF Total" value={formatCompact(cur.revenue)} glow="green" variation={cifVar} />
+          <WrMetricCard label="Lucro Líquido" value={formatCompact(cur.netProfit)} glow="green" />
+          <WrMetricCard label="Comissão Total" value={formatCompact(commissionTotal)} glow="yellow" />
         </div>
       </section>
 
-      {/* ─── BLOCO 4: PIPELINE ─── */}
+      {/* ═══ BLOCO 5: ALERTAS INTELIGENTES ═══ */}
+      {smartAlerts.length > 0 && (
+        <section className="wr-card wr-card-glow-red">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertCircle className="h-5 w-5 text-[hsl(0,72%,51%)]" />
+            <h3 className="font-heading text-lg font-bold text-[hsl(var(--wr-text))] uppercase tracking-wide">Alertas</h3>
+          </div>
+          <div className="space-y-2">
+            {smartAlerts.map((alert, i) => (
+              <div key={i} className="flex items-start gap-2 bg-[hsl(0,72%,51%)]/10 rounded-lg px-4 py-3">
+                <AlertTriangle className="h-4 w-4 text-[hsl(38,92%,50%)] flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-[hsl(var(--wr-text))] font-medium">{alert}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ═══ PIPELINE ═══ */}
       <section>
-        <SectionTitle icon={<BarChart3 className="h-4 w-4" />} title="Pipeline" />
+        <div className="flex items-center gap-2 mb-4">
+          <BarChart3 className="h-5 w-5 text-[hsl(var(--wr-yellow))]" />
+          <h3 className="font-heading text-lg font-bold text-[hsl(var(--wr-text))] uppercase tracking-wide">Pipeline</h3>
+        </div>
         <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-          <CleanCard label="Em Negociação" value={String(pipelineData.totalOpen)} sub="negociações abertas" color="text-warning" />
-          <CleanCard label="Valor Total" value={formatCompact(pipelineData.totalValue)} sub="em aberto" color="text-info" />
-          <CleanCard label="Previsão Ponderada" value={formatCompact(pipelineData.weightedForecast)} sub="50% do valor aberto" color="text-accent" />
+          <WrMetricCard label="Em Negociação" value={String(pipelineData.totalOpen)} glow="yellow" sub="abertas" />
+          <WrMetricCard label="Valor Total" value={formatCompact(pipelineData.totalValue)} glow="blue" sub="em aberto" />
+          <WrMetricCard label="Previsão Ponderada" value={formatCompact(pipelineData.weightedForecast)} glow="green" sub="50% do valor" />
         </div>
       </section>
 
-      {/* ─── EVOLUÇÃO 6 MESES ─── */}
+      {/* ═══ EVOLUÇÃO 6 MESES ═══ */}
       <section>
-        <SectionTitle icon={<TrendingUp className="h-4 w-4" />} title="Evolução (6 meses)" />
-        <Card className="bg-card border-border/50 shadow-sm rounded-lg p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <TrendingUp className="h-5 w-5 text-[hsl(var(--wr-blue))]" />
+          <h3 className="font-heading text-lg font-bold text-[hsl(var(--wr-text))] uppercase tracking-wide">Evolução (6 meses)</h3>
+        </div>
+        <div className="wr-card">
           <ResponsiveContainer width="100%" height={240}>
             <AreaChart data={evolutionData}>
               <defs>
                 <linearGradient id="gradFat" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                  <stop offset="5%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="gradLucro" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="hsl(var(--accent))" stopOpacity={0} />
+                  <stop offset="5%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-              <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-              <YAxis tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} />
-              <Tooltip formatter={(v: number) => formatUsd(v)} contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid hsl(var(--border))' }} />
-              <Area type="monotone" dataKey="Faturamento" stroke="hsl(var(--primary))" fill="url(#gradFat)" strokeWidth={2} />
-              <Area type="monotone" dataKey="Lucro Líquido" stroke="hsl(var(--accent))" fill="url(#gradLucro)" strokeWidth={2} />
-              <RechartLegend wrapperStyle={{ fontSize: 12 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(217, 33%, 18%)" />
+              <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'hsl(215, 20%, 55%)' }} />
+              <YAxis tick={{ fontSize: 11, fill: 'hsl(215, 20%, 55%)' }} />
+              <Tooltip
+                formatter={(v: number) => formatUsd(v)}
+                contentStyle={{
+                  fontSize: 12, borderRadius: 8,
+                  background: 'hsl(217, 33%, 12%)',
+                  border: '1px solid hsl(217, 33%, 18%)',
+                  color: 'hsl(210, 40%, 98%)',
+                }}
+                labelStyle={{ color: 'hsl(215, 20%, 55%)' }}
+              />
+              <Area type="monotone" dataKey="Faturamento" stroke="hsl(221, 83%, 53%)" fill="url(#gradFat)" strokeWidth={2} />
+              <Area type="monotone" dataKey="Lucro Líquido" stroke="hsl(142, 71%, 45%)" fill="url(#gradLucro)" strokeWidth={2} />
+              <RechartLegend wrapperStyle={{ fontSize: 12, color: 'hsl(215, 20%, 55%)' }} />
             </AreaChart>
           </ResponsiveContainer>
-        </Card>
+        </div>
       </section>
     </div>
   );
 };
 
-/* --- Sub-components --- */
+/* --- WAR ROOM Sub-components --- */
 
-const SectionTitle = ({ icon, title }: { icon: React.ReactNode; title: string }) => (
-  <div className="flex items-center gap-2 mb-3">
-    <div className="text-muted-foreground">{icon}</div>
-    <h3 className="font-heading text-sm font-semibold text-foreground uppercase tracking-wide">{title}</h3>
-  </div>
-);
+const WrMetricCard = ({ label, value, glow, sub, variation }: {
+  label: string; value: string; glow: "green" | "red" | "yellow" | "blue"; sub?: string; variation?: number;
+}) => {
+  const glowClass = {
+    green: "wr-card-glow-green",
+    red: "wr-card-glow-red",
+    yellow: "wr-card-glow-yellow",
+    blue: "wr-card-glow-blue",
+  }[glow];
+  const valueColor = {
+    green: "text-[hsl(142,71%,45%)]",
+    red: "text-[hsl(0,72%,51%)]",
+    yellow: "text-[hsl(38,92%,50%)]",
+    blue: "text-[hsl(221,83%,53%)]",
+  }[glow];
 
-const CleanCard = ({ label, value, sub, color = "text-foreground", variation }: {
-  label: string; value: string; sub?: string; color?: string; variation?: number;
-}) => (
-  <Card className="bg-card border-border/50 shadow-sm rounded-lg p-5">
-    <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
-    <div className="flex items-end gap-2">
-      <p className={`font-heading text-2xl font-bold ${color}`}>{value}</p>
-      {variation !== undefined && variation !== 0 && (
-        <span className={`flex items-center gap-0.5 text-xs font-semibold mb-1 ${variation > 0 ? "text-accent" : "text-destructive"}`}>
-          {variation > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-          {variation > 0 ? "+" : ""}{variation.toFixed(0)}%
-        </span>
-      )}
+  return (
+    <div className={`wr-card ${glowClass}`}>
+      <p className="text-xs font-medium text-[hsl(var(--wr-text-muted))] uppercase tracking-wide mb-1">{label}</p>
+      <div className="flex items-end gap-2">
+        <p className={`font-heading text-2xl font-black ${valueColor}`}>{value}</p>
+        {variation !== undefined && variation !== 0 && (
+          <span className={`flex items-center gap-0.5 text-xs font-semibold mb-1 ${variation > 0 ? "text-[hsl(142,71%,45%)]" : "text-[hsl(0,72%,51%)]"}`}>
+            {variation > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+            {variation > 0 ? "+" : ""}{variation.toFixed(0)}%
+          </span>
+        )}
+      </div>
+      {sub && <p className="text-xs text-[hsl(var(--wr-text-muted))] mt-1">{sub}</p>}
     </div>
-    {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
-  </Card>
-);
+  );
+};
 
 export default ExecutiveDashboard;

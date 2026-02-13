@@ -200,6 +200,63 @@
   .stagger-4 { animation-delay: 0.2s; }
   .stagger-5 { animation-delay: 0.25s; }
   .stagger-6 { animation-delay: 0.3s; }
+
+  /* ── WAR ROOM ── */
+  .war-room {
+    --wr-bg: 220 25% 8%;
+    --wr-card: 217 33% 12%;
+    --wr-card-highlight: 217 33% 16%;
+    --wr-text: 210 40% 98%;
+    --wr-text-muted: 215 20% 55%;
+    --wr-green: 142 71% 45%;
+    --wr-red: 0 72% 51%;
+    --wr-yellow: 38 92% 50%;
+    --wr-blue: 221 83% 53%;
+    --wr-border: 217 33% 18%;
+    background: hsl(var(--wr-bg));
+    color: hsl(var(--wr-text));
+  }
+
+  .wr-card {
+    background: hsl(var(--wr-card));
+    border: 1px solid hsl(var(--wr-border));
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+  }
+
+  .wr-card-glow-green {
+    box-shadow: 0 0 20px -4px hsl(142 71% 45% / 0.25), inset 0 1px 0 hsl(142 71% 45% / 0.1);
+    border-color: hsl(142 71% 45% / 0.3);
+  }
+
+  .wr-card-glow-red {
+    box-shadow: 0 0 20px -4px hsl(0 72% 51% / 0.25), inset 0 1px 0 hsl(0 72% 51% / 0.1);
+    border-color: hsl(0 72% 51% / 0.3);
+  }
+
+  .wr-card-glow-yellow {
+    box-shadow: 0 0 20px -4px hsl(38 92% 50% / 0.25), inset 0 1px 0 hsl(38 92% 50% / 0.1);
+    border-color: hsl(38 92% 50% / 0.3);
+  }
+
+  .wr-card-glow-blue {
+    box-shadow: 0 0 20px -4px hsl(221 83% 53% / 0.25), inset 0 1px 0 hsl(221 83% 53% / 0.1);
+    border-color: hsl(221 83% 53% / 0.3);
+  }
+
+  .wr-thermometer {
+    height: 1.25rem;
+    border-radius: 9999px;
+    background: hsl(var(--wr-card-highlight));
+    overflow: hidden;
+  }
+
+  .wr-thermometer-fill {
+    height: 100%;
+    border-radius: 9999px;
+    transition: width 0.8s ease-out;
+    background: linear-gradient(90deg, currentColor 0%, currentColor 100%);
+  }
 }
 
 @keyframes fade-in {
