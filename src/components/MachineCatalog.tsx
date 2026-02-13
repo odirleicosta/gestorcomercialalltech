@@ -95,6 +95,23 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
     });
   }, [catalog, search, filterTipo, filterMarca]);
 
+  const calcMargin = (custo: number, venda: number) => {
+    if (venda <= 0) return null;
+    return ((venda - custo) / venda) * 100;
+  };
+
+  const marginColor = (pct: number | null) => {
+    if (pct === null) return "text-muted-foreground";
+    if (pct >= 30) return "text-[#22C55E]";
+    if (pct >= 20) return "text-[#EAB308]";
+    return "text-[#EF4444]";
+  };
+
+  const formatMargin = (pct: number | null) => {
+    if (pct === null) return "—";
+    return pct.toFixed(1) + "%";
+  };
+
   const formatUsd = (v: number) =>
     `$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -114,6 +131,10 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
     }
     if (precoVenda <= 0) {
       toast({ title: "Preço de Venda FOB é obrigatório", variant: "destructive" });
+      return;
+    }
+    if (precoVenda < fob) {
+      toast({ title: "Preço de venda não pode ser menor que o custo", variant: "destructive" });
       return;
     }
     if (catalog.some((m) => m.modelo.toLowerCase() === modelo.toLowerCase() && m.marca.toLowerCase() === marca.toLowerCase())) {
@@ -181,6 +202,10 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
       toast({ title: "Preço de Venda FOB é obrigatório", variant: "destructive" });
       return;
     }
+    if (precoVenda < fob) {
+      toast({ title: "Preço de venda não pode ser menor que o custo", variant: "destructive" });
+      return;
+    }
     // Check duplicate (exclude current)
     if (catalog.some((m) => m.id !== id && m.modelo.toLowerCase() === modelo.toLowerCase() && m.marca.toLowerCase() === marca.toLowerCase())) {
       toast({ title: "Modelo já cadastrado para esta marca", variant: "destructive" });
@@ -221,7 +246,7 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
       </div>
 
       {/* Add form */}
-      <div className="grid grid-cols-2 md:grid-cols-7 gap-3 mb-5">
+      <div className="grid grid-cols-2 md:grid-cols-8 gap-3 mb-5">
         <div>
           <Label className="mb-1 text-xs text-muted-foreground">Tipo</Label>
           <Input value={newTipo} onChange={(e) => setNewTipo(e.target.value)} placeholder="Ex: Torno CNC" className="bg-secondary/50 border-border text-sm" list="tipos-list" />
@@ -247,6 +272,15 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
         <div>
           <Label className="mb-1 text-xs text-muted-foreground">Preço Venda FOB (USD)</Label>
           <Input type="number" step="0.01" min="0" value={newPrecoVenda} onChange={(e) => setNewPrecoVenda(e.target.value)} placeholder="0,00" className="bg-secondary/50 border-border text-sm" />
+        </div>
+        <div>
+          <Label className="mb-1 text-xs text-muted-foreground">Margem</Label>
+          <div className="flex items-center h-10 px-3 rounded-md border border-border bg-muted/50">
+            {(() => {
+              const mg = calcMargin(parseFloat(newFob) || 0, parseFloat(newPrecoVenda) || 0);
+              return <span className={`text-sm font-semibold ${marginColor(mg)}`}>{formatMargin(mg)}</span>;
+            })()}
+          </div>
         </div>
         <div>
           <Label className="mb-1 text-xs text-muted-foreground">Informado por</Label>
@@ -299,6 +333,7 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
                 <TableHead>Modelo</TableHead>
                 <TableHead className="text-right">Custo FOB (USD)</TableHead>
                 <TableHead className="text-right">Preço Venda FOB (USD)</TableHead>
+                <TableHead className="text-right">Margem Padrão</TableHead>
                 <TableHead>Informado por</TableHead>
                 <TableHead>Atualização</TableHead>
                 <TableHead className="w-20"></TableHead>
@@ -331,6 +366,12 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
                       <TableCell>
                         <Input value={editState.informado_por} onChange={(e) => setEditState(s => ({ ...s, informado_por: e.target.value }))} className={editInputClass} />
                       </TableCell>
+                      <TableCell className="text-right">
+                        {(() => {
+                          const mg = calcMargin(parseFloat(editState.custo_fob) || 0, parseFloat(editState.preco_venda_fob) || 0);
+                          return <span className={`text-sm font-semibold ${marginColor(mg)}`}>{formatMargin(mg)}</span>;
+                        })()}
+                      </TableCell>
                     </>
                   ) : (
                     <>
@@ -339,6 +380,12 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
                       <TableCell className="text-sm font-medium">{m.modelo}</TableCell>
                       <TableCell className="text-right text-sm">{m.custo_fob > 0 ? formatUsd(m.custo_fob) : "—"}</TableCell>
                       <TableCell className="text-right text-sm">{(m.preco_venda_fob || 0) > 0 ? formatUsd(m.preco_venda_fob) : "—"}</TableCell>
+                      <TableCell className="text-right">
+                        {(() => {
+                          const mg = calcMargin(m.custo_fob, m.preco_venda_fob || 0);
+                          return <span className={`text-sm font-semibold ${marginColor(mg)}`}>{formatMargin(mg)}</span>;
+                        })()}
+                      </TableCell>
                       <TableCell className="text-xs text-muted-foreground">{m.informado_por || "—"}</TableCell>
                     </>
                   )}
