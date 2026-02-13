@@ -29,8 +29,10 @@ import {
   DollarSign, Percent, TrendingUp, TrendingDown, Package, Receipt,
   Save, Lock, Unlock, Trash2, Search, Eye, EyeOff, Users, History, Clock,
   ChevronsUpDown, Check, Plus, Pencil, X, ArrowUpDown, ArrowUp, ArrowDown,
-  Building2, Wrench, ChevronDown,
+  Building2, Wrench, ChevronDown, CalendarIcon,
 } from "lucide-react";
+import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -147,6 +149,8 @@ const DealManager = ({ userId }: Props) => {
   const [managerPct, setManagerPct] = useState("");
   const [observation, setObservation] = useState("");
   const [representativeId, setRepresentativeId] = useState("");
+  const [saleDate, setSaleDate] = useState<Date | undefined>(undefined);
+  const [saleDateOpen, setSaleDateOpen] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
   // Combobox open states
@@ -334,6 +338,7 @@ const DealManager = ({ userId }: Props) => {
       representative_id: representativeId && representativeId !== "none" ? representativeId : null,
       empresa_id: empresaId,
       modelo_id: modeloId || null,
+      ...(saleDate ? { created_at: saleDate.toISOString() } : {}),
     };
 
     const { error } = await supabase.from("deals" as any).insert(insert as any);
@@ -354,7 +359,7 @@ const DealManager = ({ userId }: Props) => {
 
   const resetForm = () => {
     setEmpresaId(""); setModeloId(""); setMachineType(""); setFobCost(""); setPrecoVendaFob(""); setDollarRate("");
-    setSellerPct(""); setManagerPct(""); setObservation(""); setRepresentativeId(""); setShowForm(false);
+    setSellerPct(""); setManagerPct(""); setObservation(""); setRepresentativeId(""); setSaleDate(undefined); setShowForm(false);
   };
 
   const handleConfirmSavePrice = async () => {
@@ -577,29 +582,6 @@ const DealManager = ({ userId }: Props) => {
         </div>
       </div>
 
-      {/* Default commission settings */}
-      <Card className="border-border bg-card p-4 shadow-sm">
-        <h3 className="text-sm font-semibold text-card-foreground mb-3 flex items-center gap-2">
-          <Percent className="h-4 w-4" /> Comissões Padrão
-        </h3>
-        <div className="flex flex-wrap gap-3 items-end">
-          <div>
-            <Label className="text-xs text-muted-foreground">Base</Label>
-            <div className="flex items-center h-8 px-3 text-xs bg-muted/50 border border-border rounded-md text-muted-foreground">FOB (fixo)</div>
-          </div>
-          <div>
-            <Label className="text-xs text-muted-foreground">Vendedor (%)</Label>
-            <Input type="number" step="0.01" value={defaultSellerPct} onChange={(e) => setDefaultSellerPct(parseFloat(e.target.value) || 0)} className="w-24 h-8 text-xs bg-secondary/50 border-border" />
-          </div>
-          <div>
-            <Label className="text-xs text-muted-foreground">Gestor (%)</Label>
-            <Input type="number" step="0.01" value={defaultManagerPct} onChange={(e) => setDefaultManagerPct(parseFloat(e.target.value) || 0)} className="w-24 h-8 text-xs bg-secondary/50 border-border" />
-          </div>
-          <Button size="sm" variant="outline" className="h-8 text-xs" onClick={handleSaveDefaults}>
-            <Save className="h-3 w-3 mr-1" /> Salvar Padrões
-          </Button>
-        </div>
-      </Card>
 
       {/* New deal form */}
       {showForm && (
@@ -752,6 +734,22 @@ const DealManager = ({ userId }: Props) => {
                   {simulation.hasDollar && ` (${simulation.managerCommBrl.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })})`}
                 </p>
               )}
+            </div>
+
+            {/* Data da Venda */}
+            <div>
+              <Label className="mb-1.5 text-sm text-muted-foreground">Data da Venda</Label>
+              <Popover open={saleDateOpen} onOpenChange={setSaleDateOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-10 bg-secondary/50 border-border", !saleDate && "text-muted-foreground")}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {saleDate ? format(saleDate, "dd/MM/yyyy") : "Hoje (automático)"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 bg-popover border-border z-50" align="start">
+                  <Calendar mode="single" selected={saleDate} onSelect={(d) => { setSaleDate(d); setSaleDateOpen(false); }} initialFocus className={cn("p-3 pointer-events-auto")} />
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="md:col-span-2 lg:col-span-2">
