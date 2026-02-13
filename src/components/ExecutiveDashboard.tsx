@@ -278,6 +278,32 @@ const ExecutiveDashboard = ({ userId }: Props) => {
           <CleanCard label="% Atingido" value={formatPct(pctAtingido)} color={pctAtingido >= 100 ? "text-accent" : pctAtingido >= 75 ? "text-warning" : "text-destructive"} variation={metaVar} />
           <CleanCard label="Faltam" value={String(faltam)} sub="para bater" color={faltam === 0 ? "text-accent" : "text-muted-foreground"} />
         </div>
+        {/* Progress bar */}
+        {totalMetaQtd > 0 && (
+          <Card className="bg-card border-border/50 shadow-sm rounded-lg p-5 mt-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-muted-foreground">Progresso Global</span>
+              <span className={`text-xs font-semibold ${pctAtingido >= 100 ? "text-accent" : pctAtingido >= 70 ? "text-warning" : "text-destructive"}`}>
+                {formatPct(pctAtingido)}
+              </span>
+            </div>
+            <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-500 ${pctAtingido >= 100 ? "bg-accent" : pctAtingido >= 70 ? "bg-warning" : "bg-destructive"}`}
+                style={{ width: `${Math.min(pctAtingido, 100)}%` }}
+              />
+            </div>
+            <div className="flex justify-between mt-2">
+              <span className="text-xs text-muted-foreground">Vendido: {totalSold}</span>
+              <span className="text-xs text-muted-foreground">
+                {totalSold >= totalMetaQtd
+                  ? `Excedeu em ${totalSold - totalMetaQtd}`
+                  : `Faltam ${faltam}`}
+              </span>
+              <span className="text-xs text-muted-foreground">Meta: {totalMetaQtd}</span>
+            </div>
+          </Card>
+        )}
       </section>
 
       {/* ─── RITMO COMERCIAL ─── */}
@@ -306,7 +332,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
       {repRanking.length > 0 && (
         <section>
-          <SectionTitle icon={<Users className="h-4 w-4" />} title="Performance por Representante" />
+          <SectionTitle icon={<Users className="h-4 w-4" />} title="Meta x Vendido por Representante" />
           <Card className="bg-card border-border/50 shadow-sm rounded-lg overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -314,7 +340,9 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                   <tr className="border-b border-border/50">
                     <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Representante</th>
                     <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Meta</th>
-                    <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Vendidas</th>
+                    <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Vendido</th>
+                    <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">% Atingido</th>
+                    <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Diferença</th>
                     <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ritmo Atual</th>
                     <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ritmo Nec.</th>
                     <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
@@ -324,15 +352,14 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                   {[...repRanking]
                     .map(rep => {
                       const faltamRep = Math.max(0, rep.metaQtd - rep.count);
+                      const pctRep = rep.metaQtd > 0 ? (rep.count / rep.metaQtd) * 100 : 0;
+                      const diffRep = rep.count - rep.metaQtd;
                       const ritmoAtualRep = semanasPassadas > 0 ? rep.count / semanasPassadas : 0;
                       const ritmoNecRep = semanasRestantes > 0 ? faltamRep / semanasRestantes : 0;
                       const noRitmoRep = faltamRep <= 0 || ritmoAtualRep >= ritmoNecRep;
-                      return { ...rep, faltamRep, ritmoAtualRep, ritmoNecRep, noRitmoRep };
+                      return { ...rep, faltamRep, pctRep, diffRep, ritmoAtualRep, ritmoNecRep, noRitmoRep };
                     })
-                    .sort((a, b) => {
-                      if (a.noRitmoRep === b.noRitmoRep) return b.count - a.count;
-                      return a.noRitmoRep ? 1 : -1;
-                    })
+                    .sort((a, b) => a.pctRep - b.pctRep)
                     .map((rep) => (
                     <tr key={rep.id} className="border-b border-border/30 last:border-b-0 hover:bg-muted/30 transition-colors">
                       <td className="py-3 px-4">
@@ -340,6 +367,16 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                       </td>
                       <td className="py-3 px-4 text-center text-muted-foreground">{rep.metaQtd}</td>
                       <td className="py-3 px-4 text-center font-semibold text-foreground">{rep.count}</td>
+                      <td className="py-3 px-4 text-center">
+                        <span className={`text-sm font-semibold ${rep.pctRep >= 100 ? "text-accent" : rep.pctRep >= 70 ? "text-warning" : "text-destructive"}`}>
+                          {rep.metaQtd > 0 ? formatPct(rep.pctRep) : "—"}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <span className={`text-sm font-medium ${rep.diffRep >= 0 ? "text-accent" : "text-destructive"}`}>
+                          {rep.metaQtd > 0 ? (rep.diffRep >= 0 ? `+${rep.diffRep}` : String(rep.diffRep)) : "—"}
+                        </span>
+                      </td>
                       <td className="py-3 px-4 text-center text-info font-medium">{rep.ritmoAtualRep.toFixed(1)}/sem</td>
                       <td className="py-3 px-4 text-center font-medium text-muted-foreground">{rep.faltamRep > 0 ? `${rep.ritmoNecRep.toFixed(1)}/sem` : "—"}</td>
                       <td className="py-3 px-4 text-center">
