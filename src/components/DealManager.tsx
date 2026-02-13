@@ -27,7 +27,6 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { loadCatalog, saveCatalog, type CatalogMachine } from "@/components/MachineCatalog";
 
 
 export const MACHINE_TYPES = ["Centro de Usinagem", "Torno CNC", "Plu.go"] as const;
@@ -156,10 +155,11 @@ const DealManager = ({ userId }: Props) => {
   // Load profile defaults and data sources
   useEffect(() => {
     const loadData = async () => {
-      const [profileRes, repsRes, empresasRes] = await Promise.all([
+      const [profileRes, repsRes, empresasRes, modelosRes] = await Promise.all([
         supabase.from("profiles" as any).select("default_seller_commission_pct, default_manager_commission_pct").eq("id", userId).single(),
         supabase.from("representatives" as any).select("id, nome, comissao_padrao_pct, comissao_gestor_pct").eq("status", "ATIVO").order("nome"),
         supabase.from("empresas" as any).select("id, nome, cidade").order("nome"),
+        supabase.from("machine_catalog" as any).select("id, marca, modelo, tipo, custo_fob, preco_venda_fob").order("marca"),
       ]);
       if (profileRes.data) {
         const d = profileRes.data as any;
@@ -168,9 +168,7 @@ const DealManager = ({ userId }: Props) => {
       }
       if (repsRes.data) setRepOptions(repsRes.data as unknown as RepOption[]);
       if (empresasRes.data) setEmpresas(empresasRes.data as unknown as Empresa[]);
-      // Load modelos from localStorage (same source as Catálogo tab)
-      const catalog = loadCatalog();
-      setModelos(catalog.map(c => ({
+      if (modelosRes.data) setModelos((modelosRes.data as any[]).map((c: any) => ({
         id: c.id,
         marca: c.marca,
         modelo: c.modelo,
@@ -354,14 +352,14 @@ const DealManager = ({ userId }: Props) => {
     setSellerPct(""); setManagerPct(""); setObservation(""); setRepresentativeId(""); setShowForm(false);
   };
 
-  const handleConfirmSavePrice = () => {
+  const handleConfirmSavePrice = async () => {
     if (!pendingSavePriceData) return;
-    const catalog = loadCatalog();
-    const idx = catalog.findIndex(m => m.id === pendingSavePriceData.modeloId);
-    if (idx >= 0) {
-      catalog[idx].preco_venda_fob = pendingSavePriceData.basePrice;
-      catalog[idx].updated_at = new Date().toISOString();
-      saveCatalog(catalog);
+    const { error } = await supabase
+      .from("machine_catalog" as any)
+      .update({ preco_venda_fob: pendingSavePriceData.basePrice } as any)
+      .eq("id", pendingSavePriceData.modeloId);
+    if (!error) {
+      setModelos(prev => prev.map(m => m.id === pendingSavePriceData.modeloId ? { ...m, preco_venda_fob: pendingSavePriceData.basePrice } : m));
       toast({ title: "Preço de venda atualizado no catálogo!" });
     }
     setShowSavePricePrompt(false);
