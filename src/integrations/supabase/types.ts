@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       calculations: {
         Row: {
+          client_name: string | null
           created_at: string
           desired_margin_percent: number
           estimated_profit: number
@@ -34,6 +35,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          client_name?: string | null
           created_at?: string
           desired_margin_percent?: number
           estimated_profit?: number
@@ -52,6 +54,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          client_name?: string | null
           created_at?: string
           desired_margin_percent?: number
           estimated_profit?: number

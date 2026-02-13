@@ -22,6 +22,7 @@ const CalculationHistory = ({ calculations, onDelete }: Props) => {
         <TableHeader>
           <TableRow>
             <TableHead>Data</TableHead>
+            <TableHead>Empresa</TableHead>
             <TableHead>Máquina</TableHead>
             <TableHead className="text-right">FOB</TableHead>
             <TableHead className="text-right">Imp. Est.</TableHead>
@@ -41,6 +42,7 @@ const CalculationHistory = ({ calculations, onDelete }: Props) => {
                 <TableCell className="text-xs whitespace-nowrap">
                   {new Date(c.created_at).toLocaleDateString("pt-BR")}
                 </TableCell>
+                <TableCell className="font-medium">{c.client_name || "—"}</TableCell>
                 <TableCell className="font-medium">{c.machine_name || "—"}</TableCell>
                 <TableCell className="text-right">{fmt(c.fob_cost)}</TableCell>
                 <TableCell className="text-right">{fmtPct(c.estimated_tax_percent)}</TableCell>

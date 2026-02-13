@@ -27,6 +27,7 @@ import Auth from "@/components/Auth";
 export interface SavedCalculation {
   id: string;
   machine_name: string;
+  client_name: string;
   fob_cost: number;
   estimated_tax_percent: number;
   estimated_tax_value: number;
@@ -206,6 +207,7 @@ const PriceCalculator = () => {
     const entry: SavedCalculation = {
       id: crypto.randomUUID(),
       machine_name: machineName,
+      client_name: clientName.trim(),
       fob_cost: parseFloat(fobCost) || 0,
       estimated_tax_percent: parseFloat(estimatedTaxPercent) || 0,
       estimated_tax_value: simulation.estimatedTaxValue,
