@@ -315,28 +315,40 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                     <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Representante</th>
                     <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Meta</th>
                     <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Vendidas</th>
-                    <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">FOB</th>
-                    <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">CIF</th>
-                    <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">%</th>
+                    <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ritmo Atual</th>
+                    <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Ritmo Nec.</th>
+                    <th className="text-center py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {repRanking.map((rep, i) => (
+                  {[...repRanking]
+                    .map(rep => {
+                      const faltamRep = Math.max(0, rep.metaQtd - rep.count);
+                      const ritmoAtualRep = semanasPassadas > 0 ? rep.count / semanasPassadas : 0;
+                      const ritmoNecRep = semanasRestantes > 0 ? faltamRep / semanasRestantes : 0;
+                      const noRitmoRep = faltamRep <= 0 || ritmoAtualRep >= ritmoNecRep;
+                      return { ...rep, faltamRep, ritmoAtualRep, ritmoNecRep, noRitmoRep };
+                    })
+                    .sort((a, b) => {
+                      if (a.noRitmoRep === b.noRitmoRep) return b.count - a.count;
+                      return a.noRitmoRep ? 1 : -1;
+                    })
+                    .map((rep) => (
                     <tr key={rep.id} className="border-b border-border/30 last:border-b-0 hover:bg-muted/30 transition-colors">
                       <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}º`}</span>
-                          <span className="font-medium text-foreground">{rep.nome}</span>
-                        </div>
+                        <span className="font-medium text-foreground">{rep.nome}</span>
                       </td>
                       <td className="py-3 px-4 text-center text-muted-foreground">{rep.metaQtd}</td>
                       <td className="py-3 px-4 text-center font-semibold text-foreground">{rep.count}</td>
-                      <td className="py-3 px-4 text-right text-muted-foreground">{formatCompact(rep.fobTotal)}</td>
-                      <td className="py-3 px-4 text-right font-medium text-foreground">{formatCompact(rep.revenue)}</td>
+                      <td className="py-3 px-4 text-center text-info font-medium">{rep.ritmoAtualRep.toFixed(1)}/sem</td>
+                      <td className="py-3 px-4 text-center font-medium text-muted-foreground">{rep.faltamRep > 0 ? `${rep.ritmoNecRep.toFixed(1)}/sem` : "—"}</td>
                       <td className="py-3 px-4 text-center">
-                        <span className={`text-sm font-semibold ${rep.pctQtd >= 100 ? "text-accent" : rep.pctQtd >= 75 ? "text-warning" : "text-destructive"}`}>
-                          {rep.metaQtd > 0 ? formatPct(rep.pctQtd) : "—"}
-                        </span>
+                        {rep.metaQtd > 0 ? (
+                          <span className={`inline-flex items-center gap-1 text-xs font-semibold ${rep.noRitmoRep ? "text-accent" : "text-destructive"}`}>
+                            {rep.noRitmoRep ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+                            {rep.faltamRep <= 0 ? "Batida ✓" : rep.noRitmoRep ? "No ritmo" : "Abaixo"}
+                          </span>
+                        ) : "—"}
                       </td>
                     </tr>
                   ))}
@@ -346,6 +358,8 @@ const ExecutiveDashboard = ({ userId }: Props) => {
           </Card>
         </section>
       )}
+
+
 
       {/* ─── BLOCO 3: FATURAMENTO DO MÊS ─── */}
       <section>
