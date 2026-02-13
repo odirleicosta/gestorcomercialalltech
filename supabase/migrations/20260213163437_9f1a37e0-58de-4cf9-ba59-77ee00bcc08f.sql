@@ -1,0 +1,1 @@
+ALTER TABLE public.machine_catalog ADD COLUMN preco_venda_fob numeric NOT NULL DEFAULT 0;

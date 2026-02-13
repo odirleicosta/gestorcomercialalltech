@@ -262,6 +262,7 @@ export type Database = {
           informado_por: string | null
           marca: string
           modelo: string
+          preco_venda_fob: number
           tipo: string
           updated_at: string
           user_id: string
@@ -273,6 +274,7 @@ export type Database = {
           informado_por?: string | null
           marca: string
           modelo: string
+          preco_venda_fob?: number
           tipo: string
           updated_at?: string
           user_id: string
@@ -284,6 +286,7 @@ export type Database = {
           informado_por?: string | null
           marca?: string
           modelo?: string
+          preco_venda_fob?: number
           tipo?: string
           updated_at?: string
           user_id?: string
