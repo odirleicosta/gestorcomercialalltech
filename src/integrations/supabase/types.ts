@@ -365,6 +365,50 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_visits: {
+        Row: {
+          ano: number
+          created_at: string
+          id: string
+          meta: number
+          quantidade: number
+          representative_id: string
+          semana: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          id?: string
+          meta?: number
+          quantidade?: number
+          representative_id: string
+          semana: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          id?: string
+          meta?: number
+          quantidade?: number
+          representative_id?: string
+          semana?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_visits_representative_id_fkey"
+            columns: ["representative_id"]
+            isOneToOne: false
+            referencedRelation: "representatives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
