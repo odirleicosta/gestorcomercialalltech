@@ -1,0 +1,1 @@
+ALTER TABLE public.calculations ADD COLUMN representative_id uuid REFERENCES public.representatives(id) DEFAULT NULL;

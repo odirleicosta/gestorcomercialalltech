@@ -28,6 +28,8 @@ export interface SavedCalculation {
   id: string;
   machine_name: string;
   client_name: string;
+  representative_id: string | null;
+  representative_name?: string;
   fob_cost: number;
   estimated_tax_percent: number;
   estimated_tax_value: number;
@@ -75,6 +77,8 @@ const PriceCalculator = () => {
   const [showMachineSuggestions, setShowMachineSuggestions] = useState(false);
   const [catalog, setCatalog] = useState<CatalogMachine[]>([]);
   const [showCatalogSuggestions, setShowCatalogSuggestions] = useState(false);
+  const [representatives, setRepresentatives] = useState<{id: string; nome: string}[]>([]);
+  const [selectedRepId, setSelectedRepId] = useState("");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -91,6 +95,8 @@ const PriceCalculator = () => {
     if (user) {
       fetchClients().then(setClients).catch(() => {});
       fetchCatalog().then(setCatalog).catch(() => {});
+      supabase.from("representatives" as any).select("id, nome").eq("status", "ATIVO").order("nome")
+        .then(({ data }) => { if (data) setRepresentatives(data as any); });
     }
   }, [user]);
 
@@ -208,6 +214,8 @@ const PriceCalculator = () => {
       id: crypto.randomUUID(),
       machine_name: machineName,
       client_name: clientName.trim(),
+      representative_id: selectedRepId || null,
+      representative_name: representatives.find(r => r.id === selectedRepId)?.nome || undefined,
       fob_cost: parseFloat(fobCost) || 0,
       estimated_tax_percent: parseFloat(estimatedTaxPercent) || 0,
       estimated_tax_value: simulation.estimatedTaxValue,
@@ -410,6 +418,20 @@ const PriceCalculator = () => {
                           <Plus className="h-4 w-4" />
                         </Button>
                       </div>
+                    </div>
+                    {/* Representante */}
+                    <div>
+                      <Label className="mb-1.5 flex items-center gap-1.5 text-sm text-muted-foreground"><Users className="h-4 w-4" />Representante</Label>
+                      <select
+                        value={selectedRepId}
+                        onChange={(e) => setSelectedRepId(e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-border bg-secondary/50 px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <option value="">Nenhum</option>
+                        {representatives.map(r => (
+                          <option key={r.id} value={r.id}>{r.nome}</option>
+                        ))}
+                      </select>
                     </div>
                     <div className="relative">
                       <Label className="mb-1.5 flex items-center gap-1.5 text-sm text-muted-foreground"><Package className="h-4 w-4" />Nome da Máquina</Label>
