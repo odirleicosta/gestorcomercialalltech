@@ -2,8 +2,8 @@ import { useState, useMemo, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  TrendingUp, DollarSign, Target, BarChart3, Users,
-  AlertTriangle,
+  TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Users,
+  AlertTriangle, ArrowUpRight, ArrowDownRight,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -96,15 +96,19 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     };
   };
 
+  const prevMonthNum = filterMonth === 1 ? 12 : filterMonth - 1;
+  const prevYearNum = filterMonth === 1 ? filterYear - 1 : filterYear;
+
   const monthStats = useMemo(() => {
     const current = getMonthClosed(filterMonth, filterYear, filterRep);
+    const previous = getMonthClosed(prevMonthNum, prevYearNum, filterRep);
     const calc = (arr: Deal[]) => ({
       count: arr.length,
       revenue: arr.reduce((s, d) => s + d.final_price, 0),
       netProfit: arr.reduce((s, d) => s + d.net_profit, 0),
       fobTotal: arr.reduce((s, d) => s + d.fob_cost, 0),
     });
-    return { current: calc(current), currentDeals: current };
+    return { current: calc(current), previous: calc(previous), currentDeals: current };
   }, [deals, filterMonth, filterYear, filterRep]);
 
   // Rep ranking for the month
@@ -177,12 +181,23 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
   if (loading) return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
 
-  const { current: cur } = monthStats;
+  const { current: cur, previous: prev } = monthStats;
 
   const totalMetaQtd = repRanking.reduce((s, r) => s + r.metaQtd, 0);
   const totalSold = cur.count;
   const pctAtingido = totalMetaQtd > 0 ? (totalSold / totalMetaQtd) * 100 : 0;
   const faltam = Math.max(0, totalMetaQtd - totalSold);
+
+  const calcVariation = (current: number, previous: number) => {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return ((current - previous) / previous) * 100;
+  };
+
+  const vendasVar = calcVariation(cur.count, prev.count);
+  const fobVar = calcVariation(cur.fobTotal, prev.fobTotal);
+  const cifVar = calcVariation(cur.revenue, prev.revenue);
+  const prevMetaPct = prev.count > 0 && totalMetaQtd > 0 ? (prev.count / totalMetaQtd) * 100 : 0;
+  const metaVar = calcVariation(pctAtingido, prevMetaPct);
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -235,8 +250,8 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         <SectionTitle icon={<Target className="h-4 w-4" />} title="Meta Global do Mês" />
         <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
           <CleanCard label="Meta" value={String(totalMetaQtd)} sub="máquinas" color="text-info" />
-          <CleanCard label="Vendidas" value={String(totalSold)} sub="fechadas" color="text-accent" />
-          <CleanCard label="% Atingido" value={formatPct(pctAtingido)} color={pctAtingido >= 100 ? "text-accent" : pctAtingido >= 75 ? "text-warning" : "text-destructive"} />
+          <CleanCard label="Vendidas" value={String(totalSold)} sub="fechadas" color="text-accent" variation={vendasVar} />
+          <CleanCard label="% Atingido" value={formatPct(pctAtingido)} color={pctAtingido >= 100 ? "text-accent" : pctAtingido >= 75 ? "text-warning" : "text-destructive"} variation={metaVar} />
           <CleanCard label="Faltam" value={String(faltam)} sub="para bater" color={faltam === 0 ? "text-accent" : "text-muted-foreground"} />
         </div>
       </section>
@@ -289,8 +304,8 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       <section>
         <SectionTitle icon={<DollarSign className="h-4 w-4" />} title="Faturamento do Mês" />
         <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-          <CleanCard label="FOB Total" value={formatCompact(cur.fobTotal)} sub={`${cur.count} negociações fechadas`} color="text-info" />
-          <CleanCard label="CIF Total" value={formatCompact(cur.revenue)} sub={`Lucro Líq: ${formatCompact(cur.netProfit)}`} color="text-accent" />
+          <CleanCard label="FOB Total" value={formatCompact(cur.fobTotal)} sub={`${cur.count} negociações fechadas`} color="text-info" variation={fobVar} />
+          <CleanCard label="CIF Total" value={formatCompact(cur.revenue)} sub={`Lucro Líq: ${formatCompact(cur.netProfit)}`} color="text-accent" variation={cifVar} />
         </div>
       </section>
 
@@ -344,12 +359,20 @@ const SectionTitle = ({ icon, title }: { icon: React.ReactNode; title: string })
   </div>
 );
 
-const CleanCard = ({ label, value, sub, color = "text-foreground" }: {
-  label: string; value: string; sub?: string; color?: string;
+const CleanCard = ({ label, value, sub, color = "text-foreground", variation }: {
+  label: string; value: string; sub?: string; color?: string; variation?: number;
 }) => (
   <Card className="bg-card border-border/50 shadow-sm rounded-lg p-5">
     <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
-    <p className={`font-heading text-2xl font-bold ${color}`}>{value}</p>
+    <div className="flex items-end gap-2">
+      <p className={`font-heading text-2xl font-bold ${color}`}>{value}</p>
+      {variation !== undefined && variation !== 0 && (
+        <span className={`flex items-center gap-0.5 text-xs font-semibold mb-1 ${variation > 0 ? "text-accent" : "text-destructive"}`}>
+          {variation > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+          {variation > 0 ? "+" : ""}{variation.toFixed(0)}%
+        </span>
+      )}
+    </div>
     {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
   </Card>
 );
