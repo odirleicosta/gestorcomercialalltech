@@ -331,7 +331,7 @@ const PriceCalculator = () => {
       </div>
 
       {/* Main content */}
-      <main className={`flex-1 overflow-y-auto px-4 py-8 md:py-10 md:px-8 mt-12 md:mt-0 ${activeTab === "dashboard" ? "bg-[hsl(220,25%,8%)]" : ""}`}>
+      <main className="flex-1 overflow-y-auto px-4 py-8 md:py-10 md:px-8 mt-12 md:mt-0">
         <div className="mx-auto max-w-6xl">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="hidden"><TabsList><TabsTrigger value="simulation" /><TabsTrigger value="deals" /><TabsTrigger value="reps" /><TabsTrigger value="dashboard" /><TabsTrigger value="registry" /><TabsTrigger value="catalog" /></TabsList></div>
