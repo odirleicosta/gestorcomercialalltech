@@ -21,6 +21,7 @@ import MachineCatalog, { fetchCatalog, type CatalogMachine } from "@/components/
 import DealManager from "@/components/DealManager";
 import ExecutiveDashboard from "@/components/ExecutiveDashboard";
 import RepresentativeManager from "@/components/RepresentativeManager";
+import CommissionsTab from "@/components/CommissionsTab";
 import Auth from "@/components/Auth";
 
 export interface SavedCalculation {
@@ -279,6 +280,7 @@ const PriceCalculator = () => {
           {[
             { value: "dashboard", icon: BarChart3, label: "Dashboard" },
             { value: "deals", icon: Users, label: "Vendas" },
+            { value: "commissions", icon: DollarSign, label: "Comissões" },
             { value: "simulation", icon: Calculator, label: "Simulação" },
             { value: "reps", icon: UserPlus, label: "Representantes" },
             { value: "registry", icon: Building2, label: "Cadastros" },
@@ -316,6 +318,7 @@ const PriceCalculator = () => {
         {[
           { value: "dashboard", icon: BarChart3, label: "Dashboard" },
           { value: "deals", icon: Users, label: "Vendas" },
+          { value: "commissions", icon: DollarSign, label: "Comissões" },
           { value: "simulation", icon: Calculator, label: "Simulação" },
           { value: "reps", icon: UserPlus, label: "Representantes" },
           { value: "registry", icon: Building2, label: "Cadastros" },
@@ -340,7 +343,7 @@ const PriceCalculator = () => {
       <main className="flex-1 overflow-y-auto px-4 py-8 md:py-10 md:px-8 mt-12 md:mt-0">
         <div className="mx-auto max-w-6xl">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="hidden"><TabsList><TabsTrigger value="simulation" /><TabsTrigger value="deals" /><TabsTrigger value="reps" /><TabsTrigger value="dashboard" /><TabsTrigger value="registry" /><TabsTrigger value="catalog" /></TabsList></div>
+          <div className="hidden"><TabsList><TabsTrigger value="simulation" /><TabsTrigger value="deals" /><TabsTrigger value="commissions" /><TabsTrigger value="reps" /><TabsTrigger value="dashboard" /><TabsTrigger value="registry" /><TabsTrigger value="catalog" /></TabsList></div>
 
           <TabsContent value="simulation">
             <div className="grid gap-6 lg:grid-cols-5">
@@ -691,6 +694,10 @@ const PriceCalculator = () => {
 
           <TabsContent value="deals">
             <DealManager userId={user.id} />
+          </TabsContent>
+
+          <TabsContent value="commissions">
+            <CommissionsTab userId={user.id} />
           </TabsContent>
 
           <TabsContent value="reps">
