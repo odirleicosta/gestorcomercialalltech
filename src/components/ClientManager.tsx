@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 export interface Client {
   id: string;
   name: string;
+  cidade: string | null;
   created_at: string;
 }
 
@@ -23,15 +24,16 @@ interface Props {
 export const fetchClients = async (): Promise<Client[]> => {
   const { data, error } = await supabase
     .from("empresas")
-    .select("id, nome, created_at")
+    .select("id, nome, cidade, created_at")
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return (data || []).map((e: any) => ({ id: e.id, name: e.nome, created_at: e.created_at }));
+  return (data || []).map((e: any) => ({ id: e.id, name: e.nome, cidade: e.cidade, created_at: e.created_at }));
 };
 
 const ClientManager = ({ clients, setClients }: Props) => {
   const { toast } = useToast();
   const [newName, setNewName] = useState("");
+  const [newCidade, setNewCidade] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleAdd = async () => {
@@ -47,8 +49,8 @@ const ClientManager = ({ clients, setClients }: Props) => {
 
     const { data, error } = await supabase
       .from("empresas")
-      .insert({ nome: trimmed, user_id: user.id } as any)
-      .select("id, nome, created_at")
+      .insert({ nome: trimmed, cidade: newCidade.trim() || null, user_id: user.id } as any)
+      .select("id, nome, cidade, created_at")
       .single();
 
     setLoading(false);
@@ -56,9 +58,10 @@ const ClientManager = ({ clients, setClients }: Props) => {
       toast({ title: "Erro ao cadastrar empresa", description: error.message, variant: "destructive" });
       return;
     }
-    const entry: Client = { id: (data as any).id, name: (data as any).nome, created_at: (data as any).created_at };
+    const entry: Client = { id: (data as any).id, name: (data as any).nome, cidade: (data as any).cidade, created_at: (data as any).created_at };
     setClients((prev) => [entry, ...prev]);
     setNewName("");
+    setNewCidade("");
     toast({ title: "Empresa cadastrada!" });
   };
 
@@ -82,13 +85,23 @@ const ClientManager = ({ clients, setClients }: Props) => {
         </Badge>
       </div>
 
-      <div className="flex gap-3 mb-5">
-        <div className="flex-1">
+      <div className="flex gap-3 mb-5 flex-wrap">
+        <div className="flex-1 min-w-[180px]">
           <Label className="mb-1.5 text-sm text-muted-foreground">Nome da Empresa</Label>
           <Input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Ex: Empresa ABC"
+            className="bg-secondary/50 border-border"
+            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+          />
+        </div>
+        <div className="flex-1 min-w-[140px]">
+          <Label className="mb-1.5 text-sm text-muted-foreground">Cidade</Label>
+          <Input
+            value={newCidade}
+            onChange={(e) => setNewCidade(e.target.value)}
+            placeholder="Ex: Curitiba"
             className="bg-secondary/50 border-border"
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           />
@@ -107,6 +120,7 @@ const ClientManager = ({ clients, setClients }: Props) => {
               <TableRow>
                 <TableHead className="w-8">#</TableHead>
                 <TableHead>Empresa</TableHead>
+                <TableHead>Cidade</TableHead>
                 <TableHead>Data Cadastro</TableHead>
                 <TableHead></TableHead>
               </TableRow>
@@ -116,6 +130,7 @@ const ClientManager = ({ clients, setClients }: Props) => {
                 <TableRow key={c.id}>
                   <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
                   <TableCell className="font-medium">{c.name}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{c.cidade || "—"}</TableCell>
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                     {new Date(c.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                   </TableCell>

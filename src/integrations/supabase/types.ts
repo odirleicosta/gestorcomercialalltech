@@ -229,6 +229,7 @@ export type Database = {
       }
       empresas: {
         Row: {
+          cidade: string | null
           cnpj: string | null
           created_at: string
           id: string
@@ -237,6 +238,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cidade?: string | null
           cnpj?: string | null
           created_at?: string
           id?: string
@@ -245,6 +247,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cidade?: string | null
           cnpj?: string | null
           created_at?: string
           id?: string
