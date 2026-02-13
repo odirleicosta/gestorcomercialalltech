@@ -211,7 +211,7 @@ const DealManager = ({ userId }: Props) => {
       net_profit: simulation.netProfit,
       net_margin_percent: simulation.netMargin,
       observation: observation.trim() || null,
-      representative_id: representativeId || null,
+      representative_id: representativeId && representativeId !== "none" ? representativeId : null,
     };
 
     const { error } = await supabase.from("deals" as any).insert(insert as any);
@@ -430,10 +430,10 @@ const DealManager = ({ userId }: Props) => {
             </div>
             <div>
               <Label className="mb-1.5 text-sm text-muted-foreground">Representante</Label>
-              <Select value={representativeId} onValueChange={setRepresentativeId}>
+              <Select value={representativeId || "none"} onValueChange={setRepresentativeId}>
                 <SelectTrigger className="bg-secondary/50 border-border"><SelectValue placeholder="Selecionar..." /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Nenhum</SelectItem>
+                  <SelectItem value="none">Nenhum</SelectItem>
                   {repOptions.map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
