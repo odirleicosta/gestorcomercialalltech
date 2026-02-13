@@ -36,14 +36,18 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <Card className="w-full max-w-md p-8 shadow-sm border-border">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-            <TrendingUp className="h-5 w-5 text-primary-foreground" />
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-primary/5 blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full bg-accent/5 blur-3xl" />
+      </div>
+      <Card className="w-full max-w-md p-8 shadow-xl border-border/60 relative animate-fade-in rounded-2xl">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl gradient-accent shadow-lg shadow-accent/20">
+            <TrendingUp className="h-6 w-6 text-accent-foreground" />
           </div>
           <div>
             <h1 className="font-heading text-xl font-bold text-foreground">Gestão Comercial</h1>
-            <p className="text-xs text-muted-foreground">Máquinas Industriais</p>
+            <p className="text-xs text-muted-foreground font-medium tracking-wide uppercase">Máquinas Industriais</p>
           </div>
         </div>
 
