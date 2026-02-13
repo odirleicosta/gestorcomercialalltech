@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Users,
-  AlertTriangle, ArrowUpRight, ArrowDownRight,
+  AlertTriangle, ArrowUpRight, ArrowDownRight, Gauge,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -172,6 +172,18 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     return alerts;
   }, [repRanking, filterMonth, filterYear]);
 
+  // Historical weekly average (last 3 months closed deals / ~12 weeks)
+  const historicalAvg = useMemo(() => {
+    let totalClosed = 0;
+    for (let i = 1; i <= 3; i++) {
+      let m = filterMonth - i;
+      let y = filterYear;
+      while (m <= 0) { m += 12; y--; }
+      totalClosed += getMonthClosed(m, y, filterRep).length;
+    }
+    return totalClosed / 12;
+  }, [deals, filterMonth, filterYear, filterRep]);
+
   const formatUsd = (v: number) =>
     `US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const formatPct = (v: number) =>
@@ -198,6 +210,16 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   const cifVar = calcVariation(cur.revenue, prev.revenue);
   const prevMetaPct = prev.count > 0 && totalMetaQtd > 0 ? (prev.count / totalMetaQtd) * 100 : 0;
   const metaVar = calcVariation(pctAtingido, prevMetaPct);
+
+  // Pace calculation
+  const daysInMonth = new Date(filterYear, filterMonth, 0).getDate();
+  const isCurrentMonth = filterMonth === (now.getMonth() + 1) && filterYear === now.getFullYear();
+  const dayOfMonth = isCurrentMonth ? now.getDate() : daysInMonth;
+  const diasRestantes = Math.max(0, daysInMonth - dayOfMonth);
+  const semanasRestantes = Math.max(1, Math.round(diasRestantes / 7)) || 1;
+  const ritmoSemanal = diasRestantes > 0 ? faltam / semanasRestantes : 0;
+  const ritmoDiario = diasRestantes > 0 ? faltam / diasRestantes : 0;
+  const ritmoAlto = ritmoSemanal > historicalAvg && historicalAvg > 0;
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -256,7 +278,25 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         </div>
       </section>
 
-      {/* ─── BLOCO 2: PERFORMANCE POR REPRESENTANTE ─── */}
+      {/* ─── RITMO PARA BATER META ─── */}
+      {faltam > 0 && diasRestantes > 0 && (
+        <section>
+          <SectionTitle icon={<Gauge className="h-4 w-4" />} title="Ritmo para Bater Meta" />
+          <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+            <CleanCard label="Faltam" value={String(faltam)} sub="máquinas" color="text-warning" />
+            <CleanCard label="Semanas Restantes" value={String(semanasRestantes)} sub={`${diasRestantes} dias`} color="text-info" />
+            <CleanCard label="Por Semana" value={ritmoSemanal.toFixed(1)} sub="necessário" color={ritmoAlto ? "text-destructive" : "text-foreground"} />
+            <CleanCard label="Por Dia" value={ritmoDiario.toFixed(1)} sub="necessário" color={ritmoAlto ? "text-destructive" : "text-foreground"} />
+          </div>
+          {ritmoAlto && (
+            <p className="text-xs text-destructive mt-2 flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" />
+              Ritmo acima da média histórica ({historicalAvg.toFixed(1)}/semana)
+            </p>
+          )}
+        </section>
+      )}
+
       {repRanking.length > 0 && (
         <section>
           <SectionTitle icon={<Users className="h-4 w-4" />} title="Performance por Representante" />
