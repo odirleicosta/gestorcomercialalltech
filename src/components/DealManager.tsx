@@ -20,9 +20,16 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Sheet, SheetContent, SheetHeader, SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import {
   DollarSign, Percent, TrendingUp, TrendingDown, Package, Receipt,
   Save, Lock, Unlock, Trash2, Search, Eye, EyeOff, Users, History, Clock,
-  ChevronsUpDown, Check, Plus,
+  ChevronsUpDown, Check, Plus, Pencil, X, ArrowUpDown, ArrowUp, ArrowDown,
+  Building2, Wrench, ChevronDown,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -99,13 +106,26 @@ interface Props {
   userId: string;
 }
 
+type SortField = "created_at" | "client_name" | "machine_name" | "base_price" | "net_margin_percent" | "net_profit";
+type SortDir = "asc" | "desc";
+
 const DealManager = ({ userId }: Props) => {
   const { toast } = useToast();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterYear, setFilterYear] = useState<string>("all");
+  const [filterMonth, setFilterMonth] = useState<string>("all");
+  const [filterRepId, setFilterRepId] = useState<string>("all");
+  const [sortField, setSortField] = useState<SortField>("created_at");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  // Drawer state
+  const [drawerDeal, setDrawerDeal] = useState<Deal | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState<Record<string, any>>({});
 
   // Default commission from profile
   const [defaultSellerPct, setDefaultSellerPct] = useState(3);
@@ -139,14 +159,9 @@ const DealManager = ({ userId }: Props) => {
   const [newEmpresaNome, setNewEmpresaNome] = useState("");
   const [newEmpresaCidade, setNewEmpresaCidade] = useState("");
 
-  // Edit commission state
-  const [editingCommission, setEditingCommission] = useState<string | null>(null);
-  const [editSellerPct, setEditSellerPct] = useState("");
-  const [editManagerPct, setEditManagerPct] = useState("");
-
   // Commission history
   const [commissionLogs, setCommissionLogs] = useState<CommissionLog[]>([]);
-  const [showLogsForDeal, setShowLogsForDeal] = useState<string | null>(null);
+  const [showLogsInDrawer, setShowLogsInDrawer] = useState(false);
 
   // Prompt to save sale price to catalog
   const [showSavePricePrompt, setShowSavePricePrompt] = useState(false);
@@ -169,12 +184,7 @@ const DealManager = ({ userId }: Props) => {
       if (repsRes.data) setRepOptions(repsRes.data as unknown as RepOption[]);
       if (empresasRes.data) setEmpresas(empresasRes.data as unknown as Empresa[]);
       if (modelosRes.data) setModelos((modelosRes.data as any[]).map((c: any) => ({
-        id: c.id,
-        marca: c.marca,
-        modelo: c.modelo,
-        tipo: c.tipo,
-        custo_fob: c.custo_fob,
-        preco_venda_fob: c.preco_venda_fob || 0,
+        id: c.id, marca: c.marca, modelo: c.modelo, tipo: c.tipo, custo_fob: c.custo_fob, preco_venda_fob: c.preco_venda_fob || 0,
       })));
     };
     loadData();
@@ -272,7 +282,6 @@ const DealManager = ({ userId }: Props) => {
     const grossProfit = basePrice - fob;
     const grossMargin = basePrice > 0 ? (grossProfit / basePrice) * 100 : 0;
 
-    // Commission based on preço venda FOB
     const sellerComm = basePrice * (sPct / 100);
     const managerComm = basePrice * (mPct / 100);
     const netProfit = grossProfit - sellerComm - managerComm;
@@ -280,16 +289,13 @@ const DealManager = ({ userId }: Props) => {
 
     const dollar = parseFloat(dollarRate) || 0;
     const hasDollar = dollar > 0;
-
-    // Commission in BRL
     const sellerCommBrl = sellerComm * dollar;
     const managerCommBrl = managerComm * dollar;
 
     return {
       fob, basePrice, finalPrice: basePrice, grossProfit, grossMargin,
       sellerComm, managerComm, netProfit, netMargin,
-      dollar, hasDollar,
-      sellerCommBrl, managerCommBrl,
+      dollar, hasDollar, sellerCommBrl, managerCommBrl,
       basePriceBrl: hasDollar ? basePrice * dollar : 0,
       finalPriceBrl: hasDollar ? basePrice * dollar : 0,
     };
@@ -336,7 +342,6 @@ const DealManager = ({ userId }: Props) => {
       return;
     }
 
-    // Check if selected model has no sale price and offer to save it
     if (selectedModelo && (!selectedModelo.preco_venda_fob || selectedModelo.preco_venda_fob === 0) && simulation.basePrice > 0) {
       setPendingSavePriceData({ modeloId: selectedModelo.id, basePrice: simulation.basePrice });
       setShowSavePricePrompt(true);
@@ -372,12 +377,12 @@ const DealManager = ({ userId }: Props) => {
       .from("deals" as any)
       .update({ status: "closed", closed_at: new Date().toISOString() } as any)
       .eq("id", deal.id);
-    if (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-      return;
-    }
+    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Venda fechada!" });
     fetchDeals();
+    if (drawerDeal?.id === deal.id) {
+      setDrawerDeal({ ...deal, status: "closed", closed_at: new Date().toISOString() });
+    }
   };
 
   const handleReopen = async (deal: Deal) => {
@@ -386,95 +391,177 @@ const DealManager = ({ userId }: Props) => {
       .from("deals" as any)
       .update({ status: "open", closed_at: null } as any)
       .eq("id", deal.id);
-    if (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-      return;
-    }
+    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Venda reaberta!" });
     fetchDeals();
+    if (drawerDeal?.id === deal.id) {
+      setDrawerDeal({ ...deal, status: "open", closed_at: null });
+    }
   };
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from("deals" as any).delete().eq("id", id);
-    if (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-      return;
-    }
+    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
     fetchDeals();
-  };
-
-  const handleUpdateCommission = async (deal: Deal) => {
-    const sPct = parseFloat(editSellerPct) || 0;
-    const mPct = parseFloat(editManagerPct) || 0;
-    // Always use base_price (preço_venda_fob) as commission base
-    const sellerComm = deal.base_price * (sPct / 100);
-    const managerComm = deal.base_price * (mPct / 100);
-    const netProfit = deal.gross_profit - sellerComm - managerComm;
-    const netMargin = deal.base_price > 0 ? (netProfit / deal.base_price) * 100 : 0;
-
-    const logs: any[] = [];
-    if (deal.seller_commission_pct !== sPct) {
-      logs.push({ deal_id: deal.id, user_id: userId, field_changed: "seller_commission_pct", old_value: deal.seller_commission_pct, new_value: sPct });
-    }
-    if (deal.manager_commission_pct !== mPct) {
-      logs.push({ deal_id: deal.id, user_id: userId, field_changed: "manager_commission_pct", old_value: deal.manager_commission_pct, new_value: mPct });
-    }
-
-    if (logs.length > 0) {
-      await supabase.from("commission_history" as any).insert(logs as any);
-    }
-
-    const { error } = await supabase
-      .from("deals" as any)
-      .update({
-        commission_base: "FOB",
-        seller_commission_pct: sPct,
-        manager_commission_pct: mPct,
-        seller_commission_value: sellerComm,
-        manager_commission_value: managerComm,
-        net_profit: netProfit,
-        net_margin_percent: netMargin,
-      } as any)
-      .eq("id", deal.id);
-
-    if (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-      return;
-    }
-    toast({ title: "Comissões atualizadas! Histórico registrado." });
-    setEditingCommission(null);
-    fetchDeals();
+    if (drawerDeal?.id === id) { setDrawerOpen(false); setDrawerDeal(null); }
   };
 
   const handleSaveDefaults = async () => {
     const { error } = await supabase
       .from("profiles" as any)
-      .update({
-        default_seller_commission_pct: defaultSellerPct,
-        default_manager_commission_pct: defaultManagerPct,
-      } as any)
+      .update({ default_seller_commission_pct: defaultSellerPct, default_manager_commission_pct: defaultManagerPct } as any)
       .eq("id", userId);
-    if (error) {
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Padrões de comissão salvos!" });
-    }
+    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); }
+    else { toast({ title: "Padrões de comissão salvos!" }); }
   };
+
+  // ── Drawer Edit Logic ──
+  const startEditing = (deal: Deal) => {
+    setEditForm({
+      fob_cost: deal.fob_cost,
+      base_price: deal.base_price,
+      dollar_rate: deal.dollar_rate,
+      seller_commission_pct: deal.seller_commission_pct,
+      manager_commission_pct: deal.manager_commission_pct,
+      observation: deal.observation || "",
+    });
+    setEditing(true);
+  };
+
+  const editSimulation = useMemo(() => {
+    if (!editing) return null;
+    const fob = parseFloat(editForm.fob_cost) || 0;
+    const basePrice = parseFloat(editForm.base_price) || 0;
+    const sPct = parseFloat(editForm.seller_commission_pct) || 0;
+    const mPct = parseFloat(editForm.manager_commission_pct) || 0;
+    if (fob <= 0 || basePrice <= 0) return null;
+
+    const grossProfit = basePrice - fob;
+    const grossMargin = basePrice > 0 ? (grossProfit / basePrice) * 100 : 0;
+    const sellerComm = basePrice * (sPct / 100);
+    const managerComm = basePrice * (mPct / 100);
+    const netProfit = grossProfit - sellerComm - managerComm;
+    const netMargin = basePrice > 0 ? (netProfit / basePrice) * 100 : 0;
+    const dollar = parseFloat(editForm.dollar_rate) || 0;
+
+    return { grossProfit, grossMargin, sellerComm, managerComm, netProfit, netMargin, dollar };
+  }, [editForm, editing]);
+
+  const handleSaveEdit = async () => {
+    if (!drawerDeal || !editSimulation) return;
+    const sPct = parseFloat(editForm.seller_commission_pct) || 0;
+    const mPct = parseFloat(editForm.manager_commission_pct) || 0;
+
+    // Log commission changes
+    const logs: any[] = [];
+    if (drawerDeal.seller_commission_pct !== sPct) {
+      logs.push({ deal_id: drawerDeal.id, user_id: userId, field_changed: "seller_commission_pct", old_value: drawerDeal.seller_commission_pct, new_value: sPct });
+    }
+    if (drawerDeal.manager_commission_pct !== mPct) {
+      logs.push({ deal_id: drawerDeal.id, user_id: userId, field_changed: "manager_commission_pct", old_value: drawerDeal.manager_commission_pct, new_value: mPct });
+    }
+    if (logs.length > 0) {
+      await supabase.from("commission_history" as any).insert(logs as any);
+    }
+
+    const update = {
+      fob_cost: parseFloat(editForm.fob_cost) || 0,
+      base_price: parseFloat(editForm.base_price) || 0,
+      final_price: parseFloat(editForm.base_price) || 0,
+      dollar_rate: parseFloat(editForm.dollar_rate) || 0,
+      gross_profit: editSimulation.grossProfit,
+      gross_margin_percent: editSimulation.grossMargin,
+      desired_margin_percent: editSimulation.grossMargin,
+      commission_base: "FOB",
+      seller_commission_pct: sPct,
+      manager_commission_pct: mPct,
+      seller_commission_value: editSimulation.sellerComm,
+      manager_commission_value: editSimulation.managerComm,
+      net_profit: editSimulation.netProfit,
+      net_margin_percent: editSimulation.netMargin,
+      observation: editForm.observation?.trim() || null,
+    };
+
+    const { error } = await supabase.from("deals" as any).update(update as any).eq("id", drawerDeal.id);
+    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+
+    toast({ title: "Negociação atualizada!" });
+    setEditing(false);
+    fetchDeals();
+    // Update drawer deal locally
+    setDrawerDeal(prev => prev ? { ...prev, ...update } as Deal : null);
+  };
+
+  // ── Filtering & Sorting ──
+  const years = useMemo(() => {
+    const s = new Set(deals.map(d => new Date(d.created_at).getFullYear()));
+    return Array.from(s).sort((a, b) => b - a);
+  }, [deals]);
 
   const filtered = useMemo(() => {
     return deals.filter((d) => {
       const matchSearch = !search ||
         d.client_name.toLowerCase().includes(search.toLowerCase()) ||
-        d.machine_name.toLowerCase().includes(search.toLowerCase());
+        d.machine_name.toLowerCase().includes(search.toLowerCase()) ||
+        d.machine_type.toLowerCase().includes(search.toLowerCase());
       const matchStatus = filterStatus === "all" || d.status === filterStatus;
-      return matchSearch && matchStatus;
+      const dt = new Date(d.created_at);
+      const matchYear = filterYear === "all" || dt.getFullYear() === parseInt(filterYear);
+      const matchMonth = filterMonth === "all" || (dt.getMonth() + 1) === parseInt(filterMonth);
+      const matchRep = filterRepId === "all" || d.representative_id === filterRepId;
+      return matchSearch && matchStatus && matchYear && matchMonth && matchRep;
     });
-  }, [deals, search, filterStatus]);
+  }, [deals, search, filterStatus, filterYear, filterMonth, filterRepId]);
+
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    arr.sort((a, b) => {
+      let va: any = a[sortField];
+      let vb: any = b[sortField];
+      if (typeof va === "string") { va = va.toLowerCase(); vb = (vb || "").toLowerCase(); }
+      if (va < vb) return sortDir === "asc" ? -1 : 1;
+      if (va > vb) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return arr;
+  }, [filtered, sortField, sortDir]);
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) { setSortDir(d => d === "asc" ? "desc" : "asc"); }
+    else { setSortField(field); setSortDir("asc"); }
+  };
+
+  const getEmpresaCidade = (deal: Deal) => {
+    const emp = empresas.find(e => e.id === deal.empresa_id);
+    return emp?.cidade || "—";
+  };
+
+  const getRepName = (deal: Deal) => {
+    const rep = repOptions.find(r => r.id === deal.representative_id);
+    return rep?.nome || "—";
+  };
 
   const formatUsd = (v: number) =>
     `US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatBrl = (v: number) =>
+    v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const formatPct = (v: number) =>
     v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 opacity-30" />;
+    return sortDir === "asc" ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />;
+  };
+
+  const openDrawer = (deal: Deal) => {
+    setDrawerDeal(deal);
+    setDrawerOpen(true);
+    setEditing(false);
+    setShowLogsInDrawer(false);
+    fetchCommissionLogs(deal.id);
+  };
+
+  const MONTHS_PT = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
   return (
     <div className="space-y-6">
@@ -483,9 +570,11 @@ const DealManager = ({ userId }: Props) => {
         <h2 className="font-heading text-lg font-semibold text-foreground flex items-center gap-2">
           <Users className="h-5 w-5" /> Negociações
         </h2>
-        <Button onClick={() => showForm ? resetForm() : openForm()} variant={showForm ? "secondary" : "default"}>
-          {showForm ? "Fechar Formulário" : "Nova Negociação"}
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => showForm ? resetForm() : openForm()} variant={showForm ? "secondary" : "default"}>
+            {showForm ? "Fechar Formulário" : "Nova Negociação"}
+          </Button>
+        </div>
       </div>
 
       {/* Default commission settings */}
@@ -517,7 +606,7 @@ const DealManager = ({ userId }: Props) => {
         <Card className="border-border bg-card p-6 shadow-sm">
           <h3 className="font-heading text-base font-semibold text-card-foreground mb-4">Nova Negociação</h3>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {/* Empresa (searchable combobox) */}
+            {/* Empresa */}
             <div>
               <Label className="mb-1.5 text-sm text-muted-foreground">Empresa *</Label>
               <div className="flex gap-1.5">
@@ -537,7 +626,7 @@ const DealManager = ({ userId }: Props) => {
                         <CommandGroup>
                           {empresas.map(e => (
                             <CommandItem key={e.id} value={e.nome} onSelect={() => { setEmpresaId(e.id); setEmpresaOpen(false); }}>
-                            <Check className={cn("mr-2 h-4 w-4", empresaId === e.id ? "opacity-100" : "opacity-0")} />
+                              <Check className={cn("mr-2 h-4 w-4", empresaId === e.id ? "opacity-100" : "opacity-0")} />
                               <div className="flex flex-col">
                                 <span className="text-sm">{e.nome}</span>
                                 {e.cidade && <span className="text-xs text-muted-foreground">{e.cidade}</span>}
@@ -555,7 +644,7 @@ const DealManager = ({ userId }: Props) => {
               </div>
             </div>
 
-            {/* Modelo (searchable combobox) */}
+            {/* Modelo */}
             <div>
               <Label className="mb-1.5 text-sm text-muted-foreground">Máquina *</Label>
               <Popover open={modeloOpen} onOpenChange={setModeloOpen}>
@@ -588,7 +677,7 @@ const DealManager = ({ userId }: Props) => {
               </Popover>
             </div>
 
-            {/* Tipo da Máquina (auto-filled) */}
+            {/* Tipo da Máquina */}
             <div>
               <Label className="mb-1.5 text-sm text-muted-foreground">Tipo da Máquina</Label>
               <Input value={machineType} readOnly placeholder="Preenchido automaticamente" className="bg-muted/50 border-border text-muted-foreground" />
@@ -607,7 +696,7 @@ const DealManager = ({ userId }: Props) => {
               <Input type="number" step="0.01" min="0" value={precoVendaFob} onChange={(e) => setPrecoVendaFob(e.target.value)} placeholder="0,00" className="bg-secondary/50 border-border" />
             </div>
 
-            {/* Representante (searchable combobox with auto-fill) */}
+            {/* Representante */}
             <div>
               <Label className="mb-1.5 text-sm text-muted-foreground">Representante</Label>
               <Popover open={repOpen} onOpenChange={setRepOpen}>
@@ -704,9 +793,7 @@ const DealManager = ({ userId }: Props) => {
       {/* New Empresa Dialog */}
       <Dialog open={showNewEmpresa} onOpenChange={setShowNewEmpresa}>
         <DialogContent className="bg-card border-border">
-          <DialogHeader>
-            <DialogTitle>Nova Empresa</DialogTitle>
-          </DialogHeader>
+          <DialogHeader><DialogTitle>Nova Empresa</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
               <Label className="text-sm text-muted-foreground">Nome da Empresa *</Label>
@@ -726,150 +813,340 @@ const DealManager = ({ userId }: Props) => {
         </DialogContent>
       </Dialog>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar cliente ou máquina..." className="pl-9 bg-secondary/50 border-border text-sm" />
+      {/* ── FILTERS ── */}
+      <Card className="border-border bg-card p-4 shadow-sm">
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar empresa, máquina ou tipo..." className="pl-9 bg-secondary/50 border-border text-sm" />
+          </div>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-[130px] bg-secondary/50 border-border text-sm"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent className="bg-popover border-border z-50">
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="open">Abertas</SelectItem>
+              <SelectItem value="closed">Fechadas</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filterYear} onValueChange={setFilterYear}>
+            <SelectTrigger className="w-[110px] bg-secondary/50 border-border text-sm"><SelectValue placeholder="Ano" /></SelectTrigger>
+            <SelectContent className="bg-popover border-border z-50">
+              <SelectItem value="all">Todo Ano</SelectItem>
+              {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filterMonth} onValueChange={setFilterMonth}>
+            <SelectTrigger className="w-[130px] bg-secondary/50 border-border text-sm"><SelectValue placeholder="Mês" /></SelectTrigger>
+            <SelectContent className="bg-popover border-border z-50">
+              <SelectItem value="all">Todo Mês</SelectItem>
+              {Array.from({ length: 12 }, (_, i) => (
+                <SelectItem key={i + 1} value={String(i + 1)}>{MONTHS_PT[i + 1]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterRepId} onValueChange={setFilterRepId}>
+            <SelectTrigger className="w-[160px] bg-secondary/50 border-border text-sm"><SelectValue placeholder="Representante" /></SelectTrigger>
+            <SelectContent className="bg-popover border-border z-50">
+              <SelectItem value="all">Todos Reps</SelectItem>
+              {repOptions.map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Badge variant="outline" className="text-xs">{filtered.length} registros</Badge>
         </div>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger className="w-[160px] bg-secondary/50 border-border text-sm"><SelectValue /></SelectTrigger>
-          <SelectContent className="bg-popover border-border z-50">
-            <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="open">Abertas</SelectItem>
-            <SelectItem value="closed">Fechadas</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      </Card>
 
-      {/* Deals list */}
+      {/* ── DATA TABLE ── */}
       {loading ? (
         <p className="text-muted-foreground text-center py-8">Carregando...</p>
-      ) : filtered.length === 0 ? (
+      ) : sorted.length === 0 ? (
         <p className="text-muted-foreground text-center py-8">Nenhuma negociação encontrada.</p>
       ) : (
-        <ScrollArea className="h-[600px]">
-          <div className="space-y-3">
-            {filtered.map((deal) => (
-              <Card key={deal.id} className={`border-border p-4 shadow-sm ${deal.status === "closed" ? "bg-muted/30" : "bg-card"}`}>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant={deal.status === "closed" ? "secondary" : "default"} className="text-xs">
-                        {deal.status === "closed" ? <Lock className="h-3 w-3 mr-1" /> : <Unlock className="h-3 w-3 mr-1" />}
-                        {deal.status === "closed" ? "Fechada" : "Aberta"}
-                      </Badge>
-                      <span className="font-semibold text-sm truncate">{deal.client_name}</span>
-                      {deal.machine_name && <span className="text-xs text-muted-foreground truncate">— {deal.machine_name}</span>}
-                      {deal.machine_type && <Badge variant="outline" className="text-[10px] h-4">{deal.machine_type}</Badge>}
-                      {deal.representative_id && repOptions.find(r => r.id === deal.representative_id) && (
-                        <Badge variant="outline" className="text-[10px] h-4 ml-1">{repOptions.find(r => r.id === deal.representative_id)!.nome}</Badge>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
-                      <div><span className="text-muted-foreground">Preço Base:</span> <span className="font-medium">{formatUsd(deal.base_price)}</span></div>
-                      <div><span className="text-muted-foreground">Preço Final:</span> <span className="font-medium">{formatUsd(deal.final_price)}</span></div>
-                      <div><span className="text-muted-foreground">Lucro Bruto:</span> <span className="font-medium text-accent">{formatUsd(deal.gross_profit)}</span></div>
-                      <div><span className="text-muted-foreground">M. Bruta:</span> <span className="font-medium">{formatPct(deal.gross_margin_percent)}</span></div>
-                      <div><span className="text-muted-foreground">Com. Vend. ({formatPct(deal.seller_commission_pct)}):</span> <span className="font-medium text-warning">{formatUsd(deal.seller_commission_value)}</span></div>
-                      <div><span className="text-muted-foreground">Com. Gest. ({formatPct(deal.manager_commission_pct)}):</span> <span className="font-medium text-warning">{formatUsd(deal.manager_commission_value)}</span></div>
-                      <div className="bg-accent/10 rounded px-1"><span className="text-muted-foreground">Lucro Líq.:</span> <span className={`font-bold ${deal.net_profit < 0 ? "text-destructive" : "text-accent"}`}>{formatUsd(deal.net_profit)}</span></div>
-                      <div className="bg-accent/10 rounded px-1"><span className="text-muted-foreground">M. Líquida:</span> <span className={`font-bold ${deal.net_margin_percent < 0 ? "text-destructive" : "text-accent"}`}>{formatPct(deal.net_margin_percent)}</span></div>
-                    </div>
+        <Card className="border-border bg-card shadow-sm overflow-hidden">
+          <ScrollArea className="max-h-[600px]">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableHead className="text-xs font-semibold whitespace-nowrap w-[50px]">Status</TableHead>
+                    <TableHead className="text-xs font-semibold whitespace-nowrap cursor-pointer" onClick={() => toggleSort("created_at")}>
+                      <span className="flex items-center gap-1">Data <SortIcon field="created_at" /></span>
+                    </TableHead>
+                    <TableHead className="text-xs font-semibold whitespace-nowrap cursor-pointer" onClick={() => toggleSort("client_name")}>
+                      <span className="flex items-center gap-1">Empresa <SortIcon field="client_name" /></span>
+                    </TableHead>
+                    <TableHead className="text-xs font-semibold whitespace-nowrap">Cidade</TableHead>
+                    <TableHead className="text-xs font-semibold whitespace-nowrap cursor-pointer" onClick={() => toggleSort("machine_name")}>
+                      <span className="flex items-center gap-1">Modelo <SortIcon field="machine_name" /></span>
+                    </TableHead>
+                    <TableHead className="text-xs font-semibold whitespace-nowrap">Tipo</TableHead>
+                    <TableHead className="text-xs font-semibold whitespace-nowrap">Representante</TableHead>
+                    <TableHead className="text-xs font-semibold whitespace-nowrap text-right cursor-pointer" onClick={() => toggleSort("base_price")}>
+                      <span className="flex items-center gap-1 justify-end">FOB Venda <SortIcon field="base_price" /></span>
+                    </TableHead>
+                    <TableHead className="text-xs font-semibold whitespace-nowrap text-right cursor-pointer" onClick={() => toggleSort("net_margin_percent")}>
+                      <span className="flex items-center gap-1 justify-end">M. Líq. <SortIcon field="net_margin_percent" /></span>
+                    </TableHead>
+                    <TableHead className="text-xs font-semibold whitespace-nowrap text-right cursor-pointer" onClick={() => toggleSort("net_profit")}>
+                      <span className="flex items-center gap-1 justify-end">Lucro Líq. <SortIcon field="net_profit" /></span>
+                    </TableHead>
+                    <TableHead className="text-xs font-semibold whitespace-nowrap text-right">Com. Rep.</TableHead>
+                    <TableHead className="text-xs font-semibold whitespace-nowrap text-right">Com. Gest.</TableHead>
+                    <TableHead className="text-xs font-semibold whitespace-nowrap w-[80px]">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sorted.map((deal) => {
+                    const sellerBrl = deal.seller_commission_value * deal.dollar_rate;
+                    const managerBrl = deal.manager_commission_value * deal.dollar_rate;
+                    return (
+                      <TableRow
+                        key={deal.id}
+                        className={cn(
+                          "cursor-pointer transition-colors",
+                          deal.status === "closed" ? "bg-muted/20" : "hover:bg-muted/10"
+                        )}
+                        onClick={() => openDrawer(deal)}
+                      >
+                        <TableCell>
+                          <Badge variant={deal.status === "closed" ? "secondary" : "default"} className="text-[10px] px-1.5 py-0.5">
+                            {deal.status === "closed" ? <Lock className="h-2.5 w-2.5" /> : <Unlock className="h-2.5 w-2.5" />}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs whitespace-nowrap">
+                          {new Date(deal.created_at).toLocaleDateString("pt-BR")}
+                        </TableCell>
+                        <TableCell className="text-xs font-medium max-w-[150px] truncate">{deal.client_name}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{getEmpresaCidade(deal)}</TableCell>
+                        <TableCell className="text-xs max-w-[140px] truncate">{deal.machine_name || "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{deal.machine_type || "—"}</TableCell>
+                        <TableCell className="text-xs">{getRepName(deal)}</TableCell>
+                        <TableCell className="text-xs text-right font-medium">{formatUsd(deal.base_price)}</TableCell>
+                        <TableCell className={cn("text-xs text-right font-bold", deal.net_margin_percent < 0 ? "text-destructive" : "text-accent")}>
+                          {formatPct(deal.net_margin_percent)}
+                        </TableCell>
+                        <TableCell className={cn("text-xs text-right font-bold", deal.net_profit < 0 ? "text-destructive" : "text-accent")}>
+                          {formatUsd(deal.net_profit)}
+                        </TableCell>
+                        <TableCell className="text-xs text-right text-muted-foreground">
+                          {deal.dollar_rate > 0 ? formatBrl(sellerBrl) : formatUsd(deal.seller_commission_value)}
+                        </TableCell>
+                        <TableCell className="text-xs text-right text-muted-foreground">
+                          {deal.dollar_rate > 0 ? formatBrl(managerBrl) : formatUsd(deal.manager_commission_value)}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <div className="flex gap-0.5">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openDrawer(deal)} title="Ver detalhes">
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                            {deal.status === "open" ? (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDelete(deal.id)} title="Excluir">
+                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                              </Button>
+                            ) : (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleReopen(deal)} title="Reabrir">
+                                <Unlock className="h-3.5 w-3.5 text-accent" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </ScrollArea>
+        </Card>
+      )}
+
+      {/* ── DETAIL DRAWER ── */}
+      <Sheet open={drawerOpen} onOpenChange={(open) => { setDrawerOpen(open); if (!open) { setEditing(false); setDrawerDeal(null); } }}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto bg-card border-border p-0">
+          {drawerDeal && (() => {
+            const deal = drawerDeal;
+            const emp = empresas.find(e => e.id === deal.empresa_id);
+            const rep = repOptions.find(r => r.id === deal.representative_id);
+            const modelo = modelos.find(m => m.id === deal.modelo_id);
+            const dollar = editing ? (parseFloat(editForm.dollar_rate) || 0) : deal.dollar_rate;
+            const hasDollar = dollar > 0;
+
+            return (
+              <div className="flex flex-col h-full">
+                {/* Drawer Header */}
+                <div className="p-6 border-b border-border bg-muted/20">
+                  <SheetTitle className="text-lg font-heading font-bold text-foreground flex items-center gap-2">
+                    <Building2 className="h-5 w-5 text-primary" />
+                    {deal.client_name}
+                  </SheetTitle>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge variant={deal.status === "closed" ? "secondary" : "default"} className="text-xs">
+                      {deal.status === "closed" ? "Fechada" : "Aberta"}
+                    </Badge>
+                    {emp?.cidade && <span className="text-xs text-muted-foreground">{emp.cidade}</span>}
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setExpandedId(expandedId === deal.id ? null : deal.id)}>
-                      {expandedId === deal.id ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-                      if (showLogsForDeal === deal.id) { setShowLogsForDeal(null); } else { setShowLogsForDeal(deal.id); fetchCommissionLogs(deal.id); }
-                    }} title="Histórico de comissões">
-                      <Clock className="h-4 w-4" />
-                    </Button>
-                    {deal.status === "open" ? (
+                  {/* Actions */}
+                  <div className="flex gap-2 mt-4">
+                    {!editing && deal.status === "open" && (
+                      <Button size="sm" variant="outline" onClick={() => startEditing(deal)}>
+                        <Pencil className="h-3.5 w-3.5 mr-1.5" /> Editar
+                      </Button>
+                    )}
+                    {deal.status === "open" && !editing && (
+                      <Button size="sm" variant="outline" onClick={() => handleClose(deal)}>
+                        <Lock className="h-3.5 w-3.5 mr-1.5" /> Fechar Venda
+                      </Button>
+                    )}
+                    {deal.status === "closed" && !editing && (
+                      <Button size="sm" variant="outline" onClick={() => handleReopen(deal)}>
+                        <Unlock className="h-3.5 w-3.5 mr-1.5" /> Reabrir
+                      </Button>
+                    )}
+                    {editing && (
                       <>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
-                          setEditingCommission(deal.id);
-                          setEditSellerPct(String(deal.seller_commission_pct));
-                          setEditManagerPct(String(deal.manager_commission_pct));
-                        }}>
-                          <Percent className="h-4 w-4" />
+                        <Button size="sm" onClick={handleSaveEdit} disabled={!editSimulation}>
+                          <Save className="h-3.5 w-3.5 mr-1.5" /> Salvar
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleClose(deal)} title="Fechar venda">
-                          <Lock className="h-4 w-4 text-primary" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(deal.id)}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                        <Button size="sm" variant="outline" onClick={() => setEditing(false)}>
+                          <X className="h-3.5 w-3.5 mr-1.5" /> Cancelar
                         </Button>
                       </>
-                    ) : (
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleReopen(deal)} title="Reabrir venda">
-                        <Unlock className="h-4 w-4 text-accent" />
-                      </Button>
                     )}
                   </div>
                 </div>
 
-                {/* Commission history logs */}
-                {showLogsForDeal === deal.id && (
-                  <div className="mt-3 p-3 border border-border rounded-md bg-muted/30">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1"><History className="h-3 w-3" /> Histórico de Alterações</p>
-                    {commissionLogs.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">Nenhuma alteração registrada.</p>
-                    ) : (
-                      <div className="space-y-1">
-                        {commissionLogs.map((log) => (
-                          <div key={log.id} className="text-xs flex items-center gap-2">
-                            <span className="text-muted-foreground">{new Date(log.changed_at).toLocaleString("pt-BR")}</span>
-                            <Badge variant="outline" className="text-[10px] h-5">
-                              {log.field_changed === "seller_commission_pct" ? "Vendedor" : "Gestor"}
-                            </Badge>
-                            <span className="text-destructive line-through">{formatPct(log.old_value)}</span>
-                            <span>→</span>
-                            <span className="text-accent font-medium">{formatPct(log.new_value)}</span>
+                {/* Drawer Body */}
+                <ScrollArea className="flex-1">
+                  <div className="p-6 space-y-6">
+                    {/* A) Identificação */}
+                    <DrawerSection title="Identificação" icon={<Building2 className="h-4 w-4 text-primary" />}>
+                      <DrawerRow label="Empresa" value={deal.client_name} />
+                      <DrawerRow label="Cidade" value={emp?.cidade || "—"} />
+                      <DrawerRow label="Data" value={new Date(deal.created_at).toLocaleDateString("pt-BR")} />
+                      {deal.closed_at && <DrawerRow label="Fechada em" value={new Date(deal.closed_at).toLocaleDateString("pt-BR")} />}
+                      <DrawerRow label="Representante" value={rep?.nome || "—"} />
+                    </DrawerSection>
+
+                    {/* B) Máquina */}
+                    <DrawerSection title="Máquina" icon={<Package className="h-4 w-4 text-primary" />}>
+                      <DrawerRow label="Tipo" value={deal.machine_type || "—"} />
+                      <DrawerRow label="Marca/Modelo" value={deal.machine_name || "—"} />
+                      {modelo && <DrawerRow label="Custo FOB Catálogo" value={formatUsd(modelo.custo_fob)} />}
+                    </DrawerSection>
+
+                    {/* C) Valores */}
+                    <DrawerSection title="Valores" icon={<DollarSign className="h-4 w-4 text-accent" />}>
+                      {editing ? (
+                        <div className="space-y-3">
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Custo FOB (USD)</Label>
+                            <Input type="number" step="0.01" value={editForm.fob_cost} onChange={(e) => setEditForm(f => ({ ...f, fob_cost: e.target.value }))} className="h-8 text-sm bg-secondary/50 border-border" />
                           </div>
-                        ))}
-                      </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Preço Venda FOB (USD)</Label>
+                            <Input type="number" step="0.01" value={editForm.base_price} onChange={(e) => setEditForm(f => ({ ...f, base_price: e.target.value }))} className="h-8 text-sm bg-secondary/50 border-border" />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Cotação do Dólar</Label>
+                            <Input type="number" step="0.01" value={editForm.dollar_rate} onChange={(e) => setEditForm(f => ({ ...f, dollar_rate: e.target.value }))} className="h-8 text-sm bg-secondary/50 border-border" />
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Observação</Label>
+                            <Textarea value={editForm.observation} onChange={(e) => setEditForm(f => ({ ...f, observation: e.target.value }))} className="text-sm bg-secondary/50 border-border" rows={2} />
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <DrawerRow label="Custo FOB (USD)" value={formatUsd(deal.fob_cost)} />
+                          <DrawerRow label="FOB Venda (USD)" value={formatUsd(deal.base_price)} />
+                          {hasDollar && <DrawerRow label="FOB Venda (BRL)" value={formatBrl(deal.base_price * dollar)} />}
+                          <DrawerRow label="Cotação Dólar" value={hasDollar ? `R$ ${dollar.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"} />
+                          {deal.observation && <DrawerRow label="Observação" value={deal.observation} />}
+                        </>
+                      )}
+                    </DrawerSection>
+
+                    {/* D) Comissões */}
+                    <DrawerSection title="Comissões" icon={<Percent className="h-4 w-4 text-warning" />}>
+                      {editing ? (
+                        <div className="space-y-3">
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Comissão Representante (%)</Label>
+                            <Input type="number" step="0.01" value={editForm.seller_commission_pct} onChange={(e) => setEditForm(f => ({ ...f, seller_commission_pct: e.target.value }))} className="h-8 text-sm bg-secondary/50 border-border" />
+                            {editSimulation && (
+                              <p className="text-xs text-accent mt-1">= {formatUsd(editSimulation.sellerComm)}{editSimulation.dollar > 0 && ` (${formatBrl(editSimulation.sellerComm * editSimulation.dollar)})`}</p>
+                            )}
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Comissão Gestor (%)</Label>
+                            <Input type="number" step="0.01" value={editForm.manager_commission_pct} onChange={(e) => setEditForm(f => ({ ...f, manager_commission_pct: e.target.value }))} className="h-8 text-sm bg-secondary/50 border-border" />
+                            {editSimulation && (
+                              <p className="text-xs text-accent mt-1">= {formatUsd(editSimulation.managerComm)}{editSimulation.dollar > 0 && ` (${formatBrl(editSimulation.managerComm * editSimulation.dollar)})`}</p>
+                            )}
+                          </div>
+                          {editSimulation && (
+                            <div className="bg-muted/50 rounded-md p-3 mt-2 space-y-1">
+                              <p className="text-xs font-semibold text-muted-foreground">Prévia</p>
+                              <p className="text-xs">Lucro Líquido: <span className={cn("font-bold", editSimulation.netProfit < 0 ? "text-destructive" : "text-accent")}>{formatUsd(editSimulation.netProfit)}</span></p>
+                              <p className="text-xs">Margem Líquida: <span className={cn("font-bold", editSimulation.netMargin < 0 ? "text-destructive" : "text-accent")}>{formatPct(editSimulation.netMargin)}</span></p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          <DrawerRow label="Base de Cálculo" value="FOB Venda" />
+                          <DrawerRow label={`Com. Representante (${formatPct(deal.seller_commission_pct)})`} value={`${formatUsd(deal.seller_commission_value)}${hasDollar ? ` · ${formatBrl(deal.seller_commission_value * dollar)}` : ""}`} />
+                          <DrawerRow label={`Com. Gestor (${formatPct(deal.manager_commission_pct)})`} value={`${formatUsd(deal.manager_commission_value)}${hasDollar ? ` · ${formatBrl(deal.manager_commission_value * dollar)}` : ""}`} />
+                        </>
+                      )}
+                    </DrawerSection>
+
+                    {/* E) Margens e Lucros */}
+                    {!editing && (
+                      <DrawerSection title="Margens e Lucros" icon={<TrendingUp className="h-4 w-4 text-accent" />}>
+                        <DrawerRow label="Lucro Bruto (USD)" value={formatUsd(deal.gross_profit)} accent />
+                        <DrawerRow label="Margem Bruta" value={formatPct(deal.gross_margin_percent)} />
+                        <DrawerRow label="Lucro Líquido (USD)" value={formatUsd(deal.net_profit)} accent={deal.net_profit >= 0} danger={deal.net_profit < 0} />
+                        <DrawerRow label="Margem Líquida" value={formatPct(deal.net_margin_percent)} accent={deal.net_margin_percent >= 0} danger={deal.net_margin_percent < 0} />
+                      </DrawerSection>
                     )}
-                  </div>
-                )}
 
-                {/* Edit commission inline */}
-                {editingCommission === deal.id && deal.status === "open" && (
-                  <div className="mt-3 p-3 border border-border rounded-md bg-secondary/30">
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">Editar Comissões</p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Vendedor (%)</Label>
-                        <Input type="number" step="0.01" value={editSellerPct} onChange={(e) => setEditSellerPct(e.target.value)} className="h-8 text-xs bg-background" />
-                      </div>
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Gestor (%)</Label>
-                        <Input type="number" step="0.01" value={editManagerPct} onChange={(e) => setEditManagerPct(e.target.value)} className="h-8 text-xs bg-background" />
-                      </div>
-                    </div>
-                    <div className="flex gap-2 mt-2">
-                      <Button size="sm" className="h-7 text-xs" onClick={() => handleUpdateCommission(deal)}>Salvar</Button>
-                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEditingCommission(null)}>Cancelar</Button>
+                    {/* Commission History */}
+                    <div>
+                      <button
+                        onClick={() => setShowLogsInDrawer(!showLogsInDrawer)}
+                        className="flex items-center gap-2 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <History className="h-3.5 w-3.5" />
+                        Histórico de Alterações
+                        <ChevronDown className={cn("h-3 w-3 transition-transform", showLogsInDrawer && "rotate-180")} />
+                      </button>
+                      {showLogsInDrawer && (
+                        <div className="mt-2 p-3 rounded-md border border-border bg-muted/20 space-y-1">
+                          {commissionLogs.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">Nenhuma alteração registrada.</p>
+                          ) : (
+                            commissionLogs.map((log) => (
+                              <div key={log.id} className="text-xs flex items-center gap-2">
+                                <span className="text-muted-foreground">{new Date(log.changed_at).toLocaleString("pt-BR")}</span>
+                                <Badge variant="outline" className="text-[10px] h-5">
+                                  {log.field_changed === "seller_commission_pct" ? "Vendedor" : "Gestor"}
+                                </Badge>
+                                <span className="text-destructive line-through">{formatPct(log.old_value)}</span>
+                                <span>→</span>
+                                <span className="text-accent font-medium">{formatPct(log.new_value)}</span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
-                )}
-
-                {/* Expanded details */}
-                {expandedId === deal.id && (
-                  <div className="mt-3 pt-3 border-t border-border text-xs space-y-1 text-muted-foreground">
-                    <div>FOB: {formatUsd(deal.fob_cost)} | Impostos: {formatPct(deal.estimated_tax_percent)} = {formatUsd(deal.estimated_tax_value)}</div>
-                    <div>Margem: {formatPct(deal.desired_margin_percent)} | Base Comissão: {deal.commission_base === "FOB" ? "FOB" : "Preço Venda"}</div>
-                    <div>Com. Vendedor: {formatPct(deal.seller_commission_pct)} = {formatUsd(deal.seller_commission_value)} | Com. Gestor: {formatPct(deal.manager_commission_pct)} = {formatUsd(deal.manager_commission_value)}</div>
-                    {deal.observation && <div>Obs: {deal.observation}</div>}
-                    <div>Criado: {new Date(deal.created_at).toLocaleString("pt-BR")} {deal.closed_at && `| Fechado: ${new Date(deal.closed_at).toLocaleString("pt-BR")}`}</div>
-                  </div>
-                )}
-              </Card>
-            ))}
-          </div>
-        </ScrollArea>
-      )}
+                </ScrollArea>
+              </div>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
 
       {/* Prompt to save sale price to catalog */}
       <AlertDialog open={showSavePricePrompt} onOpenChange={setShowSavePricePrompt}>
@@ -882,17 +1159,33 @@ const DealManager = ({ userId }: Props) => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => { setShowSavePricePrompt(false); setPendingSavePriceData(null); }}>
-              Não
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmSavePrice}>
-              Sim, salvar no catálogo
-            </AlertDialogAction>
+            <AlertDialogCancel onClick={() => { setShowSavePricePrompt(false); setPendingSavePriceData(null); }}>Não</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmSavePrice}>Sim, salvar no catálogo</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
   );
 };
+
+// ── Drawer Helper Components ──
+const DrawerSection = ({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) => (
+  <div>
+    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-3">
+      {icon} {title}
+    </h4>
+    <div className="space-y-2">{children}</div>
+  </div>
+);
+
+const DrawerRow = ({ label, value, accent, danger }: { label: string; value: string; accent?: boolean; danger?: boolean }) => (
+  <div className="flex justify-between items-start gap-4">
+    <span className="text-sm text-muted-foreground shrink-0">{label}</span>
+    <span className={cn(
+      "text-sm font-medium text-right",
+      danger ? "text-destructive font-bold" : accent ? "text-accent font-bold" : "text-foreground"
+    )}>{value}</span>
+  </div>
+);
 
 export default DealManager;
