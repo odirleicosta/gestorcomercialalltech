@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Users,
   AlertTriangle, ArrowUpRight, ArrowDownRight, Gauge, CheckCircle2, XCircle,
-  Flame, Trophy, Zap, AlertCircle,
+  Flame, Trophy, Zap, AlertCircle, Minus,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -49,6 +49,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   const [filterMode, setFilterMode] = useState<"month" | "quarter" | "year">("month");
   const [filterQuarter, setFilterQuarter] = useState<number | null>(null);
   const [showAllReps, setShowAllReps] = useState(false);
+  const [rankingMode, setRankingMode] = useState<"qty" | "revenue" | "margin" | "commission">("qty");
 
   const activeMonths = useMemo(() => {
     if (filterMode === "year") return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -82,7 +83,6 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     fetchData();
   }, []);
 
-  // Fetch monthly goals when year changes
   useEffect(() => {
     const fetchGoals = async () => {
       const res = await supabase
@@ -113,7 +113,6 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     });
   };
 
-  // Get meta for a rep across active months
   const getRepMeta = (repId: string) => {
     const goals = monthlyGoals.filter(g => g.representative_id === repId && activeMonths.includes(g.mes));
     if (goals.length > 0) {
@@ -130,7 +129,6 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     };
   };
 
-  // Previous period for comparison
   const getPrevPeriodClosed = (repFilter = "all") => {
     if (filterMode === "year") {
       return getMultiMonthClosed([1,2,3,4,5,6,7,8,9,10,11,12], filterYear - 1, repFilter);
@@ -154,80 +152,115 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       revenue: arr.reduce((s, d) => s + d.final_price, 0),
       netProfit: arr.reduce((s, d) => s + d.net_profit, 0),
       fobTotal: arr.reduce((s, d) => s + d.fob_cost, 0),
+      grossProfit: arr.reduce((s, d) => s + d.gross_profit, 0),
+      basePrice: arr.reduce((s, d) => s + d.base_price, 0),
+      sellerComm: arr.reduce((s, d) => s + d.seller_commission_value, 0),
+      managerComm: arr.reduce((s, d) => s + d.manager_commission_value, 0),
     });
     return { current: calc(current), previous: calc(previous), currentDeals: current };
   }, [deals, activeMonths, filterYear, filterRep, monthlyGoals]);
 
-  // Rep ranking
+  // ─── 1) PROJEÇÃO DO MÊS ───
+  const projection = useMemo(() => {
+    if (filterMode !== "month") return null;
+    const isCurrentYear = filterYear === now.getFullYear();
+    const isCurrentMonth = isCurrentYear && filterMonth === now.getMonth() + 1;
+    if (!isCurrentMonth) return null;
+
+    const daysInMonth = new Date(filterYear, filterMonth, 0).getDate();
+    const daysPassed = now.getDate();
+    if (daysPassed === 0) return null;
+
+    const totalMetaQtd = repsWithGoals.reduce((s, r) => s + getRepMeta(r.id).metaQtd, 0);
+    const totalMetaVal = repsWithGoals.reduce((s, r) => s + getRepMeta(r.id).metaVal, 0);
+    const projQtd = Math.round((monthStats.current.count / daysPassed) * daysInMonth);
+    const projVal = (monthStats.current.basePrice / daysPassed) * daysInMonth;
+    const pctQtd = totalMetaQtd > 0 ? (projQtd / totalMetaQtd) * 100 : 0;
+    const pctVal = totalMetaVal > 0 ? (projVal / totalMetaVal) * 100 : 0;
+
+    return { projQtd, projVal, metaQtd: totalMetaQtd, metaVal: totalMetaVal, pctQtd, pctVal, daysPassed, daysInMonth };
+  }, [filterMode, filterMonth, filterYear, monthStats, repsWithGoals, monthlyGoals]);
+
+  // ─── 2) TENDÊNCIA 3 MESES ───
+  const trend3m = useMemo(() => {
+    const lastActiveMonth = activeMonths[activeMonths.length - 1];
+    const months: number[] = [];
+    for (let i = 1; i <= 3; i++) {
+      let m = lastActiveMonth - i;
+      let y = filterYear;
+      while (m <= 0) { m += 12; y--; }
+      months.push(getMonthClosed(m, y, filterRep).length);
+    }
+    // months[0] = most recent of the 3, months[2] = oldest
+    const avg = months.reduce((s, v) => s + v, 0) / 3;
+    const currentCount = monthStats.current.count;
+    // Compare current vs avg
+    if (avg === 0 && currentCount === 0) return { label: "Estável", icon: "stable", avg, current: currentCount };
+    if (currentCount > avg * 1.1) return { label: "Crescendo", icon: "up", avg, current: currentCount };
+    if (currentCount < avg * 0.9) return { label: "Em queda", icon: "down", avg, current: currentCount };
+    return { label: "Estável", icon: "stable", avg, current: currentCount };
+  }, [deals, activeMonths, filterYear, filterRep, monthStats]);
+
+  // ─── 3) TICKET MÉDIO ───
+  const ticketMedio = useMemo(() => {
+    const cur = monthStats.current;
+    const global = cur.count > 0 ? cur.basePrice / cur.count : 0;
+
+    const byRep = repsWithGoals.map(rep => {
+      const repDeals = getMultiMonthClosed(activeMonths, filterYear, rep.id);
+      const total = repDeals.reduce((s, d) => s + d.base_price, 0);
+      const count = repDeals.length;
+      return { id: rep.id, nome: rep.nome, ticket: count > 0 ? total / count : 0, count };
+    }).filter(r => r.count > 0).sort((a, b) => b.ticket - a.ticket);
+
+    return { global, byRep };
+  }, [monthStats, repsWithGoals, deals, activeMonths, filterYear]);
+
+  // ─── 4) MARGEM MÉDIA REAL ───
+  const margemMedia = useMemo(() => {
+    const cur = monthStats.current;
+    const global = cur.basePrice > 0 ? (cur.netProfit / cur.basePrice) * 100 : 0;
+
+    const byRep = repsWithGoals.map(rep => {
+      const repDeals = getMultiMonthClosed(activeMonths, filterYear, rep.id);
+      const totalBase = repDeals.reduce((s, d) => s + d.base_price, 0);
+      const totalNet = repDeals.reduce((s, d) => s + d.net_profit, 0);
+      return { id: rep.id, nome: rep.nome, margem: totalBase > 0 ? (totalNet / totalBase) * 100 : 0, count: repDeals.length };
+    }).filter(r => r.count > 0).sort((a, b) => b.margem - a.margem);
+
+    return { global, byRep };
+  }, [monthStats, repsWithGoals, deals, activeMonths, filterYear]);
+
+  // ─── 5) RANKINGS MÚLTIPLOS ───
   const repRanking = useMemo(() => {
     if (repsWithGoals.length === 0) return [];
     return repsWithGoals.map(rep => {
       const repDeals = getMultiMonthClosed(activeMonths, filterYear, rep.id);
       const revenue = repDeals.reduce((s, d) => s + d.final_price, 0);
+      const basePrice = repDeals.reduce((s, d) => s + d.base_price, 0);
       const fobTotal = repDeals.reduce((s, d) => s + d.fob_cost, 0);
+      const netProfit = repDeals.reduce((s, d) => s + d.net_profit, 0);
+      const totalComm = repDeals.reduce((s, d) => s + d.seller_commission_value + d.manager_commission_value, 0);
       const count = repDeals.length;
       const { metaQtd, metaVal } = getRepMeta(rep.id);
       const pctQtd = metaQtd > 0 ? (count / metaQtd) * 100 : 0;
-      return { ...rep, revenue, fobTotal, count, pctQtd, metaQtd, metaVal };
-    }).filter(r => r.count > 0 || r.metaQtd > 0)
-      .sort((a, b) => b.count - a.count);
+      const margem = basePrice > 0 ? (netProfit / basePrice) * 100 : 0;
+      return { ...rep, revenue, basePrice, fobTotal, count, pctQtd, metaQtd, metaVal, netProfit, totalComm, margem };
+    }).filter(r => r.count > 0 || r.metaQtd > 0);
   }, [repsWithGoals, deals, activeMonths, filterYear, monthlyGoals]);
 
-  // Pipeline data
-  const pipelineData = useMemo(() => {
-    const openDeals = deals.filter(d => {
-      if (d.status !== "open") return false;
-      const matchRep = filterRep === "all" || d.representative_id === filterRep;
-      return matchRep;
-    });
-    const totalOpen = openDeals.length;
-    const totalValue = openDeals.reduce((s, d) => s + d.final_price, 0);
-    const weightedForecast = openDeals.reduce((s, d) => s + d.final_price * 0.5, 0);
-    return { totalOpen, totalValue, weightedForecast };
-  }, [deals, filterRep]);
-
-  // Monthly evolution (last 6 months from the last active month)
-  const evolutionData = useMemo(() => {
-    const lastActiveMonth = activeMonths[activeMonths.length - 1];
-    const data: { name: string; Faturamento: number; "Lucro Líquido": number; Vendas: number }[] = [];
-    for (let i = 5; i >= 0; i--) {
-      let m = lastActiveMonth - i;
-      let y = filterYear;
-      while (m <= 0) { m += 12; y--; }
-      const closed = getMonthClosed(m, y, filterRep);
-      data.push({
-        name: `${MONTHS[m - 1].slice(0, 3)}/${String(y).slice(2)}`,
-        Faturamento: Math.round(closed.reduce((s, d) => s + d.final_price, 0) * 100) / 100,
-        "Lucro Líquido": Math.round(closed.reduce((s, d) => s + d.net_profit, 0) * 100) / 100,
-        Vendas: closed.length,
-      });
+  const sortedRanking = useMemo(() => {
+    const sorted = [...repRanking];
+    switch (rankingMode) {
+      case "qty": return sorted.sort((a, b) => b.count - a.count);
+      case "revenue": return sorted.sort((a, b) => b.basePrice - a.basePrice);
+      case "margin": return sorted.sort((a, b) => b.netProfit - a.netProfit);
+      case "commission": return sorted.sort((a, b) => b.totalComm - a.totalComm);
+      default: return sorted;
     }
-    return data;
-  }, [deals, activeMonths, filterYear, filterRep]);
+  }, [repRanking, rankingMode]);
 
-
-
-  // Historical weekly average (last 3 months)
-  const historicalAvg = useMemo(() => {
-    const lastActiveMonth = activeMonths[activeMonths.length - 1];
-    let totalClosed = 0;
-    for (let i = 1; i <= 3; i++) {
-      let m = lastActiveMonth - i;
-      let y = filterYear;
-      while (m <= 0) { m += 12; y--; }
-      totalClosed += getMonthClosed(m, y, filterRep).length;
-    }
-    return totalClosed / 12;
-  }, [deals, activeMonths, filterYear, filterRep]);
-
-  const formatUsd = (v: number) =>
-    `US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const formatPct = (v: number) =>
-    v.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
-  const formatCompact = (v: number) =>
-    v >= 1000 ? `US$ ${(v / 1000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}k` : formatUsd(v);
-
-  // Pace calculation — compute total days across active months (must be before early return)
+  // Pace calculation
   const isCurrentYear = filterYear === now.getFullYear();
   const currentMonthNum = now.getMonth() + 1;
 
@@ -247,13 +280,30 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     return { totalDaysPeriod: total, elapsedDays: elapsed };
   }, [activeMonths, filterYear, isCurrentYear, currentMonthNum]);
 
-  // Commission totals for faturamento block
   const commissionTotal = useMemo(() => {
-    const current = getMultiMonthClosed(activeMonths, filterYear, filterRep);
-    return current.reduce((s, d) => s + d.seller_commission_value + d.manager_commission_value, 0);
+    return monthStats.current.sellerComm + monthStats.current.managerComm;
+  }, [monthStats]);
+
+  // Evolution data (last 6 months)
+  const evolutionData = useMemo(() => {
+    const lastActiveMonth = activeMonths[activeMonths.length - 1];
+    const data: { name: string; Faturamento: number; "Lucro Líquido": number; Vendas: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      let m = lastActiveMonth - i;
+      let y = filterYear;
+      while (m <= 0) { m += 12; y--; }
+      const closed = getMonthClosed(m, y, filterRep);
+      data.push({
+        name: `${MONTHS[m - 1].slice(0, 3)}/${String(y).slice(2)}`,
+        Faturamento: Math.round(closed.reduce((s, d) => s + d.base_price, 0) * 100) / 100,
+        "Lucro Líquido": Math.round(closed.reduce((s, d) => s + d.net_profit, 0) * 100) / 100,
+        Vendas: closed.length,
+      });
+    }
+    return data;
   }, [deals, activeMonths, filterYear, filterRep]);
 
-  // Smart alerts (pre-computed, used in render)
+  // Smart alerts
   const smartAlertsMemo = useMemo(() => {
     const alerts: string[] = [];
     if (filterMode !== "month") return alerts;
@@ -280,6 +330,13 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     return alerts;
   }, [repRanking, filterMonth, filterYear, filterMode, activeMonths, filterRep, deals]);
 
+  const formatUsd = (v: number) =>
+    `US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatPct = (v: number) =>
+    v.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "%";
+  const formatCompact = (v: number) =>
+    v >= 1000 ? `US$ ${(v / 1000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}k` : formatUsd(v);
+
   if (loading) return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
 
   const { current: cur, previous: prev } = monthStats;
@@ -295,17 +352,13 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   };
 
   const vendasVar = calcVariation(cur.count, prev.count);
-  const fobVar = calcVariation(cur.fobTotal, prev.fobTotal);
-  const cifVar = calcVariation(cur.revenue, prev.revenue);
-  const prevMetaPct = prev.count > 0 && totalMetaQtd > 0 ? (prev.count / totalMetaQtd) * 100 : 0;
-  const metaVar = calcVariation(pctAtingido, prevMetaPct);
+  const fobVar = calcVariation(cur.basePrice, prev.basePrice);
 
   const diasRestantes = Math.max(0, totalDaysPeriod - elapsedDays);
   const semanasPassadas = Math.max(1, elapsedDays / 7);
   const semanasRestantes = Math.max(0.1, diasRestantes / 7);
   const ritmoAtual = totalSold / semanasPassadas;
   const ritmoNecessario = diasRestantes > 0 ? faltam / semanasRestantes : 0;
-  const ritmoDiario = diasRestantes > 0 ? faltam / diasRestantes : 0;
   const noRitmo = faltam <= 0 || ritmoAtual >= ritmoNecessario;
 
   const handleMonthClick = (m: number) => {
@@ -313,39 +366,44 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     setFilterMode("month");
     setFilterQuarter(null);
   };
-
   const handleQuarterClick = (qi: number) => {
     setFilterMode("quarter");
     setFilterQuarter(qi);
   };
-
   const handleYearClick = () => {
     setFilterMode("year");
     setFilterQuarter(null);
   };
 
-  // Add rhythm alert to smart alerts (not a hook - computed after early return)
   const smartAlerts = [...smartAlertsMemo];
   if (!noRitmo && diasRestantes > 0) {
     smartAlerts.push(`Ritmo atual: ${ritmoAtual.toFixed(1)}/sem — necessário: ${ritmoNecessario.toFixed(1)}/sem`);
   }
 
-  // Sorted ranking
-  const sortedRanking = [...repRanking].sort((a, b) => b.pctQtd - a.pctQtd);
   const topPerformer = sortedRanking.length > 0 ? sortedRanking[0] : null;
   const worstPerformer = sortedRanking.length > 1 ? sortedRanking[sortedRanking.length - 1] : null;
-  
   const displayedRanking = showAllReps ? sortedRanking : sortedRanking.slice(0, 5);
-
-  // Commission totals
-  const commTotal = commissionTotal;
 
   const statusColor = (pct: number) =>
     pct >= 100 ? "text-[#22C55E]" : pct >= 70 ? "text-[#F97316]" : "text-[#EF4444]";
-  const statusBg = (pct: number) =>
-    pct >= 100 ? "bg-[#22C55E]" : pct >= 70 ? "bg-[#F97316]" : "bg-[#EF4444]";
   const statusLabel = (pct: number) =>
     pct >= 100 ? "Acima" : pct >= 70 ? "No Ritmo" : "Abaixo";
+
+  const getRankingValue = (rep: typeof sortedRanking[0]) => {
+    switch (rankingMode) {
+      case "qty": return `${rep.count} vendas`;
+      case "revenue": return formatCompact(rep.basePrice);
+      case "margin": return formatCompact(rep.netProfit);
+      case "commission": return formatCompact(rep.totalComm);
+    }
+  };
+
+  const rankingModes = [
+    { key: "qty" as const, label: "Quantidade" },
+    { key: "revenue" as const, label: "Faturamento" },
+    { key: "margin" as const, label: "Margem" },
+    { key: "commission" as const, label: "Comissão" },
+  ];
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -354,7 +412,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         <div>
           <h2 className="font-heading text-2xl font-bold text-foreground flex items-center gap-2">
             <Flame className="h-6 w-6 text-[#F97316]" />
-            Comercial Agressivo
+            Painel Inteligente de Resultado
           </h2>
           <p className="text-sm text-muted-foreground mt-0.5">{periodLabel}</p>
         </div>
@@ -429,7 +487,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
             <div className="h-10 w-10 rounded-lg bg-[#3B82F6]/10 flex items-center justify-center">
               <Target className="h-5 w-5 text-[#3B82F6]" />
             </div>
-            <span className="text-xs font-semibold text-muted-foreground uppercase">Meta do Mês</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase">Meta</span>
           </div>
           <p className="font-heading text-3xl font-black text-foreground">{totalMetaQtd}</p>
           <p className="text-xs text-muted-foreground mt-1">máquinas</p>
@@ -451,7 +509,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
               </span>
             )}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">vs mês anterior</p>
+          <p className="text-xs text-muted-foreground mt-1">{faltam > 0 ? `faltam ${faltam}` : "Meta batida! 🎉"}</p>
         </div>
 
         <div className="bg-white rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
@@ -461,15 +519,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
             </div>
             <span className="text-xs font-semibold text-muted-foreground uppercase">% Atingido</span>
           </div>
-          <div className="flex items-end gap-2">
-            <p className={`font-heading text-3xl font-black ${statusColor(pctAtingido)}`}>{formatPct(pctAtingido)}</p>
-            {metaVar !== 0 && (
-              <span className={`inline-flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-full mb-1 ${metaVar > 0 ? "bg-[#22C55E]/10 text-[#22C55E]" : "bg-[#EF4444]/10 text-[#EF4444]"}`}>
-                {metaVar > 0 ? "+" : ""}{metaVar.toFixed(0)}%
-              </span>
-            )}
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">{faltam > 0 ? `faltam ${faltam}` : "Meta batida! 🎉"}</p>
+          <p className={`font-heading text-3xl font-black ${statusColor(pctAtingido)}`}>{formatPct(pctAtingido)}</p>
         </div>
 
         <div className="bg-white rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
@@ -477,7 +527,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
             <div className="h-10 w-10 rounded-lg bg-[#3B82F6]/10 flex items-center justify-center">
               <BarChart3 className="h-5 w-5 text-[#3B82F6]" />
             </div>
-            <span className="text-xs font-semibold text-muted-foreground uppercase">Ritmo Comercial</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase">Ritmo</span>
           </div>
           <p className="font-heading text-3xl font-black text-foreground">{ritmoAtual.toFixed(1)}<span className="text-lg text-muted-foreground">/sem</span></p>
           <p className={`text-xs font-semibold mt-1 ${noRitmo ? "text-[#22C55E]" : "text-[#EF4444]"}`}>
@@ -486,16 +536,143 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         </div>
       </div>
 
+      {/* ═══ INTELIGÊNCIA: PROJEÇÃO + TENDÊNCIA + TICKET + MARGEM ═══ */}
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+        {/* Projeção do Mês */}
+        <div className="bg-white rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-10 w-10 rounded-lg bg-[#8B5CF6]/10 flex items-center justify-center">
+              <Target className="h-5 w-5 text-[#8B5CF6]" />
+            </div>
+            <span className="text-xs font-semibold text-muted-foreground uppercase">Projeção Mês</span>
+          </div>
+          {projection ? (
+            <>
+              <p className="font-heading text-3xl font-black text-foreground">{projection.projQtd}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                máquinas projetadas ({projection.daysPassed}/{projection.daysInMonth} dias)
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${projection.pctQtd >= 100 ? "bg-[#22C55E]/10 text-[#22C55E]" : projection.pctQtd >= 70 ? "bg-[#F97316]/10 text-[#F97316]" : "bg-[#EF4444]/10 text-[#EF4444]"}`}>
+                  {formatPct(projection.pctQtd)} da meta
+                </span>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="font-heading text-2xl font-black text-muted-foreground">—</p>
+              <p className="text-xs text-muted-foreground mt-1">Disponível apenas no mês atual</p>
+            </>
+          )}
+        </div>
+
+        {/* Tendência 3 Meses */}
+        <div className="bg-white rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3 mb-3">
+            <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${
+              trend3m.icon === "up" ? "bg-[#22C55E]/10" : trend3m.icon === "down" ? "bg-[#EF4444]/10" : "bg-[#F97316]/10"
+            }`}>
+              {trend3m.icon === "up" ? <TrendingUp className="h-5 w-5 text-[#22C55E]" /> :
+               trend3m.icon === "down" ? <TrendingDown className="h-5 w-5 text-[#EF4444]" /> :
+               <Minus className="h-5 w-5 text-[#F97316]" />}
+            </div>
+            <span className="text-xs font-semibold text-muted-foreground uppercase">Tendência 3M</span>
+          </div>
+          <p className={`font-heading text-2xl font-black ${
+            trend3m.icon === "up" ? "text-[#22C55E]" : trend3m.icon === "down" ? "text-[#EF4444]" : "text-[#F97316]"
+          }`}>{trend3m.label}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Média 3M: {trend3m.avg.toFixed(1)} · Atual: {trend3m.current}
+          </p>
+        </div>
+
+        {/* Ticket Médio */}
+        <div className="bg-white rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-10 w-10 rounded-lg bg-[#3B82F6]/10 flex items-center justify-center">
+              <DollarSign className="h-5 w-5 text-[#3B82F6]" />
+            </div>
+            <span className="text-xs font-semibold text-muted-foreground uppercase">Ticket Médio</span>
+          </div>
+          <p className="font-heading text-2xl font-black text-foreground">{cur.count > 0 ? formatCompact(ticketMedio.global) : "—"}</p>
+          <p className="text-xs text-muted-foreground mt-1">FOB / máquina (equipe)</p>
+        </div>
+
+        {/* Margem Média Real */}
+        <div className="bg-white rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-10 w-10 rounded-lg bg-[#22C55E]/10 flex items-center justify-center">
+              <Zap className="h-5 w-5 text-[#22C55E]" />
+            </div>
+            <span className="text-xs font-semibold text-muted-foreground uppercase">Margem Média</span>
+          </div>
+          <p className={`font-heading text-2xl font-black ${margemMedia.global >= 0 ? "text-[#22C55E]" : "text-[#EF4444]"}`}>
+            {cur.count > 0 ? formatPct(margemMedia.global) : "—"}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">Lucro líquido / preço base</p>
+        </div>
+      </div>
+
+      {/* ═══ TICKET + MARGEM POR REPRESENTANTE ═══ */}
+      {filterRep === "all" && (ticketMedio.byRep.length > 0 || margemMedia.byRep.length > 0) && (
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+          {/* Ticket por Rep */}
+          {ticketMedio.byRep.length > 0 && (
+            <div className="bg-white rounded-xl border border-border p-5 shadow-sm">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3 flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-[#3B82F6]" /> Ticket Médio por Representante
+              </h4>
+              <div className="space-y-2">
+                {ticketMedio.byRep.map((r, i) => (
+                  <div key={r.id} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-muted-foreground w-5">{i + 1}º</span>
+                      <span className="text-sm font-medium text-foreground">{r.nome}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-bold text-foreground">{formatCompact(r.ticket)}</span>
+                      <span className="text-xs text-muted-foreground ml-1">({r.count})</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Margem por Rep */}
+          {margemMedia.byRep.length > 0 && (
+            <div className="bg-white rounded-xl border border-border p-5 shadow-sm">
+              <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3 flex items-center gap-2">
+                <Zap className="h-4 w-4 text-[#22C55E]" /> Margem Média por Representante
+              </h4>
+              <div className="space-y-2">
+                {margemMedia.byRep.map((r, i) => (
+                  <div key={r.id} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-muted-foreground w-5">{i + 1}º</span>
+                      <span className="text-sm font-medium text-foreground">{r.nome}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-sm font-bold ${r.margem >= 0 ? "text-[#22C55E]" : "text-[#EF4444]"}`}>{formatPct(r.margem)}</span>
+                      <span className="text-xs text-muted-foreground ml-1">({r.count})</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ═══ TOP PERFORMER + WORST PERFORMER ═══ */}
       <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-        {/* Top Performer — 2 cols */}
         {topPerformer && topPerformer.metaQtd > 0 && (
           <div className="md:col-span-2 bg-gradient-to-r from-[#3B82F6] to-[#2563EB] rounded-xl p-6 text-white shadow-lg shadow-[#3B82F6]/20 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-8 translate-x-8" />
             <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-6 -translate-x-6" />
             <div className="relative">
               <div className="flex items-center gap-2 mb-4">
-                <span className="text-xs font-bold uppercase tracking-wider bg-white/20 px-3 py-1 rounded-full">⭐ Top Performer do Mês</span>
+                <span className="text-xs font-bold uppercase tracking-wider bg-white/20 px-3 py-1 rounded-full">⭐ Top Performer</span>
               </div>
               <div className="flex items-center gap-4 mb-4">
                 <div className="h-14 w-14 rounded-full bg-white/20 flex items-center justify-center text-2xl font-black">
@@ -506,18 +683,22 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                   <p className="text-white/70 text-sm">Liderando a equipe</p>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                <div>
-                  <p className="text-white/60 text-xs uppercase">Meta</p>
-                  <p className="font-heading text-2xl font-black">{topPerformer.metaQtd}</p>
-                </div>
+              <div className="grid grid-cols-4 gap-3 mb-4">
                 <div>
                   <p className="text-white/60 text-xs uppercase">Vendido</p>
                   <p className="font-heading text-2xl font-black">{topPerformer.count}</p>
                 </div>
                 <div>
-                  <p className="text-white/60 text-xs uppercase">% Atingido</p>
-                  <p className="font-heading text-2xl font-black">{formatPct(topPerformer.pctQtd)}</p>
+                  <p className="text-white/60 text-xs uppercase">Meta</p>
+                  <p className="font-heading text-2xl font-black">{topPerformer.metaQtd}</p>
+                </div>
+                <div>
+                  <p className="text-white/60 text-xs uppercase">Faturamento</p>
+                  <p className="font-heading text-lg font-black">{formatCompact(topPerformer.basePrice)}</p>
+                </div>
+                <div>
+                  <p className="text-white/60 text-xs uppercase">Margem</p>
+                  <p className="font-heading text-lg font-black">{formatPct(topPerformer.margem)}</p>
                 </div>
               </div>
               <div className="w-full h-3 bg-white/20 rounded-full overflow-hidden">
@@ -530,12 +711,11 @@ const ExecutiveDashboard = ({ userId }: Props) => {
           </div>
         )}
 
-        {/* Worst Performer */}
         {worstPerformer && worstPerformer.metaQtd > 0 && worstPerformer.id !== topPerformer?.id && (
           <div className="bg-white rounded-xl border-2 border-[#EF4444]/30 p-6 shadow-sm shadow-[#EF4444]/10 relative overflow-hidden">
             <div className="absolute top-0 right-0 h-1 w-full bg-gradient-to-r from-[#EF4444] to-[#F97316]" />
             <div className="flex items-center gap-2 mb-4">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#EF4444] bg-[#EF4444]/10 px-3 py-1 rounded-full">⚠ Precisa de Atenção</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#EF4444] bg-[#EF4444]/10 px-3 py-1 rounded-full">⚠ Atenção</span>
             </div>
             <div className="flex items-center gap-3 mb-3">
               <div className="h-12 w-12 rounded-full bg-[#EF4444]/10 flex items-center justify-center text-lg font-black text-[#EF4444]">
@@ -548,18 +728,13 @@ const ExecutiveDashboard = ({ userId }: Props) => {
             </div>
             <p className="font-heading text-2xl font-black text-[#EF4444]">{formatPct(worstPerformer.pctQtd)}</p>
             <p className="text-xs text-muted-foreground mt-2">
-              Precisa vender +{Math.max(0, worstPerformer.metaQtd - worstPerformer.count)} máquina{Math.max(0, worstPerformer.metaQtd - worstPerformer.count) > 1 ? "s" : ""} para atingir a meta
+              Falta{Math.max(0, worstPerformer.metaQtd - worstPerformer.count) > 1 ? "m" : ""} {Math.max(0, worstPerformer.metaQtd - worstPerformer.count)} máquina{Math.max(0, worstPerformer.metaQtd - worstPerformer.count) > 1 ? "s" : ""}
             </p>
-            {worstPerformer.pctQtd < 100 && (
-              <p className="text-xs font-semibold text-[#EF4444] mt-1">
-                {Math.round(100 - worstPerformer.pctQtd)}% abaixo da meta
-              </p>
-            )}
           </div>
         )}
       </div>
 
-      {/* ═══ RANKING DA EQUIPE ═══ */}
+      {/* ═══ RANKINGS MÚLTIPLOS ═══ */}
       {sortedRanking.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-4">
@@ -567,12 +742,22 @@ const ExecutiveDashboard = ({ userId }: Props) => {
               <Trophy className="h-5 w-5 text-[#F97316]" />
               <h3 className="font-heading text-lg font-bold text-foreground">Ranking da Equipe</h3>
             </div>
-            {sortedRanking.length > 5 && (
-              <button onClick={() => setShowAllReps(!showAllReps)} className="text-xs font-semibold text-[#3B82F6] hover:underline">
-                {showAllReps ? "Mostrar menos" : "Ver Todos Representantes"}
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {rankingModes.map(rm => (
+                <button key={rm.key} onClick={() => setRankingMode(rm.key)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    rankingMode === rm.key ? "bg-[#F97316] text-white shadow-md shadow-[#F97316]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"
+                  }`}>{rm.label}</button>
+              ))}
+            </div>
           </div>
+          {sortedRanking.length > 5 && (
+            <div className="flex justify-end mb-2">
+              <button onClick={() => setShowAllReps(!showAllReps)} className="text-xs font-semibold text-[#3B82F6] hover:underline">
+                {showAllReps ? "Mostrar menos" : "Ver Todos"}
+              </button>
+            </div>
+          )}
           <div className="space-y-3">
             {displayedRanking.map((rep, idx) => {
               const faltamRep = Math.max(0, rep.metaQtd - rep.count);
@@ -594,21 +779,20 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-heading font-bold text-foreground truncate">{rep.nome}</p>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="text-xs text-muted-foreground">Meta: <b>{rep.metaQtd}</b></span>
-                      <span className="text-xs text-foreground font-semibold">Vendido: <b>{rep.count}</b></span>
-                      <span className={`text-xs font-bold ${statusColor(pctRep)}`}>{formatPct(pctRep)}</span>
+                    <div className="flex items-center gap-3 mt-1 flex-wrap">
+                      <span className="text-xs text-muted-foreground">Qtd: <b>{rep.count}</b></span>
+                      <span className="text-xs text-muted-foreground">Fat: <b>{formatCompact(rep.basePrice)}</b></span>
+                      <span className="text-xs text-muted-foreground">Margem: <b className={rep.margem >= 0 ? "text-[#22C55E]" : "text-[#EF4444]"}>{formatPct(rep.margem)}</b></span>
+                      <span className="text-xs text-muted-foreground">Com: <b>{formatCompact(rep.totalComm)}</b></span>
                     </div>
                   </div>
                   <div className="flex-shrink-0 text-right">
-                    <span className={`inline-flex items-center text-xs font-bold uppercase px-2.5 py-1 rounded-full ${
+                    <p className="text-sm font-black text-foreground">{getRankingValue(rep)}</p>
+                    <span className={`inline-flex items-center text-xs font-bold uppercase px-2.5 py-1 rounded-full mt-1 ${
                       pctRep >= 100 ? "bg-[#22C55E]/10 text-[#22C55E]" : pctRep >= 70 ? "bg-[#F97316]/10 text-[#F97316]" : "bg-[#EF4444]/10 text-[#EF4444]"
                     }`}>
                       {statusLabel(pctRep)}
                     </span>
-                    {faltamRep > 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">falta{faltamRep > 1 ? "m" : ""} {faltamRep}</p>
-                    )}
                   </div>
                 </div>
               );
@@ -623,10 +807,11 @@ const ExecutiveDashboard = ({ userId }: Props) => {
           <DollarSign className="h-5 w-5 text-[#22C55E]" />
           <h3 className="font-heading text-lg font-bold text-foreground">Faturamento</h3>
         </div>
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-          <CaMetricCard label="FOB Total" value={formatCompact(cur.fobTotal)} icon={<DollarSign className="h-5 w-5" />} color="#3B82F6" variation={fobVar} sub={`${cur.count} negociações fechadas`} />
-          <CaMetricCard label="CIF Total" value={formatCompact(cur.revenue)} icon={<TrendingUp className="h-5 w-5" />} color="#22C55E" variation={cifVar} sub="Valor total faturado" />
-          <CaMetricCard label="Lucro Líquido" value={formatCompact(cur.netProfit)} icon={<Zap className="h-5 w-5" />} color="#22C55E" sub="Resultado líquido" />
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-4">
+          <CaMetricCard label="FOB Total" value={formatCompact(cur.basePrice)} icon={<DollarSign className="h-5 w-5" />} color="#3B82F6" variation={fobVar} sub={`${cur.count} negociações fechadas`} />
+          <CaMetricCard label="Lucro Líquido" value={formatCompact(cur.netProfit)} icon={<Zap className="h-5 w-5" />} color="#22C55E" sub="Resultado após comissões" />
+          <CaMetricCard label="Comissões" value={formatCompact(commissionTotal)} icon={<Users className="h-5 w-5" />} color="#F97316" sub="Vendedor + Gestor" />
+          <CaMetricCard label="Lucro Bruto" value={formatCompact(cur.grossProfit)} icon={<TrendingUp className="h-5 w-5" />} color="#8B5CF6" sub="Antes das comissões" />
         </div>
       </section>
 
@@ -669,7 +854,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         </div>
       </section>
 
-      {/* ═══ ALERTA GRANDE ═══ */}
+      {/* ═══ ALERTAS ═══ */}
       {smartAlerts.length > 0 && (
         <section className="bg-gradient-to-r from-[#EF4444] to-[#DC2626] rounded-xl p-6 text-white shadow-lg shadow-[#EF4444]/20 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-12 translate-x-12" />
@@ -705,7 +890,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   );
 };
 
-/* --- Comercial Agressivo Sub-components --- */
+/* --- Sub-components --- */
 
 const CaMetricCard = ({ label, value, icon, color, sub, variation }: {
   label: string; value: string; icon: React.ReactNode; color: string; sub?: string; variation?: number;
