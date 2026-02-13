@@ -175,10 +175,16 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   const monthName = new Date().toLocaleDateString("pt-BR", { month: "long" });
 
   return (
-    <div className="space-y-6">
-      <h2 className="font-heading text-lg font-semibold text-foreground flex items-center gap-2">
-        <BarChart3 className="h-5 w-5" /> Dashboard Executivo
-      </h2>
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="icon-bubble icon-bubble--primary">
+          <BarChart3 className="h-5 w-5" />
+        </div>
+        <div>
+          <h2 className="font-heading text-xl font-bold text-foreground">Dashboard Executivo</h2>
+          <p className="text-xs text-muted-foreground">Visão geral do desempenho comercial</p>
+        </div>
+      </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-end">
@@ -214,31 +220,34 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
       {/* Row 1: Key metrics */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-        <KpiCard icon={<Target className="h-5 w-5" />} label="Taxa de Fechamento" value={formatPct(stats.closingRate)} sub={`${stats.closedCount} de ${stats.total}`} />
-        <KpiCard icon={<TrendingUp className="h-5 w-5" />} label="Margem Média Bruta" value={formatPct(stats.avgGrossMargin)} />
-        <KpiCard icon={<TrendingDown className="h-5 w-5" />} label="Margem Média Líquida" value={formatPct(stats.avgNetMargin)} accent={stats.avgNetMargin < 0} />
-        <KpiCard icon={<Unlock className="h-5 w-5" />} label="Pipeline Ponderado" value={formatUsd(stats.pipelineValue)} sub={`${stats.openCount} abertas`} />
+        <KpiCard icon={<Target className="h-5 w-5" />} label="Taxa de Fechamento" value={formatPct(stats.closingRate)} sub={`${stats.closedCount} de ${stats.total}`} variant="primary" />
+        <KpiCard icon={<TrendingUp className="h-5 w-5" />} label="Margem Média Bruta" value={formatPct(stats.avgGrossMargin)} variant="accent" />
+        <KpiCard icon={<TrendingDown className="h-5 w-5" />} label="Margem Média Líquida" value={formatPct(stats.avgNetMargin)} variant={stats.avgNetMargin < 0 ? "destructive" : "info"} accent={stats.avgNetMargin < 0} />
+        <KpiCard icon={<Unlock className="h-5 w-5" />} label="Pipeline Ponderado" value={formatUsd(stats.pipelineValue)} sub={`${stats.openCount} abertas`} variant="warning" />
       </div>
 
       {/* Row 2: Profits */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
-        <KpiCard icon={<DollarSign className="h-5 w-5" />} label="Lucro Bruto Total" value={formatUsd(stats.totalGrossProfit)} highlight />
-        <KpiCard icon={<DollarSign className="h-5 w-5" />} label="Lucro Líquido Total" value={formatUsd(stats.totalNetProfit)} highlight accent={stats.totalNetProfit < 0} />
-        <KpiCard icon={<BarChart3 className="h-5 w-5" />} label="Previsão 3 Meses" value={formatUsd(stats.forecastValue)} sub={`~${stats.forecast3m} fechamentos`} />
+        <KpiCard icon={<DollarSign className="h-5 w-5" />} label="Lucro Bruto Total" value={formatUsd(stats.totalGrossProfit)} variant="accent" highlight />
+        <KpiCard icon={<DollarSign className="h-5 w-5" />} label="Lucro Líquido Total" value={formatUsd(stats.totalNetProfit)} variant={stats.totalNetProfit < 0 ? "destructive" : "primary"} highlight accent={stats.totalNetProfit < 0} />
+        <KpiCard icon={<BarChart3 className="h-5 w-5" />} label="Previsão 3 Meses" value={formatUsd(stats.forecastValue)} sub={`~${stats.forecast3m} fechamentos`} variant="info" />
       </div>
 
       {/* Row 3: Commissions */}
       <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-        <KpiCard icon={<Users className="h-5 w-5" />} label={`Com. Vendedor (${monthName})`} value={formatUsd(stats.monthSellerComm)} />
-        <KpiCard icon={<Users className="h-5 w-5" />} label={`Com. Gestor (${monthName})`} value={formatUsd(stats.monthManagerComm)} />
-        <KpiCard icon={<Users className="h-5 w-5" />} label="Com. Vendedor Total" value={formatUsd(stats.totalSellerComm)} />
-        <KpiCard icon={<Users className="h-5 w-5" />} label="Com. Gestor Total" value={formatUsd(stats.totalManagerComm)} />
+        <KpiCard icon={<Users className="h-5 w-5" />} label={`Com. Vendedor (${monthName})`} value={formatUsd(stats.monthSellerComm)} variant="primary" />
+        <KpiCard icon={<Users className="h-5 w-5" />} label={`Com. Gestor (${monthName})`} value={formatUsd(stats.monthManagerComm)} variant="primary" />
+        <KpiCard icon={<Users className="h-5 w-5" />} label="Com. Vendedor Total" value={formatUsd(stats.totalSellerComm)} variant="accent" />
+        <KpiCard icon={<Users className="h-5 w-5" />} label="Com. Gestor Total" value={formatUsd(stats.totalManagerComm)} variant="accent" />
       </div>
 
       {/* Type Analysis */}
-      <Card className="border-border bg-card p-5 shadow-sm">
+      <Card className="border-border/60 bg-card p-6 shadow-md rounded-xl">
         <h3 className="font-heading text-sm font-semibold text-card-foreground mb-4 flex items-center gap-2">
-          <Package className="h-4 w-4" /> Análise por Tipo — {MONTHS[filterMonth - 1]}/{filterYear}
+          <div className="icon-bubble icon-bubble--info" style={{ height: '28px', width: '28px' }}>
+            <Package className="h-3.5 w-3.5" />
+          </div>
+          Análise por Tipo — {MONTHS[filterMonth - 1]}/{filterYear}
           {filterRep !== "all" && reps.find(r => r.id === filterRep) && (
             <Badge variant="outline" className="text-[10px] ml-2">{reps.find(r => r.id === filterRep)!.nome}</Badge>
           )}
@@ -364,23 +373,26 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
       {/* Recent closed deals */}
       {deals.filter((d) => d.status === "closed").length > 0 && (
-        <Card className="border-border bg-card p-6 shadow-sm">
+        <Card className="border-border/60 bg-card p-6 shadow-md rounded-xl">
           <h3 className="font-heading text-base font-semibold text-card-foreground mb-4 flex items-center gap-2">
-            <Lock className="h-4 w-4" /> Últimas Vendas Fechadas
+            <div className="icon-bubble icon-bubble--accent" style={{ height: '28px', width: '28px' }}>
+              <Lock className="h-3.5 w-3.5" />
+            </div>
+            Últimas Vendas Fechadas
           </h3>
-          <div className="space-y-2">
+          <div className="space-y-1">
             {deals
               .filter((d) => d.status === "closed")
               .slice(0, 5)
               .map((d) => (
-                <div key={d.id} className="flex items-center justify-between text-sm py-2 border-b border-border last:border-0">
+                <div key={d.id} className="flex items-center justify-between text-sm py-2.5 px-2 border-b border-border/50 last:border-0 hover:bg-muted/30 rounded-lg transition-colors">
                   <div>
                     <span className="font-medium">{d.client_name}</span>
                     {d.machine_name && <span className="text-muted-foreground ml-2">— {d.machine_name}</span>}
                     {d.machine_type && <Badge variant="outline" className="text-[10px] h-4 ml-2">{d.machine_type}</Badge>}
                   </div>
                   <div className="flex items-center gap-4 text-xs">
-                    <span>{formatUsd(d.final_price)}</span>
+                    <span className="font-medium">{formatUsd(d.final_price)}</span>
                     <span className="text-accent">{formatPct(d.gross_margin_percent)}</span>
                     <span className={`font-bold ${d.net_margin_percent < 0 ? "text-destructive" : "text-accent"}`}>{formatPct(d.net_margin_percent)}</span>
                     <span className="text-muted-foreground">
@@ -396,14 +408,35 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   );
 };
 
-const KpiCard = ({ icon, label, value, sub, highlight, accent }: {
-  icon: React.ReactNode; label: string; value: string; sub?: string; highlight?: boolean; accent?: boolean;
+const VARIANT_CLASSES: Record<string, string> = {
+  primary: "kpi-card--primary",
+  accent: "kpi-card--accent",
+  warning: "kpi-card--warning",
+  info: "kpi-card--info",
+  destructive: "kpi-card--destructive",
+};
+
+const ICON_BUBBLE_CLASSES: Record<string, string> = {
+  primary: "icon-bubble--primary",
+  accent: "icon-bubble--accent",
+  warning: "icon-bubble--warning",
+  info: "icon-bubble--info",
+  destructive: "icon-bubble--destructive",
+};
+
+const KpiCard = ({ icon, label, value, sub, highlight, accent, variant = "primary" }: {
+  icon: React.ReactNode; label: string; value: string; sub?: string; highlight?: boolean; accent?: boolean; variant?: string;
 }) => (
-  <Card className={`p-4 shadow-sm ${highlight ? "border-primary/30 bg-primary/5" : "border-border bg-card"}`}>
-    <div className="flex items-center gap-2 mb-1 text-muted-foreground">{icon}<span className="text-xs font-medium">{label}</span></div>
-    <p className={`font-heading text-xl font-bold ${accent ? "text-destructive" : "text-foreground"}`}>{value}</p>
-    {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
-  </Card>
+  <div className={`kpi-card ${VARIANT_CLASSES[variant] || "kpi-card--primary"} ${highlight ? "ring-1 ring-primary/20" : ""} animate-fade-in`}>
+    <div className="flex items-center gap-2.5 mb-2">
+      <div className={`icon-bubble ${ICON_BUBBLE_CLASSES[variant] || "icon-bubble--primary"}`} style={{ height: '32px', width: '32px' }}>
+        {icon}
+      </div>
+      <span className="text-xs font-medium text-muted-foreground leading-tight">{label}</span>
+    </div>
+    <p className={`font-heading text-2xl font-bold tracking-tight ${accent ? "text-destructive" : "text-foreground"}`}>{value}</p>
+    {sub && <p className="text-[11px] text-muted-foreground mt-1">{sub}</p>}
+  </div>
 );
 
 export default ExecutiveDashboard;

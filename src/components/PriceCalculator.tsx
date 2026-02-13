@@ -253,20 +253,20 @@ const PriceCalculator = () => {
     setHistory((prev) => prev.filter((c) => c.id !== id));
   };
 
-  if (authLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><p className="text-muted-foreground">Carregando...</p></div>;
+  if (authLoading) return <div className="min-h-screen bg-background flex items-center justify-center"><div className="flex flex-col items-center gap-3 animate-fade-in"><div className="h-12 w-12 rounded-xl gradient-accent shadow-lg shadow-accent/20 flex items-center justify-center"><TrendingUp className="h-6 w-6 text-accent-foreground" /></div><p className="text-muted-foreground text-sm font-medium">Carregando...</p></div></div>;
   if (!user) return <Auth />;
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Sidebar vertical */}
-      <aside className="hidden md:flex w-56 shrink-0 flex-col border-r border-border bg-card p-4 gap-2">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
-            <TrendingUp className="h-5 w-5 text-primary-foreground" />
+      {/* Sidebar vertical premium */}
+      <aside className="hidden md:flex w-60 shrink-0 flex-col sidebar-premium p-5 gap-2">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl gradient-accent shadow-lg shadow-accent/20">
+            <TrendingUp className="h-5 w-5 text-accent-foreground" />
           </div>
           <div>
-            <h1 className="font-heading text-base font-bold tracking-tight text-foreground">Gestão Comercial</h1>
-            <p className="text-xs text-muted-foreground">Máquinas Industriais</p>
+            <h1 className="font-heading text-base font-bold tracking-tight text-sidebar-primary">Gestão Comercial</h1>
+            <p className="text-[11px] text-sidebar-muted font-medium tracking-wide uppercase">Máquinas Industriais</p>
           </div>
         </div>
         <nav className="flex flex-col gap-1 flex-1">
@@ -281,24 +281,32 @@ const PriceCalculator = () => {
             <button
               key={value}
               onClick={() => setActiveTab(value)}
-              className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
                 activeTab === value
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
+                  : "text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
               }`}
             >
-              <Icon className="h-4 w-4" />
+              <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200 ${
+                activeTab === value
+                  ? "gradient-accent shadow-sm text-accent-foreground"
+                  : "bg-sidebar-accent/30 text-sidebar-muted group-hover:text-sidebar-foreground"
+              }`}>
+                <Icon className="h-4 w-4" />
+              </div>
               {label}
             </button>
           ))}
         </nav>
-        <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()} className="text-muted-foreground justify-start mt-auto">
-          <LogOut className="h-4 w-4 mr-2" /> Sair
-        </Button>
+        <div className="border-t border-sidebar-border pt-3 mt-2">
+          <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()} className="text-sidebar-muted hover:text-sidebar-foreground justify-start w-full">
+            <LogOut className="h-4 w-4 mr-2" /> Sair
+          </Button>
+        </div>
       </aside>
 
       {/* Mobile header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 bg-card border-b border-border px-3 py-2 flex items-center gap-2 overflow-x-auto">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 gradient-primary px-3 py-2 flex items-center gap-2 overflow-x-auto shadow-lg">
         {[
           { value: "simulation", icon: Calculator, label: "Simulação" },
           { value: "deals", icon: Users, label: "Vendas" },
@@ -310,10 +318,10 @@ const PriceCalculator = () => {
           <button
             key={value}
             onClick={() => setActiveTab(value)}
-            className={`flex items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-xs font-medium transition-colors shrink-0 ${
+            className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-all shrink-0 ${
               activeTab === value
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-secondary"
+                ? "bg-white/20 text-white shadow-sm"
+                : "text-white/60 hover:text-white hover:bg-white/10"
             }`}
           >
             <Icon className="h-3.5 w-3.5" />
@@ -332,9 +340,12 @@ const PriceCalculator = () => {
             <div className="grid gap-6 lg:grid-cols-5">
               {/* Inputs – 3 cols */}
               <div className="lg:col-span-3 space-y-6">
-                <Card className="border-border bg-card p-6 shadow-sm">
+                <Card className="border-border/60 bg-card p-6 shadow-md rounded-xl animate-fade-in">
                   <h2 className="font-heading text-lg font-semibold text-card-foreground mb-6 flex items-center gap-2">
-                    <Package className="h-5 w-5" /> Simulação
+                    <div className="icon-bubble icon-bubble--primary">
+                      <Package className="h-5 w-5" />
+                    </div>
+                    Simulação
                   </h2>
                   <div className="space-y-5">
                     <div className="relative">
@@ -476,9 +487,12 @@ const PriceCalculator = () => {
                   </div>
                 </Card>
 
-                <Card className="border-border bg-card p-6 shadow-sm">
+                <Card className="border-border/60 bg-card p-6 shadow-md rounded-xl animate-fade-in">
                   <h2 className="font-heading text-lg font-semibold text-card-foreground mb-6 flex items-center gap-2">
-                    <Receipt className="h-5 w-5" /> Venda Nacionalizada
+                    <div className="icon-bubble icon-bubble--warning">
+                      <Receipt className="h-5 w-5" />
+                    </div>
+                    Venda Nacionalizada
                   </h2>
                   <div className="space-y-5">
                     <InputField label="Impostos Reais da Nacionalização" icon={<Percent className="h-4 w-4" />} value={realTaxValue} onChange={setRealTaxValue} placeholder="0,00" suffix="%" type="number" />
@@ -525,19 +539,21 @@ const PriceCalculator = () => {
 
               {/* Results – 2 cols */}
               <div className="lg:col-span-2 space-y-6">
-                <Card className="border-border bg-primary p-6 shadow-sm">
-                  <p className="text-sm font-medium text-primary-foreground/70">Preço de Venda Sugerido</p>
-                  <p className="mt-1 font-heading text-4xl font-bold text-primary-foreground">
+                <Card className="gradient-primary p-6 shadow-xl shadow-primary/20 border-0 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+                  <div className="absolute bottom-0 left-0 w-20 h-20 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+                  <p className="text-sm font-medium text-primary-foreground/70 relative">Preço de Venda Sugerido</p>
+                  <p className="mt-2 font-heading text-4xl font-bold text-primary-foreground relative tracking-tight">
                     {simulation ? formatUsd(simulation.finalPrice) : "US$ 0,00"}
                   </p>
                   {simulation && simulation.hasDollar && (
-                    <p className="mt-1 text-sm text-primary-foreground/60">
+                    <p className="mt-1.5 text-sm text-primary-foreground/60 relative">
                       {formatCurrency(simulation.finalPriceBrl)}
                     </p>
                   )}
                 </Card>
 
-                <Card className="border-border bg-card p-6 shadow-sm">
+                <Card className="border-border/60 bg-card p-6 shadow-md rounded-xl animate-fade-in">
                   <h2 className="font-heading text-base font-semibold text-card-foreground mb-4">Composição Estimada</h2>
                   <div className="space-y-2.5">
                     <Row label="Custo FOB (USD)" value={simulation ? formatUsd(simulation.fob) : "US$ 0,00"} />
