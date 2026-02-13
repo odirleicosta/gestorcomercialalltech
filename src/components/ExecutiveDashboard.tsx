@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import type { Deal } from "@/components/DealManager";
+import RepHistoryPanel from "@/components/RepHistoryPanel";
 
 interface Props { userId: string; }
 interface RepOption { id: string; nome: string; }
@@ -394,7 +395,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                 : "bg-white border-border";
 
               return (
-                <div key={rep.id} className={`rounded-xl border p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow ${bg}`}>
+                <div key={rep.id} onClick={() => setFilterRep(rep.id)} className={`rounded-xl border p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${bg}`}>
                   <span className="text-2xl w-10 text-center flex-shrink-0">{medal}</span>
                   <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-foreground flex-shrink-0">
                     {rep.nome.charAt(0)}
@@ -591,6 +592,18 @@ const ExecutiveDashboard = ({ userId }: Props) => {
           </div>
         </div>
       </section>
+
+      {/* ═══ HISTÓRICO INDIVIDUAL ═══ */}
+      {filterRep !== "all" && (
+        <RepHistoryPanel
+          repId={filterRep}
+          repName={reps.find(r => r.id === filterRep)?.nome || ""}
+          deals={deals}
+          repsWithGoals={repsWithGoals}
+          monthlyGoals={monthlyGoals}
+          filterYear={filterYear}
+        />
+      )}
     </div>
   );
 };
