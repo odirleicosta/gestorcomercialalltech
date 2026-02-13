@@ -16,6 +16,10 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DollarSign, Percent, TrendingUp, TrendingDown, Package, Receipt,
   Save, Lock, Unlock, Trash2, Search, Eye, EyeOff, Users, History, Clock,
   ChevronsUpDown, Check, Plus,
@@ -23,7 +27,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { loadCatalog, type CatalogMachine } from "@/components/MachineCatalog";
+import { loadCatalog, saveCatalog, type CatalogMachine } from "@/components/MachineCatalog";
+
 
 export const MACHINE_TYPES = ["Centro de Usinagem", "Torno CNC", "Plu.go"] as const;
 export type MachineType = typeof MACHINE_TYPES[number];
@@ -142,6 +147,10 @@ const DealManager = ({ userId }: Props) => {
   // Commission history
   const [commissionLogs, setCommissionLogs] = useState<CommissionLog[]>([]);
   const [showLogsForDeal, setShowLogsForDeal] = useState<string | null>(null);
+
+  // Prompt to save sale price to catalog
+  const [showSavePricePrompt, setShowSavePricePrompt] = useState(false);
+  const [pendingSavePriceData, setPendingSavePriceData] = useState<{ modeloId: string; basePrice: number } | null>(null);
 
   // Load profile defaults and data sources
   useEffect(() => {
@@ -327,6 +336,12 @@ const DealManager = ({ userId }: Props) => {
       return;
     }
 
+    // Check if selected model has no sale price and offer to save it
+    if (selectedModelo && (!selectedModelo.preco_venda_fob || selectedModelo.preco_venda_fob === 0) && simulation.basePrice > 0) {
+      setPendingSavePriceData({ modeloId: selectedModelo.id, basePrice: simulation.basePrice });
+      setShowSavePricePrompt(true);
+    }
+
     toast({ title: "Negociação salva!" });
     resetForm();
     fetchDeals();
@@ -338,7 +353,21 @@ const DealManager = ({ userId }: Props) => {
     setManagerPct(""); setObservation(""); setRepresentativeId(""); setShowForm(false);
   };
 
-  const handleClose = async (deal: Deal) => {
+  const handleConfirmSavePrice = () => {
+    if (!pendingSavePriceData) return;
+    const catalog = loadCatalog();
+    const idx = catalog.findIndex(m => m.id === pendingSavePriceData.modeloId);
+    if (idx >= 0) {
+      catalog[idx].preco_venda_fob = pendingSavePriceData.basePrice;
+      catalog[idx].updated_at = new Date().toISOString();
+      saveCatalog(catalog);
+      toast({ title: "Preço de venda atualizado no catálogo!" });
+    }
+    setShowSavePricePrompt(false);
+    setPendingSavePriceData(null);
+  };
+
+
     if (deal.status === "closed") return;
     const { error } = await supabase
       .from("deals" as any)
@@ -820,6 +849,27 @@ const DealManager = ({ userId }: Props) => {
           </div>
         </ScrollArea>
       )}
+
+      {/* Prompt to save sale price to catalog */}
+      <AlertDialog open={showSavePricePrompt} onOpenChange={setShowSavePricePrompt}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Salvar preço de venda no catálogo?</AlertDialogTitle>
+            <AlertDialogDescription>
+              O modelo selecionado não possui preço de venda FOB cadastrado no catálogo.
+              Deseja salvar o valor de <strong>US$ {pendingSavePriceData?.basePrice?.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong> como preço de venda padrão?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setShowSavePricePrompt(false); setPendingSavePriceData(null); }}>
+              Não
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmSavePrice}>
+              Sim, salvar no catálogo
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
