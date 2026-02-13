@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Trash2, Search, Package, Hash, Pencil, X, Check } from "lucide-react";
+import { Plus, Trash2, Search, Package, Hash, Pencil, X, Check, Download, Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import * as XLSX from "xlsx";
 
 export interface CatalogMachine {
   id: string;
@@ -234,15 +235,116 @@ const MachineCatalog = ({ catalog, setCatalog }: Props) => {
 
   const editInputClass = "h-7 text-sm bg-secondary/50 border-border";
 
+  const handleExportExcel = () => {
+    const rows = catalog.map((m) => ({
+      Tipo: m.tipo,
+      Marca: m.marca,
+      Modelo: m.modelo,
+      "Custo FOB (USD)": m.custo_fob,
+      "Preço Venda FOB (USD)": m.preco_venda_fob || 0,
+      "Informado por": m.informado_por || "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    // Set column widths
+    ws["!cols"] = [
+      { wch: 22 }, { wch: 14 }, { wch: 30 }, { wch: 16 }, { wch: 22 }, { wch: 16 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Catálogo");
+    XLSX.writeFile(wb, "catalogo_maquinas.xlsx");
+    toast({ title: "Excel exportado!" });
+  };
+
+  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<Record<string, any>>(ws);
+
+        const now = new Date().toISOString();
+        let added = 0;
+        let skipped = 0;
+        const newCatalog = [...catalog];
+
+        for (const row of rows) {
+          const tipo = String(row["Tipo"] || "").trim();
+          const marca = String(row["Marca"] || "").trim();
+          const modelo = String(row["Modelo"] || "").trim();
+          const custoFob = parseFloat(row["Custo FOB (USD)"]) || 0;
+          const precoVenda = parseFloat(row["Preço Venda FOB (USD)"]) || 0;
+          const informadoPor = String(row["Informado por"] || "").trim();
+
+          if (!tipo || !marca || !modelo) { skipped++; continue; }
+          if (precoVenda < 0 || custoFob < 0) { skipped++; continue; }
+
+          // Check duplicate
+          const exists = newCatalog.some(
+            (m) => m.modelo.toLowerCase() === modelo.toLowerCase() && m.marca.toLowerCase() === marca.toLowerCase()
+          );
+          if (exists) {
+            // Update existing
+            const idx = newCatalog.findIndex(
+              (m) => m.modelo.toLowerCase() === modelo.toLowerCase() && m.marca.toLowerCase() === marca.toLowerCase()
+            );
+            newCatalog[idx] = {
+              ...newCatalog[idx],
+              tipo,
+              custo_fob: custoFob,
+              preco_venda_fob: precoVenda,
+              informado_por: informadoPor || undefined,
+              updated_at: now,
+            };
+            added++;
+          } else {
+            newCatalog.unshift({
+              id: crypto.randomUUID(),
+              tipo, marca, modelo,
+              custo_fob: custoFob,
+              preco_venda_fob: precoVenda,
+              informado_por: informadoPor || undefined,
+              created_at: now,
+              updated_at: now,
+            });
+            added++;
+          }
+        }
+
+        setCatalog(newCatalog);
+        saveCatalog(newCatalog);
+        toast({ title: `Importação concluída: ${added} processados, ${skipped} ignorados` });
+      } catch {
+        toast({ title: "Erro ao ler o arquivo Excel", variant: "destructive" });
+      }
+    };
+    reader.readAsArrayBuffer(file);
+    e.target.value = "";
+  };
+
   return (
     <Card className="border-border bg-card p-6 shadow-sm">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-heading text-lg font-semibold text-card-foreground flex items-center gap-2">
           <Package className="h-5 w-5" /> Catálogo de Máquinas
         </h2>
-        <Badge variant="secondary" className="gap-1">
-          <Hash className="h-3 w-3" /> {catalog.length} modelo{catalog.length !== 1 ? "s" : ""}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExportExcel}>
+            <Download className="h-4 w-4 mr-1" /> Exportar Excel
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <label className="cursor-pointer">
+              <Upload className="h-4 w-4 mr-1" /> Importar Excel
+              <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleImportExcel} />
+            </label>
+          </Button>
+          <Badge variant="secondary" className="gap-1">
+            <Hash className="h-3 w-3" /> {catalog.length} modelo{catalog.length !== 1 ? "s" : ""}
+          </Badge>
+        </div>
       </div>
 
       {/* Add form */}
