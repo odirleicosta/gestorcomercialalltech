@@ -30,6 +30,7 @@ export type Database = {
           real_margin_percent: number | null
           real_profit: number | null
           real_tax_value: number | null
+          representative_id: string | null
           selling_price: number
           updated_at: string
           user_id: string
@@ -49,6 +50,7 @@ export type Database = {
           real_margin_percent?: number | null
           real_profit?: number | null
           real_tax_value?: number | null
+          representative_id?: string | null
           selling_price?: number
           updated_at?: string
           user_id: string
@@ -68,11 +70,20 @@ export type Database = {
           real_margin_percent?: number | null
           real_profit?: number | null
           real_tax_value?: number | null
+          representative_id?: string | null
           selling_price?: number
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "calculations_representative_id_fkey"
+            columns: ["representative_id"]
+            isOneToOne: false
+            referencedRelation: "representatives"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       commission_history: {
         Row: {
