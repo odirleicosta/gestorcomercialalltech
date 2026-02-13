@@ -23,6 +23,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { loadCatalog, type CatalogMachine } from "@/components/MachineCatalog";
 
 export const MACHINE_TYPES = ["Centro de Usinagem", "Torno CNC", "Plu.go"] as const;
 export type MachineType = typeof MACHINE_TYPES[number];
@@ -144,11 +145,10 @@ const DealManager = ({ userId }: Props) => {
   // Load profile defaults and data sources
   useEffect(() => {
     const loadData = async () => {
-      const [profileRes, repsRes, empresasRes, modelosRes] = await Promise.all([
+      const [profileRes, repsRes, empresasRes] = await Promise.all([
         supabase.from("profiles" as any).select("default_seller_commission_pct, default_manager_commission_pct").eq("id", userId).single(),
         supabase.from("representatives" as any).select("id, nome, comissao_padrao_pct, comissao_gestor_pct").eq("status", "ATIVO").order("nome"),
         supabase.from("empresas" as any).select("id, nome").order("nome"),
-        supabase.from("machine_catalog" as any).select("id, marca, modelo, tipo, custo_fob").order("marca"),
       ]);
       if (profileRes.data) {
         const d = profileRes.data as any;
@@ -157,7 +157,15 @@ const DealManager = ({ userId }: Props) => {
       }
       if (repsRes.data) setRepOptions(repsRes.data as unknown as RepOption[]);
       if (empresasRes.data) setEmpresas(empresasRes.data as unknown as Empresa[]);
-      if (modelosRes.data) setModelos(modelosRes.data as unknown as Modelo[]);
+      // Load modelos from localStorage (same source as Catálogo tab)
+      const catalog = loadCatalog();
+      setModelos(catalog.map(c => ({
+        id: c.id,
+        marca: c.marca,
+        modelo: c.modelo,
+        tipo: c.tipo,
+        custo_fob: c.custo_fob,
+      })));
     };
     loadData();
   }, [userId]);
