@@ -367,7 +367,7 @@ const DealManager = ({ userId }: Props) => {
     setPendingSavePriceData(null);
   };
 
-
+  const handleClose = async (deal: Deal) => {
     if (deal.status === "closed") return;
     const { error } = await supabase
       .from("deals" as any)

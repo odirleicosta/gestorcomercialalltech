@@ -692,7 +692,6 @@ const PriceCalculator = () => {
           <TabsContent value="registry">
             <div className="space-y-6">
               <ClientManager clients={clients} setClients={setClients} />
-              <MachineManager machines={machines} setMachines={setMachines} />
             </div>
           </TabsContent>
 
