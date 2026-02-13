@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Users,
-  AlertTriangle, ArrowUpRight, ArrowDownRight, Gauge,
+  AlertTriangle, ArrowUpRight, ArrowDownRight, Gauge, CheckCircle2, XCircle,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -216,10 +216,12 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   const isCurrentMonth = filterMonth === (now.getMonth() + 1) && filterYear === now.getFullYear();
   const dayOfMonth = isCurrentMonth ? now.getDate() : daysInMonth;
   const diasRestantes = Math.max(0, daysInMonth - dayOfMonth);
-  const semanasRestantes = Math.max(1, Math.round(diasRestantes / 7)) || 1;
-  const ritmoSemanal = diasRestantes > 0 ? faltam / semanasRestantes : 0;
+  const semanasPassadas = Math.max(1, dayOfMonth / 7);
+  const semanasRestantes = Math.max(0.1, diasRestantes / 7);
+  const ritmoAtual = totalSold / semanasPassadas;
+  const ritmoNecessario = diasRestantes > 0 ? faltam / semanasRestantes : 0;
   const ritmoDiario = diasRestantes > 0 ? faltam / diasRestantes : 0;
-  const ritmoAlto = ritmoSemanal > historicalAvg && historicalAvg > 0;
+  const noRitmo = faltam <= 0 || ritmoAtual >= ritmoNecessario;
 
   return (
     <div className="space-y-8 animate-fade-in">
@@ -278,22 +280,27 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         </div>
       </section>
 
-      {/* ─── RITMO PARA BATER META ─── */}
-      {faltam > 0 && diasRestantes > 0 && (
+      {/* ─── RITMO COMERCIAL ─── */}
+      {totalMetaQtd > 0 && diasRestantes > 0 && (
         <section>
-          <SectionTitle icon={<Gauge className="h-4 w-4" />} title="Ritmo para Bater Meta" />
-          <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-            <CleanCard label="Faltam" value={String(faltam)} sub="máquinas" color="text-warning" />
-            <CleanCard label="Semanas Restantes" value={String(semanasRestantes)} sub={`${diasRestantes} dias`} color="text-info" />
-            <CleanCard label="Por Semana" value={ritmoSemanal.toFixed(1)} sub="necessário" color={ritmoAlto ? "text-destructive" : "text-foreground"} />
-            <CleanCard label="Por Dia" value={ritmoDiario.toFixed(1)} sub="necessário" color={ritmoAlto ? "text-destructive" : "text-foreground"} />
+          <SectionTitle icon={<Gauge className="h-4 w-4" />} title="Ritmo Comercial" />
+          <div className="grid gap-4 grid-cols-2 md:grid-cols-3">
+            <CleanCard label="Ritmo Atual" value={`${ritmoAtual.toFixed(1)}/sem`} sub={`${totalSold} em ${semanasPassadas.toFixed(1)} semanas`} color="text-info" />
+            <CleanCard label="Ritmo Necessário" value={`${ritmoNecessario.toFixed(1)}/sem`} sub={`${faltam} em ${semanasRestantes.toFixed(1)} semanas`} color={noRitmo ? "text-accent" : "text-destructive"} />
+            <Card className={`border-border/50 shadow-sm rounded-lg p-5 ${noRitmo ? "bg-accent/5 border-accent/20" : "bg-destructive/5 border-destructive/20"}`}>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Status</p>
+              <div className="flex items-center gap-2">
+                {noRitmo
+                  ? <CheckCircle2 className="h-5 w-5 text-accent" />
+                  : <XCircle className="h-5 w-5 text-destructive" />
+                }
+                <p className={`font-heading text-sm font-bold ${noRitmo ? "text-accent" : "text-destructive"}`}>
+                  {faltam <= 0 ? "Meta batida! 🎉" : noRitmo ? "No ritmo para bater meta" : "Abaixo do ritmo necessário"}
+                </p>
+              </div>
+              {!noRitmo && <p className="text-xs text-muted-foreground mt-1">Necessário {ritmoDiario.toFixed(1)} vendas/dia</p>}
+            </Card>
           </div>
-          {ritmoAlto && (
-            <p className="text-xs text-destructive mt-2 flex items-center gap-1">
-              <AlertTriangle className="h-3 w-3" />
-              Ritmo acima da média histórica ({historicalAvg.toFixed(1)}/semana)
-            </p>
-          )}
         </section>
       )}
 
