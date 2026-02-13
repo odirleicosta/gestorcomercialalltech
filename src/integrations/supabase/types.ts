@@ -248,6 +248,7 @@ export type Database = {
           ano: number
           created_at: string
           id: string
+          machine_type: string
           mes: number
           meta_quantidade: number
           meta_valor: number
@@ -258,6 +259,7 @@ export type Database = {
           ano: number
           created_at?: string
           id?: string
+          machine_type?: string
           mes: number
           meta_quantidade?: number
           meta_valor?: number
@@ -268,6 +270,7 @@ export type Database = {
           ano?: number
           created_at?: string
           id?: string
+          machine_type?: string
           mes?: number
           meta_quantidade?: number
           meta_valor?: number
