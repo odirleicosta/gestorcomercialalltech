@@ -8,12 +8,21 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from "@/components/ui/command";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
 import {
   DollarSign, Percent, TrendingUp, TrendingDown, Package, Receipt,
   Save, Lock, Unlock, Trash2, Search, Eye, EyeOff, Users, History, Clock,
+  ChevronsUpDown, Check, Plus,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 
 export const MACHINE_TYPES = ["Centro de Usinagem", "Torno CNC", "Plu.go"] as const;
 export type MachineType = typeof MACHINE_TYPES[number];
@@ -44,6 +53,8 @@ export interface Deal {
   closed_at: string | null;
   observation: string | null;
   representative_id: string | null;
+  empresa_id: string | null;
+  modelo_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -51,6 +62,21 @@ export interface Deal {
 interface RepOption {
   id: string;
   nome: string;
+  comissao_padrao_pct: number;
+  comissao_gestor_pct: number;
+}
+
+interface Empresa {
+  id: string;
+  nome: string;
+}
+
+interface Modelo {
+  id: string;
+  marca: string;
+  modelo: string;
+  tipo: string;
+  custo_fob: number;
 }
 
 interface CommissionLog {
@@ -79,9 +105,14 @@ const DealManager = ({ userId }: Props) => {
   const [defaultManagerPct, setDefaultManagerPct] = useState(1);
   const [defaultCommBase, setDefaultCommBase] = useState<"FOB" | "PRECO_VENDA">("FOB");
 
+  // Structured data sources
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [modelos, setModelos] = useState<Modelo[]>([]);
+  const [repOptions, setRepOptions] = useState<RepOption[]>([]);
+
   // Form state for new deal
-  const [clientName, setClientName] = useState("");
-  const [machineName, setMachineName] = useState("");
+  const [empresaId, setEmpresaId] = useState("");
+  const [modeloId, setModeloId] = useState("");
   const [machineType, setMachineType] = useState("");
   const [fobCost, setFobCost] = useState("");
   const [dollarRate, setDollarRate] = useState("");
@@ -92,8 +123,16 @@ const DealManager = ({ userId }: Props) => {
   const [managerPct, setManagerPct] = useState("");
   const [observation, setObservation] = useState("");
   const [representativeId, setRepresentativeId] = useState("");
-  const [repOptions, setRepOptions] = useState<RepOption[]>([]);
   const [showForm, setShowForm] = useState(false);
+
+  // Combobox open states
+  const [empresaOpen, setEmpresaOpen] = useState(false);
+  const [modeloOpen, setModeloOpen] = useState(false);
+  const [repOpen, setRepOpen] = useState(false);
+
+  // New empresa dialog
+  const [showNewEmpresa, setShowNewEmpresa] = useState(false);
+  const [newEmpresaNome, setNewEmpresaNome] = useState("");
 
   // Edit commission state
   const [editingCommission, setEditingCommission] = useState<string | null>(null);
@@ -105,12 +144,14 @@ const DealManager = ({ userId }: Props) => {
   const [commissionLogs, setCommissionLogs] = useState<CommissionLog[]>([]);
   const [showLogsForDeal, setShowLogsForDeal] = useState<string | null>(null);
 
-  // Load profile defaults
+  // Load profile defaults and data sources
   useEffect(() => {
-    const loadDefaults = async () => {
-      const [profileRes, repsRes] = await Promise.all([
+    const loadData = async () => {
+      const [profileRes, repsRes, empresasRes, modelosRes] = await Promise.all([
         supabase.from("profiles" as any).select("default_seller_commission_pct, default_manager_commission_pct, default_commission_base").eq("id", userId).single(),
-        supabase.from("representatives" as any).select("id, nome").eq("status", "ATIVO").order("nome"),
+        supabase.from("representatives" as any).select("id, nome, comissao_padrao_pct, comissao_gestor_pct").eq("status", "ATIVO").order("nome"),
+        supabase.from("empresas" as any).select("id, nome").order("nome"),
+        supabase.from("machine_catalog" as any).select("id, marca, modelo, tipo, custo_fob").order("marca"),
       ]);
       if (profileRes.data) {
         const d = profileRes.data as any;
@@ -119,8 +160,10 @@ const DealManager = ({ userId }: Props) => {
         setDefaultCommBase(d.default_commission_base ?? "FOB");
       }
       if (repsRes.data) setRepOptions(repsRes.data as unknown as RepOption[]);
+      if (empresasRes.data) setEmpresas(empresasRes.data as unknown as Empresa[]);
+      if (modelosRes.data) setModelos(modelosRes.data as unknown as Modelo[]);
     };
-    loadDefaults();
+    loadData();
   }, [userId]);
 
   const fetchDeals = async () => {
@@ -150,6 +193,56 @@ const DealManager = ({ userId }: Props) => {
     setCommissionBase(defaultCommBase);
     setShowForm(true);
   };
+
+  // Auto-fill when selecting a model
+  const handleModeloSelect = (id: string) => {
+    setModeloId(id);
+    setModeloOpen(false);
+    const modelo = modelos.find(m => m.id === id);
+    if (modelo) {
+      setFobCost(String(modelo.custo_fob));
+      setMachineType(modelo.tipo);
+    }
+  };
+
+  // Auto-fill commission when selecting a representative
+  const handleRepSelect = (id: string) => {
+    setRepresentativeId(id);
+    setRepOpen(false);
+    if (id && id !== "none") {
+      const rep = repOptions.find(r => r.id === id);
+      if (rep) {
+        setSellerPct(String(rep.comissao_padrao_pct));
+        setManagerPct(String(rep.comissao_gestor_pct));
+      }
+    }
+  };
+
+  // Create new empresa
+  const handleCreateEmpresa = async () => {
+    if (!newEmpresaNome.trim()) return;
+    const { data, error } = await supabase
+      .from("empresas" as any)
+      .insert({ user_id: userId, nome: newEmpresaNome.trim() } as any)
+      .select("id, nome")
+      .single();
+    if (error) {
+      toast({ title: "Erro ao criar empresa", description: error.message, variant: "destructive" });
+      return;
+    }
+    if (data) {
+      const newEmp = data as unknown as Empresa;
+      setEmpresas(prev => [...prev, newEmp].sort((a, b) => a.nome.localeCompare(b.nome)));
+      setEmpresaId(newEmp.id);
+    }
+    setNewEmpresaNome("");
+    setShowNewEmpresa(false);
+    toast({ title: "Empresa cadastrada!" });
+  };
+
+  const selectedEmpresa = empresas.find(e => e.id === empresaId);
+  const selectedModelo = modelos.find(m => m.id === modeloId);
+  const selectedRep = repOptions.find(r => r.id === representativeId);
 
   const simulation = useMemo(() => {
     const fob = parseFloat(fobCost) || 0;
@@ -184,15 +277,17 @@ const DealManager = ({ userId }: Props) => {
   }, [fobCost, estimatedTaxPercent, desiredMargin, sellerPct, managerPct, commissionBase, dollarRate]);
 
   const handleSave = async () => {
-    if (!simulation || !clientName.trim()) {
-      toast({ title: "Preencha cliente e dados da simulação", variant: "destructive" });
+    if (!simulation || !empresaId) {
+      toast({ title: "Selecione uma empresa e preencha os dados", variant: "destructive" });
       return;
     }
 
+    const machineName = selectedModelo ? `${selectedModelo.marca} ${selectedModelo.modelo}` : "";
+
     const insert = {
       user_id: userId,
-      client_name: clientName.trim(),
-      machine_name: machineName.trim(),
+      client_name: selectedEmpresa?.nome || "",
+      machine_name: machineName,
       machine_type: machineType,
       fob_cost: simulation.fob,
       dollar_rate: simulation.dollar,
@@ -212,6 +307,8 @@ const DealManager = ({ userId }: Props) => {
       net_margin_percent: simulation.netMargin,
       observation: observation.trim() || null,
       representative_id: representativeId && representativeId !== "none" ? representativeId : null,
+      empresa_id: empresaId,
+      modelo_id: modeloId || null,
     };
 
     const { error } = await supabase.from("deals" as any).insert(insert as any);
@@ -226,7 +323,7 @@ const DealManager = ({ userId }: Props) => {
   };
 
   const resetForm = () => {
-    setClientName(""); setMachineName(""); setMachineType(""); setFobCost(""); setDollarRate("");
+    setEmpresaId(""); setModeloId(""); setMachineType(""); setFobCost(""); setDollarRate("");
     setEstimatedTaxPercent(""); setDesiredMargin(""); setSellerPct("");
     setManagerPct(""); setObservation(""); setRepresentativeId(""); setShowForm(false);
   };
@@ -263,7 +360,6 @@ const DealManager = ({ userId }: Props) => {
     const netProfit = deal.gross_profit - sellerComm - managerComm;
     const netMargin = deal.base_price > 0 ? (netProfit / deal.base_price) * 100 : 0;
 
-    // Log changes
     const logs: any[] = [];
     if (deal.seller_commission_pct !== sPct) {
       logs.push({ deal_id: deal.id, user_id: userId, field_changed: "seller_commission_pct", old_value: deal.seller_commission_pct, new_value: sPct });
@@ -298,7 +394,6 @@ const DealManager = ({ userId }: Props) => {
     fetchDeals();
   };
 
-  // Save default commission settings
   const handleSaveDefaults = async () => {
     const { error } = await supabase
       .from("profiles" as any)
@@ -332,7 +427,7 @@ const DealManager = ({ userId }: Props) => {
 
   return (
     <div className="space-y-6">
-      {/* Header + defaults */}
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h2 className="font-heading text-lg font-semibold text-foreground flex items-center gap-2">
           <Users className="h-5 w-5" /> Negociações
@@ -352,7 +447,7 @@ const DealManager = ({ userId }: Props) => {
             <Label className="text-xs text-muted-foreground">Base</Label>
             <Select value={defaultCommBase} onValueChange={(v) => setDefaultCommBase(v as "FOB" | "PRECO_VENDA")}>
               <SelectTrigger className="w-[140px] h-8 text-xs bg-secondary/50 border-border"><SelectValue /></SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-popover border-border z-50">
                 <SelectItem value="FOB">FOB</SelectItem>
                 <SelectItem value="PRECO_VENDA">Preço Venda</SelectItem>
               </SelectContent>
@@ -377,23 +472,80 @@ const DealManager = ({ userId }: Props) => {
         <Card className="border-border bg-card p-6 shadow-sm">
           <h3 className="font-heading text-base font-semibold text-card-foreground mb-4">Nova Negociação</h3>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {/* Empresa (searchable combobox) */}
             <div>
-              <Label className="mb-1.5 text-sm text-muted-foreground">Cliente *</Label>
-              <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="Nome do cliente" className="bg-secondary/50 border-border" />
+              <Label className="mb-1.5 text-sm text-muted-foreground">Empresa *</Label>
+              <div className="flex gap-1.5">
+                <Popover open={empresaOpen} onOpenChange={setEmpresaOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={empresaOpen}
+                      className="flex-1 justify-between bg-secondary/50 border-border font-normal text-sm h-10">
+                      {selectedEmpresa ? selectedEmpresa.nome : "Selecionar empresa..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[300px] p-0 bg-popover border-border z-50" align="start">
+                    <Command>
+                      <CommandInput placeholder="Buscar empresa..." />
+                      <CommandList>
+                        <CommandEmpty>Nenhuma empresa encontrada.</CommandEmpty>
+                        <CommandGroup>
+                          {empresas.map(e => (
+                            <CommandItem key={e.id} value={e.nome} onSelect={() => { setEmpresaId(e.id); setEmpresaOpen(false); }}>
+                              <Check className={cn("mr-2 h-4 w-4", empresaId === e.id ? "opacity-100" : "opacity-0")} />
+                              {e.nome}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                <Button variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => setShowNewEmpresa(true)} title="Nova empresa">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
+
+            {/* Modelo (searchable combobox) */}
             <div>
-              <Label className="mb-1.5 text-sm text-muted-foreground">Máquina</Label>
-              <Input value={machineName} onChange={(e) => setMachineName(e.target.value)} placeholder="Nome da máquina" className="bg-secondary/50 border-border" />
+              <Label className="mb-1.5 text-sm text-muted-foreground">Máquina *</Label>
+              <Popover open={modeloOpen} onOpenChange={setModeloOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" aria-expanded={modeloOpen}
+                    className="w-full justify-between bg-secondary/50 border-border font-normal text-sm h-10">
+                    {selectedModelo ? `${selectedModelo.marca} ${selectedModelo.modelo}` : "Selecionar modelo..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[350px] p-0 bg-popover border-border z-50" align="start">
+                  <Command>
+                    <CommandInput placeholder="Buscar marca ou modelo..." />
+                    <CommandList>
+                      <CommandEmpty>Nenhum modelo encontrado.</CommandEmpty>
+                      <CommandGroup>
+                        {modelos.map(m => (
+                          <CommandItem key={m.id} value={`${m.marca} ${m.modelo} ${m.tipo}`} onSelect={() => handleModeloSelect(m.id)}>
+                            <Check className={cn("mr-2 h-4 w-4", modeloId === m.id ? "opacity-100" : "opacity-0")} />
+                            <div className="flex flex-col">
+                              <span className="text-sm font-medium">{m.marca} {m.modelo}</span>
+                              <span className="text-xs text-muted-foreground">{m.tipo} · FOB US$ {m.custo_fob.toLocaleString("pt-BR")}</span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
+
+            {/* Tipo da Máquina (auto-filled) */}
             <div>
               <Label className="mb-1.5 text-sm text-muted-foreground">Tipo da Máquina</Label>
-              <Select value={machineType} onValueChange={setMachineType}>
-                <SelectTrigger className="bg-secondary/50 border-border"><SelectValue placeholder="Selecionar tipo..." /></SelectTrigger>
-                <SelectContent>
-                  {MACHINE_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Input value={machineType} readOnly placeholder="Preenchido automaticamente" className="bg-muted/50 border-border text-muted-foreground" />
             </div>
+
             <div>
               <Label className="mb-1.5 text-sm text-muted-foreground">Custo FOB (USD) *</Label>
               <Input type="number" step="0.01" min="0" value={fobCost} onChange={(e) => setFobCost(e.target.value)} placeholder="0,00" className="bg-secondary/50 border-border" />
@@ -414,12 +566,50 @@ const DealManager = ({ userId }: Props) => {
               <Label className="mb-1.5 text-sm text-muted-foreground">Base da Comissão</Label>
               <Select value={commissionBase} onValueChange={(v) => setCommissionBase(v as "FOB" | "PRECO_VENDA")}>
                 <SelectTrigger className="bg-secondary/50 border-border"><SelectValue /></SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-popover border-border z-50">
                   <SelectItem value="FOB">FOB (Custo)</SelectItem>
                   <SelectItem value="PRECO_VENDA">Preço de Venda (Base)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Representante (searchable combobox with auto-fill) */}
+            <div>
+              <Label className="mb-1.5 text-sm text-muted-foreground">Representante</Label>
+              <Popover open={repOpen} onOpenChange={setRepOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" aria-expanded={repOpen}
+                    className="w-full justify-between bg-secondary/50 border-border font-normal text-sm h-10">
+                    {selectedRep ? selectedRep.nome : "Selecionar representante..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[280px] p-0 bg-popover border-border z-50" align="start">
+                  <Command>
+                    <CommandInput placeholder="Buscar representante..." />
+                    <CommandList>
+                      <CommandEmpty>Nenhum representante encontrado.</CommandEmpty>
+                      <CommandGroup>
+                        <CommandItem value="nenhum" onSelect={() => { setRepresentativeId("none"); setRepOpen(false); }}>
+                          <Check className={cn("mr-2 h-4 w-4", !representativeId || representativeId === "none" ? "opacity-100" : "opacity-0")} />
+                          Nenhum
+                        </CommandItem>
+                        {repOptions.map(r => (
+                          <CommandItem key={r.id} value={r.nome} onSelect={() => handleRepSelect(r.id)}>
+                            <Check className={cn("mr-2 h-4 w-4", representativeId === r.id ? "opacity-100" : "opacity-0")} />
+                            <div className="flex flex-col">
+                              <span className="text-sm">{r.nome}</span>
+                              <span className="text-xs text-muted-foreground">Vend: {r.comissao_padrao_pct}% · Gest: {r.comissao_gestor_pct}%</span>
+                            </div>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+
             <div>
               <Label className="mb-1.5 text-sm text-muted-foreground">Comissão Vendedor (%)</Label>
               <Input type="number" step="0.01" min="0" value={sellerPct} onChange={(e) => setSellerPct(e.target.value)} placeholder="0,00" className="bg-secondary/50 border-border" />
@@ -428,16 +618,7 @@ const DealManager = ({ userId }: Props) => {
               <Label className="mb-1.5 text-sm text-muted-foreground">Comissão Gestor (%)</Label>
               <Input type="number" step="0.01" min="0" value={managerPct} onChange={(e) => setManagerPct(e.target.value)} placeholder="0,00" className="bg-secondary/50 border-border" />
             </div>
-            <div>
-              <Label className="mb-1.5 text-sm text-muted-foreground">Representante</Label>
-              <Select value={representativeId || "none"} onValueChange={setRepresentativeId}>
-                <SelectTrigger className="bg-secondary/50 border-border"><SelectValue placeholder="Selecionar..." /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Nenhum</SelectItem>
-                  {repOptions.map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
+
             <div className="md:col-span-2 lg:col-span-2">
               <Label className="mb-1.5 text-sm text-muted-foreground">Observação</Label>
               <Textarea value={observation} onChange={(e) => setObservation(e.target.value)} placeholder="Observações sobre a negociação..." className="bg-secondary/50 border-border" />
@@ -467,13 +648,34 @@ const DealManager = ({ userId }: Props) => {
           )}
 
           <div className="flex gap-3 mt-4">
-            <Button onClick={handleSave} disabled={!simulation || !clientName.trim()}>
+            <Button onClick={handleSave} disabled={!simulation || !empresaId}>
               <Save className="h-4 w-4 mr-2" /> Salvar Negociação
             </Button>
             <Button variant="outline" onClick={resetForm}>Cancelar</Button>
           </div>
         </Card>
       )}
+
+      {/* New Empresa Dialog */}
+      <Dialog open={showNewEmpresa} onOpenChange={setShowNewEmpresa}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader>
+            <DialogTitle>Nova Empresa</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-sm text-muted-foreground">Nome da Empresa *</Label>
+              <Input value={newEmpresaNome} onChange={(e) => setNewEmpresaNome(e.target.value)} placeholder="Nome da empresa" className="bg-secondary/50 border-border" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewEmpresa(false)}>Cancelar</Button>
+            <Button onClick={handleCreateEmpresa} disabled={!newEmpresaNome.trim()}>
+              <Plus className="h-4 w-4 mr-2" /> Cadastrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
@@ -483,7 +685,7 @@ const DealManager = ({ userId }: Props) => {
         </div>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="w-[160px] bg-secondary/50 border-border text-sm"><SelectValue /></SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-popover border-border z-50">
             <SelectItem value="all">Todos</SelectItem>
             <SelectItem value="open">Abertas</SelectItem>
             <SelectItem value="closed">Fechadas</SelectItem>
@@ -589,7 +791,7 @@ const DealManager = ({ userId }: Props) => {
                         <Label className="text-xs text-muted-foreground">Base</Label>
                         <Select value={editCommissionBase} onValueChange={(v) => setEditCommissionBase(v as "FOB" | "PRECO_VENDA")}>
                           <SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="bg-popover border-border z-50">
                             <SelectItem value="FOB">FOB</SelectItem>
                             <SelectItem value="PRECO_VENDA">Preço Venda</SelectItem>
                           </SelectContent>

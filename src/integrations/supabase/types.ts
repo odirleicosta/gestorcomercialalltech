@@ -118,6 +118,7 @@ export type Database = {
           created_at: string
           desired_margin_percent: number
           dollar_rate: number
+          empresa_id: string | null
           estimated_tax_percent: number
           estimated_tax_value: number
           final_price: number
@@ -129,6 +130,7 @@ export type Database = {
           machine_type: string
           manager_commission_pct: number
           manager_commission_value: number
+          modelo_id: string | null
           net_margin_percent: number
           net_profit: number
           observation: string | null
@@ -147,6 +149,7 @@ export type Database = {
           created_at?: string
           desired_margin_percent?: number
           dollar_rate?: number
+          empresa_id?: string | null
           estimated_tax_percent?: number
           estimated_tax_value?: number
           final_price?: number
@@ -158,6 +161,7 @@ export type Database = {
           machine_type?: string
           manager_commission_pct?: number
           manager_commission_value?: number
+          modelo_id?: string | null
           net_margin_percent?: number
           net_profit?: number
           observation?: string | null
@@ -176,6 +180,7 @@ export type Database = {
           created_at?: string
           desired_margin_percent?: number
           dollar_rate?: number
+          empresa_id?: string | null
           estimated_tax_percent?: number
           estimated_tax_value?: number
           final_price?: number
@@ -187,6 +192,7 @@ export type Database = {
           machine_type?: string
           manager_commission_pct?: number
           manager_commission_value?: number
+          modelo_id?: string | null
           net_margin_percent?: number
           net_profit?: number
           observation?: string | null
@@ -199,6 +205,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "deals_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_modelo_id_fkey"
+            columns: ["modelo_id"]
+            isOneToOne: false
+            referencedRelation: "machine_catalog"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "deals_representative_id_fkey"
             columns: ["representative_id"]
             isOneToOne: false
@@ -206,6 +226,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      empresas: {
+        Row: {
+          cnpj: string | null
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cnpj?: string | null
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cnpj?: string | null
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       machine_catalog: {
         Row: {
@@ -325,6 +372,7 @@ export type Database = {
       }
       representatives: {
         Row: {
+          comissao_gestor_pct: number
           comissao_padrao_pct: number
           created_at: string
           id: string
@@ -338,6 +386,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          comissao_gestor_pct?: number
           comissao_padrao_pct?: number
           created_at?: string
           id?: string
@@ -351,6 +400,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          comissao_gestor_pct?: number
           comissao_padrao_pct?: number
           created_at?: string
           id?: string
