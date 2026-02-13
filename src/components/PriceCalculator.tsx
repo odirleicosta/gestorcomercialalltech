@@ -66,7 +66,7 @@ const PriceCalculator = () => {
   const [observation, setObservation] = useState("");
   const [notes, setNotes] = useState("");
 
-  const [activeTab, setActiveTab] = useState("simulation");
+  const [activeTab, setActiveTab] = useState("dashboard");
   const [history, setHistory] = useState<SavedCalculation[]>(loadHistory);
   const [clients, setClients] = useState<Client[]>(loadClients);
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
@@ -271,10 +271,10 @@ const PriceCalculator = () => {
         </div>
         <nav className="flex flex-col gap-1 flex-1">
           {[
-            { value: "simulation", icon: Calculator, label: "Simulação" },
-            { value: "deals", icon: Users, label: "Vendas" },
-            { value: "reps", icon: UserPlus, label: "Representantes" },
             { value: "dashboard", icon: BarChart3, label: "Dashboard" },
+            { value: "deals", icon: Users, label: "Vendas" },
+            { value: "simulation", icon: Calculator, label: "Simulação" },
+            { value: "reps", icon: UserPlus, label: "Representantes" },
             { value: "registry", icon: Building2, label: "Cadastros" },
             { value: "catalog", icon: Package, label: "Catálogo" },
           ].map(({ value, icon: Icon, label }) => (
@@ -308,10 +308,10 @@ const PriceCalculator = () => {
       {/* Mobile header */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-50 gradient-primary px-3 py-2 flex items-center gap-2 overflow-x-auto shadow-lg">
         {[
-          { value: "simulation", icon: Calculator, label: "Simulação" },
-          { value: "deals", icon: Users, label: "Vendas" },
-          { value: "reps", icon: UserPlus, label: "Representantes" },
           { value: "dashboard", icon: BarChart3, label: "Dashboard" },
+          { value: "deals", icon: Users, label: "Vendas" },
+          { value: "simulation", icon: Calculator, label: "Simulação" },
+          { value: "reps", icon: UserPlus, label: "Representantes" },
           { value: "registry", icon: Building2, label: "Cadastros" },
           { value: "catalog", icon: Package, label: "Catálogo" },
         ].map(({ value, icon: Icon, label }) => (
