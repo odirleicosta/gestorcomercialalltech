@@ -48,6 +48,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   const [filterRep, setFilterRep] = useState("all");
   const [filterMode, setFilterMode] = useState<"month" | "quarter" | "year">("month");
   const [filterQuarter, setFilterQuarter] = useState<number | null>(null);
+  const [showAllReps, setShowAllReps] = useState(false);
 
   const activeMonths = useMemo(() => {
     if (filterMode === "year") return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
@@ -329,39 +330,51 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     smartAlerts.push(`Ritmo atual: ${ritmoAtual.toFixed(1)}/sem — necessário: ${ritmoNecessario.toFixed(1)}/sem`);
   }
 
-  const pctColor = pctAtingido >= 80 ? "text-[hsl(142,71%,45%)]" : pctAtingido >= 50 ? "text-[hsl(38,92%,50%)]" : "text-[hsl(0,72%,51%)]";
-  const pctBg = pctAtingido >= 80 ? "bg-[hsl(142,71%,45%)]" : pctAtingido >= 50 ? "bg-[hsl(38,92%,50%)]" : "bg-[hsl(0,72%,51%)]";
-  const pctGlow = pctAtingido >= 80 ? "wr-card-glow-green" : pctAtingido >= 50 ? "wr-card-glow-yellow" : "wr-card-glow-red";
+  // Sorted ranking
+  const sortedRanking = [...repRanking].sort((a, b) => b.pctQtd - a.pctQtd);
+  const topPerformer = sortedRanking.length > 0 ? sortedRanking[0] : null;
+  const worstPerformer = sortedRanking.length > 1 ? sortedRanking[sortedRanking.length - 1] : null;
+  
+  const displayedRanking = showAllReps ? sortedRanking : sortedRanking.slice(0, 5);
+
+  // Commission totals
+  const commTotal = commissionTotal;
+
+  const statusColor = (pct: number) =>
+    pct >= 100 ? "text-[#22C55E]" : pct >= 70 ? "text-[#F97316]" : "text-[#EF4444]";
+  const statusBg = (pct: number) =>
+    pct >= 100 ? "bg-[#22C55E]" : pct >= 70 ? "bg-[#F97316]" : "bg-[#EF4444]";
+  const statusLabel = (pct: number) =>
+    pct >= 100 ? "Acima" : pct >= 70 ? "No Ritmo" : "Abaixo";
 
   return (
-    <div className="war-room space-y-6 animate-fade-in rounded-xl p-6 -mx-2">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-heading text-2xl font-bold text-[hsl(var(--wr-text))] flex items-center gap-2">
-            <Zap className="h-6 w-6 text-[hsl(var(--wr-yellow))]" />
-            WAR ROOM
+          <h2 className="font-heading text-2xl font-bold text-foreground flex items-center gap-2">
+            <Flame className="h-6 w-6 text-[#F97316]" />
+            Comercial Agressivo
           </h2>
-          <p className="text-sm text-[hsl(var(--wr-text-muted))] mt-0.5">{periodLabel}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{periodLabel}</p>
         </div>
       </div>
 
       {/* ─── FILTROS ─── */}
       <div className="space-y-3">
         <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-[hsl(var(--wr-text-muted))] uppercase tracking-wide w-10">Ano</span>
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide w-10">Ano</span>
           <div className="flex gap-1.5">
             {[2025, 2026, 2027].map(y => (
               <button key={y} onClick={() => setFilterYear(y)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                  filterYear === y ? "bg-[hsl(var(--wr-blue))] text-white shadow-sm" : "bg-[hsl(var(--wr-card-highlight))] text-[hsl(var(--wr-text-muted))] hover:bg-[hsl(var(--wr-card))]"
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  filterYear === y ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"
                 }`}>{y}</button>
             ))}
           </div>
         </div>
-
         <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-[hsl(var(--wr-text-muted))] uppercase tracking-wide w-10">Mês</span>
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide w-10">Mês</span>
           <div className="flex flex-wrap gap-1.5">
             {SHORT_MONTHS.map((m, i) => {
               const monthNum = i + 1;
@@ -369,40 +382,38 @@ const ExecutiveDashboard = ({ userId }: Props) => {
               const isInRange = filterMode !== "month" && activeMonths.includes(monthNum);
               return (
                 <button key={i} onClick={() => handleMonthClick(monthNum)}
-                  className={`px-2.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                    isActive ? "bg-[hsl(var(--wr-blue))] text-white shadow-sm"
-                    : isInRange ? "bg-[hsl(var(--wr-blue))]/20 text-[hsl(var(--wr-blue))]"
-                    : "bg-[hsl(var(--wr-card-highlight))] text-[hsl(var(--wr-text-muted))] hover:bg-[hsl(var(--wr-card))]"
+                  className={`px-2.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+                    isActive ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30"
+                    : isInRange ? "bg-[#3B82F6]/10 text-[#3B82F6] border border-[#3B82F6]/30"
+                    : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"
                   }`}>{m}</button>
               );
             })}
           </div>
         </div>
-
         <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-[hsl(var(--wr-text-muted))] uppercase tracking-wide w-10">Período</span>
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide w-10">Período</span>
           <div className="flex gap-1.5">
             {QUARTERS.map((q, i) => (
               <button key={i} onClick={() => handleQuarterClick(i)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                  filterMode === "quarter" && filterQuarter === i ? "bg-[hsl(var(--wr-blue))] text-white shadow-sm" : "bg-[hsl(var(--wr-card-highlight))] text-[hsl(var(--wr-text-muted))] hover:bg-[hsl(var(--wr-card))]"
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  filterMode === "quarter" && filterQuarter === i ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"
                 }`}>{q.label}</button>
             ))}
             <button onClick={handleYearClick}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                filterMode === "year" ? "bg-[hsl(var(--wr-blue))] text-white shadow-sm" : "bg-[hsl(var(--wr-card-highlight))] text-[hsl(var(--wr-text-muted))] hover:bg-[hsl(var(--wr-card))]"
+              className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+                filterMode === "year" ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"
               }`}>Ano Completo</button>
           </div>
         </div>
-
         {reps.length > 0 && (
           <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold text-[hsl(var(--wr-text-muted))] uppercase tracking-wide w-10">Rep.</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide w-10">Rep.</span>
             <Select value={filterRep} onValueChange={setFilterRep}>
-              <SelectTrigger className="w-[180px] bg-[hsl(var(--wr-card))] border-[hsl(var(--wr-border))] text-[hsl(var(--wr-text))] text-sm h-8 rounded-full">
+              <SelectTrigger className="w-[180px] bg-white border-border text-sm h-8 rounded-full">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-[hsl(var(--wr-card))] border-[hsl(var(--wr-border))] text-[hsl(var(--wr-text))]">
+              <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
                 {reps.map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
               </SelectContent>
@@ -411,241 +422,312 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         )}
       </div>
 
-      {/* ═══ BLOCO 1: STATUS GLOBAL (Grande) ═══ */}
-      <section className={`wr-card ${pctGlow}`}>
-        <div className="flex items-center gap-2 mb-4">
-          <Target className="h-5 w-5 text-[hsl(var(--wr-blue))]" />
-          <h3 className="font-heading text-lg font-bold text-[hsl(var(--wr-text))] uppercase tracking-wide">Status Global</h3>
-        </div>
-        <div className="grid grid-cols-3 gap-6 mb-6">
-          <div className="text-center">
-            <p className="text-xs font-medium text-[hsl(var(--wr-text-muted))] uppercase tracking-wide mb-1">Meta</p>
-            <p className="font-heading text-4xl font-black text-[hsl(var(--wr-text))]">{totalMetaQtd}</p>
-            <p className="text-xs text-[hsl(var(--wr-text-muted))]">máquinas</p>
-          </div>
-          <div className="text-center">
-            <p className="text-xs font-medium text-[hsl(var(--wr-text-muted))] uppercase tracking-wide mb-1">Vendido</p>
-            <p className="font-heading text-4xl font-black text-[hsl(142,71%,45%)]">{totalSold}</p>
-            <p className="text-xs text-[hsl(var(--wr-text-muted))]">fechadas</p>
-          </div>
-          <div className="text-center">
-            <p className="text-xs font-medium text-[hsl(var(--wr-text-muted))] uppercase tracking-wide mb-1">% Atingido</p>
-            <p className={`font-heading text-4xl font-black ${pctColor}`}>{formatPct(pctAtingido)}</p>
-            <p className="text-xs text-[hsl(var(--wr-text-muted))]">
-              {faltam > 0 ? `faltam ${faltam}` : "Meta batida! 🎉"}
-            </p>
-          </div>
-        </div>
-        {/* Thermometer */}
-        {totalMetaQtd > 0 && (
-          <div>
-            <div className="wr-thermometer">
-              <div className={`wr-thermometer-fill ${pctBg}`} style={{ width: `${Math.min(pctAtingido, 100)}%` }} />
+      {/* ═══ 4 KPIs SUPERIORES ═══ */}
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+        <div className="bg-white rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-10 w-10 rounded-lg bg-[#3B82F6]/10 flex items-center justify-center">
+              <Target className="h-5 w-5 text-[#3B82F6]" />
             </div>
-            <div className="flex justify-between mt-2">
-              <span className="text-xs text-[hsl(var(--wr-text-muted))]">0%</span>
-              <span className="text-xs text-[hsl(var(--wr-text-muted))]">50%</span>
-              <span className="text-xs text-[hsl(var(--wr-text-muted))]">100%</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase">Meta do Mês</span>
+          </div>
+          <p className="font-heading text-3xl font-black text-foreground">{totalMetaQtd}</p>
+          <p className="text-xs text-muted-foreground mt-1">máquinas</p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-10 w-10 rounded-lg bg-[#22C55E]/10 flex items-center justify-center">
+              <TrendingUp className="h-5 w-5 text-[#22C55E]" />
+            </div>
+            <span className="text-xs font-semibold text-muted-foreground uppercase">Vendido</span>
+          </div>
+          <div className="flex items-end gap-2">
+            <p className="font-heading text-3xl font-black text-foreground">{totalSold}</p>
+            {vendasVar !== 0 && (
+              <span className={`inline-flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-full mb-1 ${vendasVar > 0 ? "bg-[#22C55E]/10 text-[#22C55E]" : "bg-[#EF4444]/10 text-[#EF4444]"}`}>
+                {vendasVar > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                {vendasVar > 0 ? "+" : ""}{vendasVar.toFixed(0)}%
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">vs mês anterior</p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3 mb-3">
+            <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${pctAtingido >= 80 ? "bg-[#22C55E]/10" : pctAtingido >= 50 ? "bg-[#F97316]/10" : "bg-[#EF4444]/10"}`}>
+              <Gauge className={`h-5 w-5 ${statusColor(pctAtingido)}`} />
+            </div>
+            <span className="text-xs font-semibold text-muted-foreground uppercase">% Atingido</span>
+          </div>
+          <div className="flex items-end gap-2">
+            <p className={`font-heading text-3xl font-black ${statusColor(pctAtingido)}`}>{formatPct(pctAtingido)}</p>
+            {metaVar !== 0 && (
+              <span className={`inline-flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-full mb-1 ${metaVar > 0 ? "bg-[#22C55E]/10 text-[#22C55E]" : "bg-[#EF4444]/10 text-[#EF4444]"}`}>
+                {metaVar > 0 ? "+" : ""}{metaVar.toFixed(0)}%
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">{faltam > 0 ? `faltam ${faltam}` : "Meta batida! 🎉"}</p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="h-10 w-10 rounded-lg bg-[#3B82F6]/10 flex items-center justify-center">
+              <BarChart3 className="h-5 w-5 text-[#3B82F6]" />
+            </div>
+            <span className="text-xs font-semibold text-muted-foreground uppercase">Ritmo Comercial</span>
+          </div>
+          <p className="font-heading text-3xl font-black text-foreground">{ritmoAtual.toFixed(1)}<span className="text-lg text-muted-foreground">/sem</span></p>
+          <p className={`text-xs font-semibold mt-1 ${noRitmo ? "text-[#22C55E]" : "text-[#EF4444]"}`}>
+            {noRitmo ? "✓ Acima do necessário" : `Necessário: ${ritmoNecessario.toFixed(1)}/sem`}
+          </p>
+        </div>
+      </div>
+
+      {/* ═══ TOP PERFORMER + WORST PERFORMER ═══ */}
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+        {/* Top Performer — 2 cols */}
+        {topPerformer && topPerformer.metaQtd > 0 && (
+          <div className="md:col-span-2 bg-gradient-to-r from-[#3B82F6] to-[#2563EB] rounded-xl p-6 text-white shadow-lg shadow-[#3B82F6]/20 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-8 translate-x-8" />
+            <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-6 -translate-x-6" />
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-xs font-bold uppercase tracking-wider bg-white/20 px-3 py-1 rounded-full">⭐ Top Performer do Mês</span>
+              </div>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="h-14 w-14 rounded-full bg-white/20 flex items-center justify-center text-2xl font-black">
+                  {topPerformer.nome.charAt(0)}
+                </div>
+                <div>
+                  <p className="font-heading text-xl font-bold">{topPerformer.nome}</p>
+                  <p className="text-white/70 text-sm">Liderando a equipe</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4 mb-4">
+                <div>
+                  <p className="text-white/60 text-xs uppercase">Meta</p>
+                  <p className="font-heading text-2xl font-black">{topPerformer.metaQtd}</p>
+                </div>
+                <div>
+                  <p className="text-white/60 text-xs uppercase">Vendido</p>
+                  <p className="font-heading text-2xl font-black">{topPerformer.count}</p>
+                </div>
+                <div>
+                  <p className="text-white/60 text-xs uppercase">% Atingido</p>
+                  <p className="font-heading text-2xl font-black">{formatPct(topPerformer.pctQtd)}</p>
+                </div>
+              </div>
+              <div className="w-full h-3 bg-white/20 rounded-full overflow-hidden">
+                <div className="h-full bg-white rounded-full transition-all duration-700" style={{ width: `${Math.min(topPerformer.pctQtd, 100)}%` }} />
+              </div>
+              <p className="text-white/60 text-xs mt-2">
+                {topPerformer.count >= topPerformer.metaQtd ? "Meta batida! 🏆" : `Faltam ${topPerformer.metaQtd - topPerformer.count} máquinas`}
+              </p>
             </div>
           </div>
         )}
-      </section>
 
-      {/* ═══ BLOCO 2: RANKING DA EQUIPE ═══ */}
-      {repRanking.length > 0 && (
+        {/* Worst Performer */}
+        {worstPerformer && worstPerformer.metaQtd > 0 && worstPerformer.id !== topPerformer?.id && (
+          <div className="bg-white rounded-xl border-2 border-[#EF4444]/30 p-6 shadow-sm shadow-[#EF4444]/10 relative overflow-hidden">
+            <div className="absolute top-0 right-0 h-1 w-full bg-gradient-to-r from-[#EF4444] to-[#F97316]" />
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#EF4444] bg-[#EF4444]/10 px-3 py-1 rounded-full">⚠ Precisa de Atenção</span>
+            </div>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="h-12 w-12 rounded-full bg-[#EF4444]/10 flex items-center justify-center text-lg font-black text-[#EF4444]">
+                {worstPerformer.nome.charAt(0)}
+              </div>
+              <div>
+                <p className="font-heading font-bold text-foreground">{worstPerformer.nome}</p>
+                <p className="text-xs text-muted-foreground">{worstPerformer.count} vendidas</p>
+              </div>
+            </div>
+            <p className="font-heading text-2xl font-black text-[#EF4444]">{formatPct(worstPerformer.pctQtd)}</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Precisa vender +{Math.max(0, worstPerformer.metaQtd - worstPerformer.count)} máquina{Math.max(0, worstPerformer.metaQtd - worstPerformer.count) > 1 ? "s" : ""} para atingir a meta
+            </p>
+            {worstPerformer.pctQtd < 100 && (
+              <p className="text-xs font-semibold text-[#EF4444] mt-1">
+                {Math.round(100 - worstPerformer.pctQtd)}% abaixo da meta
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ═══ RANKING DA EQUIPE ═══ */}
+      {sortedRanking.length > 0 && (
         <section>
-          <div className="flex items-center gap-2 mb-4">
-            <Trophy className="h-5 w-5 text-[hsl(var(--wr-yellow))]" />
-            <h3 className="font-heading text-lg font-bold text-[hsl(var(--wr-text))] uppercase tracking-wide">Ranking da Equipe</h3>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-[#F97316]" />
+              <h3 className="font-heading text-lg font-bold text-foreground">Ranking da Equipe</h3>
+            </div>
+            {sortedRanking.length > 5 && (
+              <button onClick={() => setShowAllReps(!showAllReps)} className="text-xs font-semibold text-[#3B82F6] hover:underline">
+                {showAllReps ? "Mostrar menos" : "Ver Todos Representantes"}
+              </button>
+            )}
           </div>
           <div className="space-y-3">
-            {[...repRanking]
-              .sort((a, b) => b.pctQtd - a.pctQtd)
-              .map((rep, idx) => {
-                const faltamRep = Math.max(0, rep.metaQtd - rep.count);
-                const pctRep = rep.metaQtd > 0 ? (rep.count / rep.metaQtd) * 100 : 0;
-                const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}º`;
-                const statusColor = pctRep >= 100 ? "text-[hsl(142,71%,45%)]" : pctRep >= 70 ? "text-[hsl(38,92%,50%)]" : "text-[hsl(0,72%,51%)]";
-                const statusLabel = pctRep >= 100 ? "META BATIDA ✓" : pctRep >= 70 ? "ATENÇÃO" : "ABAIXO";
-                const glowClass = pctRep >= 100 ? "wr-card-glow-green" : pctRep >= 70 ? "wr-card-glow-yellow" : "wr-card-glow-red";
+            {displayedRanking.map((rep, idx) => {
+              const faltamRep = Math.max(0, rep.metaQtd - rep.count);
+              const pctRep = rep.metaQtd > 0 ? (rep.count / rep.metaQtd) * 100 : 0;
+              const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx + 1}º`;
+              const cardBg = idx === 0
+                ? "bg-gradient-to-r from-[#3B82F6]/5 to-[#3B82F6]/10 border-[#3B82F6]/30"
+                : idx === 1
+                ? "bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200"
+                : idx === 2
+                ? "bg-gradient-to-r from-[#F97316]/5 to-[#F97316]/10 border-[#F97316]/20"
+                : "bg-white border-border";
 
-                return (
-                  <div key={rep.id} className={`wr-card ${idx < 3 ? glowClass : ""} flex items-center gap-4`}>
-                    <span className="text-2xl w-10 text-center flex-shrink-0">{medal}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-heading font-bold text-[hsl(var(--wr-text))] truncate">{rep.nome}</p>
-                      <div className="flex items-center gap-4 mt-1">
-                        <span className="text-xs text-[hsl(var(--wr-text-muted))]">Meta: {rep.metaQtd}</span>
-                        <span className="text-xs text-[hsl(var(--wr-text))] font-semibold">Vendido: {rep.count}</span>
-                        <span className={`text-xs font-bold ${statusColor}`}>{formatPct(pctRep)}</span>
-                      </div>
-                    </div>
-                    <div className="flex-shrink-0 text-right">
-                      <span className={`text-xs font-black uppercase tracking-wider ${statusColor}`}>{statusLabel}</span>
-                      {faltamRep > 0 && (
-                        <p className="text-xs text-[hsl(var(--wr-text-muted))] mt-0.5">falta{faltamRep > 1 ? "m" : ""} {faltamRep}</p>
-                      )}
+              return (
+                <div key={rep.id} className={`rounded-xl border p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow ${cardBg}`}>
+                  <span className="text-2xl w-10 text-center flex-shrink-0">{medal}</span>
+                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-foreground flex-shrink-0">
+                    {rep.nome.charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-heading font-bold text-foreground truncate">{rep.nome}</p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-xs text-muted-foreground">Meta: <b>{rep.metaQtd}</b></span>
+                      <span className="text-xs text-foreground font-semibold">Vendido: <b>{rep.count}</b></span>
+                      <span className={`text-xs font-bold ${statusColor(pctRep)}`}>{formatPct(pctRep)}</span>
                     </div>
                   </div>
-                );
-              })}
+                  <div className="flex-shrink-0 text-right">
+                    <span className={`inline-flex items-center text-xs font-bold uppercase px-2.5 py-1 rounded-full ${
+                      pctRep >= 100 ? "bg-[#22C55E]/10 text-[#22C55E]" : pctRep >= 70 ? "bg-[#F97316]/10 text-[#F97316]" : "bg-[#EF4444]/10 text-[#EF4444]"
+                    }`}>
+                      {statusLabel(pctRep)}
+                    </span>
+                    {faltamRep > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">falta{faltamRep > 1 ? "m" : ""} {faltamRep}</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}
 
-      {/* ═══ BLOCO 3: RITMO DE BATALHA ═══ */}
-      {totalMetaQtd > 0 && diasRestantes > 0 && (
-        <section>
-          <div className="flex items-center gap-2 mb-4">
-            <Gauge className="h-5 w-5 text-[hsl(var(--wr-blue))]" />
-            <h3 className="font-heading text-lg font-bold text-[hsl(var(--wr-text))] uppercase tracking-wide">Ritmo de Batalha</h3>
-          </div>
-          <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-            <div className="wr-card wr-card-glow-blue text-center">
-              <p className="text-xs font-medium text-[hsl(var(--wr-text-muted))] uppercase mb-2">Ritmo Atual</p>
-              <p className="font-heading text-3xl font-black text-[hsl(var(--wr-blue))]">{ritmoAtual.toFixed(1)}<span className="text-lg">/sem</span></p>
-              <p className="text-xs text-[hsl(var(--wr-text-muted))] mt-1">{totalSold} em {semanasPassadas.toFixed(1)} semanas</p>
-            </div>
-            <div className="wr-card text-center">
-              <p className="text-xs font-medium text-[hsl(var(--wr-text-muted))] uppercase mb-2">Ritmo Necessário</p>
-              <p className={`font-heading text-3xl font-black ${noRitmo ? "text-[hsl(142,71%,45%)]" : "text-[hsl(0,72%,51%)]"}`}>{ritmoNecessario.toFixed(1)}<span className="text-lg">/sem</span></p>
-              <p className="text-xs text-[hsl(var(--wr-text-muted))] mt-1">{faltam} em {semanasRestantes.toFixed(1)} semanas</p>
-            </div>
-            <div className={`wr-card text-center ${faltam <= 0 ? "wr-card-glow-green" : noRitmo ? "wr-card-glow-green" : ritmoAtual > 0 ? "wr-card-glow-red" : "wr-card-glow-yellow"}`}>
-              <p className="text-xs font-medium text-[hsl(var(--wr-text-muted))] uppercase mb-2">Status</p>
-              <p className="text-5xl mb-1">
-                {faltam <= 0 ? "🔥" : noRitmo ? "🟢" : "🔴"}
-              </p>
-              <p className={`font-heading text-sm font-black uppercase ${faltam <= 0 ? "text-[hsl(142,71%,45%)]" : noRitmo ? "text-[hsl(142,71%,45%)]" : "text-[hsl(0,72%,51%)]"}`}>
-                {faltam <= 0 ? "Meta batida!" : noRitmo ? "No ritmo" : "Abaixo do ritmo"}
-              </p>
-              {!noRitmo && <p className="text-xs text-[hsl(var(--wr-text-muted))] mt-1">Precisa {ritmoDiario.toFixed(1)} vendas/dia</p>}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ═══ BLOCO 4: FATURAMENTO ═══ */}
+      {/* ═══ FATURAMENTO ═══ */}
       <section>
         <div className="flex items-center gap-2 mb-4">
-          <DollarSign className="h-5 w-5 text-[hsl(142,71%,45%)]" />
-          <h3 className="font-heading text-lg font-bold text-[hsl(var(--wr-text))] uppercase tracking-wide">Faturamento</h3>
-        </div>
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-          <WrMetricCard label="FOB Total" value={formatCompact(cur.fobTotal)} glow="blue" variation={fobVar} />
-          <WrMetricCard label="CIF Total" value={formatCompact(cur.revenue)} glow="green" variation={cifVar} />
-          <WrMetricCard label="Lucro Líquido" value={formatCompact(cur.netProfit)} glow="green" />
-          <WrMetricCard label="Comissão Total" value={formatCompact(commissionTotal)} glow="yellow" />
-        </div>
-      </section>
-
-      {/* ═══ BLOCO 5: ALERTAS INTELIGENTES ═══ */}
-      {smartAlerts.length > 0 && (
-        <section className="wr-card wr-card-glow-red">
-          <div className="flex items-center gap-2 mb-3">
-            <AlertCircle className="h-5 w-5 text-[hsl(0,72%,51%)]" />
-            <h3 className="font-heading text-lg font-bold text-[hsl(var(--wr-text))] uppercase tracking-wide">Alertas</h3>
-          </div>
-          <div className="space-y-2">
-            {smartAlerts.map((alert, i) => (
-              <div key={i} className="flex items-start gap-2 bg-[hsl(0,72%,51%)]/10 rounded-lg px-4 py-3">
-                <AlertTriangle className="h-4 w-4 text-[hsl(38,92%,50%)] flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-[hsl(var(--wr-text))] font-medium">{alert}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ═══ PIPELINE ═══ */}
-      <section>
-        <div className="flex items-center gap-2 mb-4">
-          <BarChart3 className="h-5 w-5 text-[hsl(var(--wr-yellow))]" />
-          <h3 className="font-heading text-lg font-bold text-[hsl(var(--wr-text))] uppercase tracking-wide">Pipeline</h3>
+          <DollarSign className="h-5 w-5 text-[#22C55E]" />
+          <h3 className="font-heading text-lg font-bold text-foreground">Faturamento</h3>
         </div>
         <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-          <WrMetricCard label="Em Negociação" value={String(pipelineData.totalOpen)} glow="yellow" sub="abertas" />
-          <WrMetricCard label="Valor Total" value={formatCompact(pipelineData.totalValue)} glow="blue" sub="em aberto" />
-          <WrMetricCard label="Previsão Ponderada" value={formatCompact(pipelineData.weightedForecast)} glow="green" sub="50% do valor" />
+          <CaMetricCard label="FOB Total" value={formatCompact(cur.fobTotal)} icon={<DollarSign className="h-5 w-5" />} color="#3B82F6" variation={fobVar} sub={`${cur.count} negociações fechadas`} />
+          <CaMetricCard label="CIF Total" value={formatCompact(cur.revenue)} icon={<TrendingUp className="h-5 w-5" />} color="#22C55E" variation={cifVar} sub="Valor total faturado" />
+          <CaMetricCard label="Lucro Líquido" value={formatCompact(cur.netProfit)} icon={<Zap className="h-5 w-5" />} color="#22C55E" sub="Resultado líquido" />
         </div>
       </section>
 
       {/* ═══ EVOLUÇÃO 6 MESES ═══ */}
       <section>
         <div className="flex items-center gap-2 mb-4">
-          <TrendingUp className="h-5 w-5 text-[hsl(var(--wr-blue))]" />
-          <h3 className="font-heading text-lg font-bold text-[hsl(var(--wr-text))] uppercase tracking-wide">Evolução (6 meses)</h3>
+          <TrendingUp className="h-5 w-5 text-[#3B82F6]" />
+          <h3 className="font-heading text-lg font-bold text-foreground">Evolução (6 meses)</h3>
         </div>
-        <div className="wr-card">
-          <ResponsiveContainer width="100%" height={240}>
+        <div className="bg-white rounded-xl border border-border p-6 shadow-sm">
+          <ResponsiveContainer width="100%" height={260}>
             <AreaChart data={evolutionData}>
               <defs>
                 <linearGradient id="gradFat" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.15} />
+                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="gradLucro" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#22C55E" stopOpacity={0.15} />
+                  <stop offset="95%" stopColor="#22C55E" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(217, 33%, 18%)" />
-              <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'hsl(215, 20%, 55%)' }} />
-              <YAxis tick={{ fontSize: 11, fill: 'hsl(215, 20%, 55%)' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#6B7280' }} />
+              <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} />
               <Tooltip
                 formatter={(v: number) => formatUsd(v)}
                 contentStyle={{
-                  fontSize: 12, borderRadius: 8,
-                  background: 'hsl(217, 33%, 12%)',
-                  border: '1px solid hsl(217, 33%, 18%)',
-                  color: 'hsl(210, 40%, 98%)',
+                  fontSize: 12, borderRadius: 12,
+                  background: '#fff',
+                  border: '1px solid #E5E7EB',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
                 }}
-                labelStyle={{ color: 'hsl(215, 20%, 55%)' }}
               />
-              <Area type="monotone" dataKey="Faturamento" stroke="hsl(221, 83%, 53%)" fill="url(#gradFat)" strokeWidth={2} />
-              <Area type="monotone" dataKey="Lucro Líquido" stroke="hsl(142, 71%, 45%)" fill="url(#gradLucro)" strokeWidth={2} />
-              <RechartLegend wrapperStyle={{ fontSize: 12, color: 'hsl(215, 20%, 55%)' }} />
+              <Area type="monotone" dataKey="Faturamento" stroke="#3B82F6" fill="url(#gradFat)" strokeWidth={2.5} />
+              <Area type="monotone" dataKey="Lucro Líquido" stroke="#22C55E" fill="url(#gradLucro)" strokeWidth={2.5} />
+              <RechartLegend wrapperStyle={{ fontSize: 12 }} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       </section>
+
+      {/* ═══ ALERTA GRANDE ═══ */}
+      {smartAlerts.length > 0 && (
+        <section className="bg-gradient-to-r from-[#EF4444] to-[#DC2626] rounded-xl p-6 text-white shadow-lg shadow-[#EF4444]/20 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full -translate-y-12 translate-x-12" />
+          <div className="relative">
+            <div className="flex items-center gap-2 mb-4">
+              <Flame className="h-6 w-6" />
+              <h3 className="font-heading text-lg font-bold uppercase tracking-wide">Alerta Comercial</h3>
+            </div>
+            <div className="space-y-2">
+              {smartAlerts.map((alert, i) => (
+                <div key={i} className="flex items-start gap-2 bg-white/10 rounded-lg px-4 py-3">
+                  <AlertTriangle className="h-4 w-4 text-white/80 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm font-medium">{alert}</p>
+                </div>
+              ))}
+            </div>
+            {totalMetaQtd > 0 && diasRestantes > 0 && (
+              <div className="flex gap-6 mt-4 pt-4 border-t border-white/20">
+                <div>
+                  <p className="text-white/60 text-xs uppercase">Ritmo Atual</p>
+                  <p className="font-heading text-xl font-black">{ritmoAtual.toFixed(1)}/sem</p>
+                </div>
+                <div>
+                  <p className="text-white/60 text-xs uppercase">Ritmo Necessário</p>
+                  <p className="font-heading text-xl font-black">{ritmoNecessario.toFixed(1)}/sem</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
     </div>
   );
 };
 
-/* --- WAR ROOM Sub-components --- */
+/* --- Comercial Agressivo Sub-components --- */
 
-const WrMetricCard = ({ label, value, glow, sub, variation }: {
-  label: string; value: string; glow: "green" | "red" | "yellow" | "blue"; sub?: string; variation?: number;
-}) => {
-  const glowClass = {
-    green: "wr-card-glow-green",
-    red: "wr-card-glow-red",
-    yellow: "wr-card-glow-yellow",
-    blue: "wr-card-glow-blue",
-  }[glow];
-  const valueColor = {
-    green: "text-[hsl(142,71%,45%)]",
-    red: "text-[hsl(0,72%,51%)]",
-    yellow: "text-[hsl(38,92%,50%)]",
-    blue: "text-[hsl(221,83%,53%)]",
-  }[glow];
-
-  return (
-    <div className={`wr-card ${glowClass}`}>
-      <p className="text-xs font-medium text-[hsl(var(--wr-text-muted))] uppercase tracking-wide mb-1">{label}</p>
-      <div className="flex items-end gap-2">
-        <p className={`font-heading text-2xl font-black ${valueColor}`}>{value}</p>
-        {variation !== undefined && variation !== 0 && (
-          <span className={`flex items-center gap-0.5 text-xs font-semibold mb-1 ${variation > 0 ? "text-[hsl(142,71%,45%)]" : "text-[hsl(0,72%,51%)]"}`}>
-            {variation > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-            {variation > 0 ? "+" : ""}{variation.toFixed(0)}%
-          </span>
-        )}
+const CaMetricCard = ({ label, value, icon, color, sub, variation }: {
+  label: string; value: string; icon: React.ReactNode; color: string; sub?: string; variation?: number;
+}) => (
+  <div className="bg-white rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
+    <div className="flex items-center gap-3 mb-3">
+      <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${color}15`, color }}>
+        {icon}
       </div>
-      {sub && <p className="text-xs text-[hsl(var(--wr-text-muted))] mt-1">{sub}</p>}
+      <span className="text-xs font-semibold text-muted-foreground uppercase">{label}</span>
     </div>
-  );
-};
+    <div className="flex items-end gap-2">
+      <p className="font-heading text-2xl font-black text-foreground">{value}</p>
+      {variation !== undefined && variation !== 0 && (
+        <span className={`inline-flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-full mb-1 ${variation > 0 ? "bg-[#22C55E]/10 text-[#22C55E]" : "bg-[#EF4444]/10 text-[#EF4444]"}`}>
+          {variation > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+          {variation > 0 ? "+" : ""}{variation.toFixed(0)}%
+        </span>
+      )}
+    </div>
+    {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+  </div>
+);
 
 export default ExecutiveDashboard;

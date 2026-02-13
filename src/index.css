@@ -6,60 +6,70 @@
 
 @layer base {
   :root {
-    --background: 220 25% 8%;
-    --foreground: 210 40% 98%;
+    --background: 220 14% 96%;
+    --foreground: 222 47% 11%;
 
-    --card: 217 33% 12%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
 
-    --popover: 217 33% 12%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 221 83% 53%;
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 217 33% 18%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 217 33% 16%;
-    --muted-foreground: 215 20% 55%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
 
     --accent: 142 71% 45%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 217 33% 18%;
-    --input: 217 33% 20%;
-    --ring: 221 83% 53%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 217 91% 60%;
 
     --radius: 0.75rem;
 
     --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
+    --warning: 25 95% 53%;
     --warning-foreground: 0 0% 100%;
-    --info: 221 83% 53%;
+    --info: 217 91% 60%;
     --info-foreground: 0 0% 100%;
 
+    /* Comercial Agressivo tokens */
+    --ca-green: 142 71% 45%;
+    --ca-red: 0 84% 60%;
+    --ca-blue: 217 91% 60%;
+    --ca-orange: 25 95% 53%;
+    --ca-bg: 220 14% 96%;
+    --ca-card: 0 0% 100%;
+    --ca-text: 222 47% 11%;
+    --ca-text-muted: 220 9% 46%;
+
     /* Premium visual tokens */
-    --primary-glow: 221 83% 60%;
+    --primary-glow: 217 91% 65%;
     --accent-glow: 142 71% 55%;
-    --card-highlight: 217 33% 16%;
-    --gradient-start: 221 83% 53%;
-    --gradient-end: 221 83% 60%;
+    --card-highlight: 0 0% 100%;
+    --gradient-start: 217 91% 60%;
+    --gradient-end: 217 91% 65%;
     --gradient-accent-start: 142 71% 45%;
     --gradient-accent-end: 152 60% 50%;
 
-    --sidebar-background: 222 47% 11%;
+    --sidebar-background: 222 47% 7%;
     --sidebar-foreground: 210 30% 85%;
     --sidebar-primary: 0 0% 100%;
     --sidebar-primary-foreground: 222 47% 11%;
-    --sidebar-accent: 222 40% 18%;
+    --sidebar-accent: 222 40% 14%;
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 222 40% 18%;
-    --sidebar-ring: 221 83% 53%;
+    --sidebar-border: 222 40% 14%;
+    --sidebar-ring: 217 91% 60%;
     --sidebar-muted: 220 20% 50%;
 
     --font-heading: 'Space Grotesk', sans-serif;
