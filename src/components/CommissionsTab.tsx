@@ -18,6 +18,9 @@ interface DealCommission {
   machine_type: string;
   base_price: number;
   final_price: number;
+  fob_cost: number;
+  gross_profit: number;
+  gross_margin_percent: number;
   seller_commission_pct: number;
   manager_commission_pct: number;
   seller_commission_value: number;
@@ -56,7 +59,7 @@ const CommissionsTab = ({ userId }: Props) => {
       const [dealsRes, repsRes] = await Promise.all([
         supabase
           .from("deals" as any)
-          .select("id, client_name, machine_name, machine_type, base_price, final_price, seller_commission_pct, manager_commission_pct, seller_commission_value, manager_commission_value, representative_id, dollar_rate, status, closed_at, created_at")
+          .select("id, client_name, machine_name, machine_type, base_price, final_price, fob_cost, gross_profit, gross_margin_percent, seller_commission_pct, manager_commission_pct, seller_commission_value, manager_commission_value, representative_id, dollar_rate, status, closed_at, created_at")
           .order("closed_at", { ascending: false }),
         supabase
           .from("representatives" as any)
@@ -99,9 +102,11 @@ const CommissionsTab = ({ userId }: Props) => {
       const managerTotal = monthDeals.reduce((s, d) => s + d.manager_commission_value, 0);
       const totalComm = sellerTotal + managerTotal;
       const totalVendas = monthDeals.reduce((s, d) => s + d.base_price, 0);
+      const totalGrossProfit = monthDeals.reduce((s, d) => s + d.gross_profit, 0);
+      const avgGrossMargin = totalVendas > 0 ? (totalGrossProfit / totalVendas) * 100 : 0;
       const count = monthDeals.length;
 
-      return { name, shortName: SHORT_MONTHS[i], monthNum, sellerTotal, managerTotal, totalComm, totalVendas, count, deals: monthDeals };
+      return { name, shortName: SHORT_MONTHS[i], monthNum, sellerTotal, managerTotal, totalComm, totalVendas, totalGrossProfit, avgGrossMargin, count, deals: monthDeals };
     });
   }, [closedDeals]);
 
@@ -111,30 +116,29 @@ const CommissionsTab = ({ userId }: Props) => {
     const managerTotal = closedDeals.reduce((s, d) => s + d.manager_commission_value, 0);
     const totalComm = sellerTotal + managerTotal;
     const totalVendas = closedDeals.reduce((s, d) => s + d.base_price, 0);
+    const totalGrossProfit = closedDeals.reduce((s, d) => s + d.gross_profit, 0);
+    const avgGrossMargin = totalVendas > 0 ? (totalGrossProfit / totalVendas) * 100 : 0;
     const count = closedDeals.length;
-    return { sellerTotal, managerTotal, totalComm, totalVendas, count };
+    return { sellerTotal, managerTotal, totalComm, totalVendas, totalGrossProfit, avgGrossMargin, count };
   }, [closedDeals]);
 
   // Per-representative breakdown for yearly view
   const repBreakdown = useMemo(() => {
     if (filterRep !== "all") return [];
-    const repMap = new Map<string, { repId: string | null; nome: string; seller: number; manager: number; total: number; vendas: number; count: number }>();
+    const repMap = new Map<string, { repId: string | null; nome: string; seller: number; manager: number; total: number; vendas: number; grossProfit: number; count: number }>();
 
     closedDeals.forEach((d) => {
       const key = d.representative_id || "__none__";
       const existing = repMap.get(key) || {
         repId: d.representative_id,
         nome: getRepName(d.representative_id),
-        seller: 0,
-        manager: 0,
-        total: 0,
-        vendas: 0,
-        count: 0,
+        seller: 0, manager: 0, total: 0, vendas: 0, grossProfit: 0, count: 0,
       };
       existing.seller += d.seller_commission_value;
       existing.manager += d.manager_commission_value;
       existing.total += d.seller_commission_value + d.manager_commission_value;
       existing.vendas += d.base_price;
+      existing.grossProfit += d.gross_profit;
       existing.count += 1;
       repMap.set(key, existing);
     });
@@ -202,7 +206,7 @@ const CommissionsTab = ({ userId }: Props) => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card className="p-4 border-border bg-card shadow-sm">
           <div className="flex items-center gap-2 mb-1">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
@@ -232,6 +236,15 @@ const CommissionsTab = ({ userId }: Props) => {
         </Card>
         <Card className="p-4 border-border bg-card shadow-sm">
           <div className="flex items-center gap-2 mb-1">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#8B5CF6]/10">
+              <Percent className="h-4 w-4 text-[#8B5CF6]" />
+            </div>
+            <span className="text-xs text-muted-foreground">Margem Bruta Média</span>
+          </div>
+          <p className="text-lg font-bold text-foreground">{yearTotals.count > 0 ? formatPct(yearTotals.avgGrossMargin) : "—"}</p>
+        </Card>
+        <Card className="p-4 border-border bg-card shadow-sm">
+          <div className="flex items-center gap-2 mb-1">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#F97316]/10">
               <BarChart3 className="h-4 w-4 text-[#F97316]" />
             </div>
@@ -255,6 +268,7 @@ const CommissionsTab = ({ userId }: Props) => {
                   <TableHead>Mês</TableHead>
                   <TableHead className="text-center">Vendas</TableHead>
                   <TableHead className="text-right">Faturamento FOB</TableHead>
+                  <TableHead className="text-right">Margem Bruta</TableHead>
                   <TableHead className="text-right">Com. Vendedor</TableHead>
                   <TableHead className="text-right">Com. Gestor</TableHead>
                   <TableHead className="text-right">Total Comissões</TableHead>
@@ -269,6 +283,7 @@ const CommissionsTab = ({ userId }: Props) => {
                       <TableCell className="font-medium text-sm">{m.name}</TableCell>
                       <TableCell className="text-center text-sm">{m.count}</TableCell>
                       <TableCell className="text-right text-sm">{m.count > 0 ? formatUsd(m.totalVendas) : "—"}</TableCell>
+                      <TableCell className="text-right text-sm text-[#8B5CF6] font-medium">{m.count > 0 ? formatPct(m.avgGrossMargin) : "—"}</TableCell>
                       <TableCell className="text-right text-sm text-[#22C55E]">{m.count > 0 ? formatUsd(m.sellerTotal) : "—"}</TableCell>
                       <TableCell className="text-right text-sm text-[#3B82F6]">{m.count > 0 ? formatUsd(m.managerTotal) : "—"}</TableCell>
                       <TableCell className="text-right text-sm font-semibold">{m.count > 0 ? formatUsd(m.totalComm) : "—"}</TableCell>
@@ -281,6 +296,7 @@ const CommissionsTab = ({ userId }: Props) => {
                   <TableCell className="font-bold text-sm">TOTAL {filterYear}</TableCell>
                   <TableCell className="text-center font-bold text-sm">{yearTotals.count}</TableCell>
                   <TableCell className="text-right font-bold text-sm">{formatUsd(yearTotals.totalVendas)}</TableCell>
+                  <TableCell className="text-right font-bold text-sm text-[#8B5CF6]">{yearTotals.count > 0 ? formatPct(yearTotals.avgGrossMargin) : "—"}</TableCell>
                   <TableCell className="text-right font-bold text-sm text-[#22C55E]">{formatUsd(yearTotals.sellerTotal)}</TableCell>
                   <TableCell className="text-right font-bold text-sm text-[#3B82F6]">{formatUsd(yearTotals.managerTotal)}</TableCell>
                   <TableCell className="text-right font-bold text-sm">{formatUsd(yearTotals.totalComm)}</TableCell>
@@ -306,6 +322,7 @@ const CommissionsTab = ({ userId }: Props) => {
                     <TableHead>Máquina</TableHead>
                     <TableHead>Representante</TableHead>
                     <TableHead className="text-right">Preço Venda FOB</TableHead>
+                    <TableHead className="text-right">Margem Bruta</TableHead>
                     <TableHead className="text-right">Com. Vendedor</TableHead>
                     <TableHead className="text-right">Com. Gestor</TableHead>
                     <TableHead className="text-right">Total</TableHead>
@@ -320,6 +337,7 @@ const CommissionsTab = ({ userId }: Props) => {
                         <Badge variant="secondary" className="text-xs">{getRepName(d.representative_id)}</Badge>
                       </TableCell>
                       <TableCell className="text-right text-sm">{formatUsd(d.base_price)}</TableCell>
+                      <TableCell className="text-right text-sm text-[#8B5CF6] font-medium">{formatPct(d.gross_margin_percent)}</TableCell>
                       <TableCell className="text-right text-sm text-[#22C55E]">
                         {formatUsd(d.seller_commission_value)}
                         <span className="text-xs text-muted-foreground ml-1">({formatPct(d.seller_commission_pct)})</span>
@@ -362,6 +380,7 @@ const CommissionsTab = ({ userId }: Props) => {
                     <TableHead>Representante</TableHead>
                     <TableHead className="text-center">Vendas</TableHead>
                     <TableHead className="text-right">Faturamento FOB</TableHead>
+                    <TableHead className="text-right">Margem Bruta</TableHead>
                     <TableHead className="text-right">Com. Vendedor</TableHead>
                     <TableHead className="text-right">Com. Gestor</TableHead>
                     <TableHead className="text-right">Total Comissões</TableHead>
@@ -371,11 +390,13 @@ const CommissionsTab = ({ userId }: Props) => {
                 <TableBody>
                   {repBreakdown.map((r) => {
                     const pct = r.vendas > 0 ? (r.total / r.vendas) * 100 : 0;
+                    const grossMarginPct = r.vendas > 0 ? (r.grossProfit / r.vendas) * 100 : 0;
                     return (
                       <TableRow key={r.repId || "__none__"}>
                         <TableCell className="font-medium text-sm">{r.nome}</TableCell>
                         <TableCell className="text-center text-sm">{r.count}</TableCell>
                         <TableCell className="text-right text-sm">{formatUsd(r.vendas)}</TableCell>
+                        <TableCell className="text-right text-sm text-[#8B5CF6] font-medium">{formatPct(grossMarginPct)}</TableCell>
                         <TableCell className="text-right text-sm text-[#22C55E]">{formatUsd(r.seller)}</TableCell>
                         <TableCell className="text-right text-sm text-[#3B82F6]">{formatUsd(r.manager)}</TableCell>
                         <TableCell className="text-right text-sm font-semibold">{formatUsd(r.total)}</TableCell>
@@ -387,6 +408,7 @@ const CommissionsTab = ({ userId }: Props) => {
                     <TableCell className="font-bold text-sm">TOTAL</TableCell>
                     <TableCell className="text-center font-bold text-sm">{yearTotals.count}</TableCell>
                     <TableCell className="text-right font-bold text-sm">{formatUsd(yearTotals.totalVendas)}</TableCell>
+                    <TableCell className="text-right font-bold text-sm text-[#8B5CF6]">{yearTotals.count > 0 ? formatPct(yearTotals.avgGrossMargin) : "—"}</TableCell>
                     <TableCell className="text-right font-bold text-sm text-[#22C55E]">{formatUsd(yearTotals.sellerTotal)}</TableCell>
                     <TableCell className="text-right font-bold text-sm text-[#3B82F6]">{formatUsd(yearTotals.managerTotal)}</TableCell>
                     <TableCell className="text-right font-bold text-sm">{formatUsd(yearTotals.totalComm)}</TableCell>
@@ -414,6 +436,7 @@ const CommissionsTab = ({ userId }: Props) => {
                     <TableHead>Máquina</TableHead>
                     <TableHead>Representante</TableHead>
                     <TableHead className="text-right">Preço Venda FOB</TableHead>
+                    <TableHead className="text-right">Margem Bruta</TableHead>
                     <TableHead className="text-right">Com. Vendedor</TableHead>
                     <TableHead className="text-right">Com. Gestor</TableHead>
                     <TableHead className="text-right">Total</TableHead>
@@ -431,6 +454,7 @@ const CommissionsTab = ({ userId }: Props) => {
                         <Badge variant="secondary" className="text-xs">{getRepName(d.representative_id)}</Badge>
                       </TableCell>
                       <TableCell className="text-right text-sm">{formatUsd(d.base_price)}</TableCell>
+                      <TableCell className="text-right text-sm text-[#8B5CF6] font-medium">{formatPct(d.gross_margin_percent)}</TableCell>
                       <TableCell className="text-right text-sm text-[#22C55E]">
                         {formatUsd(d.seller_commission_value)}
                         <span className="text-xs text-muted-foreground ml-1">({formatPct(d.seller_commission_pct)})</span>
