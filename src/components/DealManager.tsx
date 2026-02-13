@@ -380,6 +380,20 @@ const DealManager = ({ userId }: Props) => {
     fetchDeals();
   };
 
+  const handleReopen = async (deal: Deal) => {
+    if (deal.status !== "closed") return;
+    const { error } = await supabase
+      .from("deals" as any)
+      .update({ status: "open", closed_at: null } as any)
+      .eq("id", deal.id);
+    if (error) {
+      toast({ title: "Erro", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Venda reaberta!" });
+    fetchDeals();
+  };
+
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from("deals" as any).delete().eq("id", id);
     if (error) {
@@ -772,7 +786,7 @@ const DealManager = ({ userId }: Props) => {
                     }} title="Histórico de comissões">
                       <Clock className="h-4 w-4" />
                     </Button>
-                    {deal.status === "open" && (
+                    {deal.status === "open" ? (
                       <>
                         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
                           setEditingCommission(deal.id);
@@ -788,6 +802,10 @@ const DealManager = ({ userId }: Props) => {
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </>
+                    ) : (
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleReopen(deal)} title="Reabrir venda">
+                        <Unlock className="h-4 w-4 text-accent" />
+                      </Button>
                     )}
                   </div>
                 </div>
