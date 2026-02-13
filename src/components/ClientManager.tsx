@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Trash2, Building2, Hash } from "lucide-react";
+import { Plus, Trash2, Building2, Hash, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface Client {
   id: string;
@@ -14,48 +15,60 @@ export interface Client {
   created_at: string;
 }
 
-const CLIENTS_KEY = "price-calc-clients";
-
-export const loadClients = (): Client[] => {
-  try {
-    return JSON.parse(localStorage.getItem(CLIENTS_KEY) || "[]");
-  } catch {
-    return [];
-  }
-};
-
-export const saveClients = (clients: Client[]) => {
-  localStorage.setItem(CLIENTS_KEY, JSON.stringify(clients));
-};
-
 interface Props {
   clients: Client[];
   setClients: React.Dispatch<React.SetStateAction<Client[]>>;
 }
 
+export const fetchClients = async (): Promise<Client[]> => {
+  const { data, error } = await supabase
+    .from("empresas")
+    .select("id, nome, created_at")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data || []).map((e: any) => ({ id: e.id, name: e.nome, created_at: e.created_at }));
+};
+
 const ClientManager = ({ clients, setClients }: Props) => {
   const { toast } = useToast();
   const [newName, setNewName] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     const trimmed = newName.trim();
     if (!trimmed) return;
     if (clients.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
       toast({ title: "Empresa já cadastrada", variant: "destructive" });
       return;
     }
-    const entry: Client = { id: crypto.randomUUID(), name: trimmed, created_at: new Date().toISOString() };
-    const updated = [entry, ...clients];
-    setClients(updated);
-    saveClients(updated);
+    setLoading(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setLoading(false); return; }
+
+    const { data, error } = await supabase
+      .from("empresas")
+      .insert({ nome: trimmed, user_id: user.id } as any)
+      .select("id, nome, created_at")
+      .single();
+
+    setLoading(false);
+    if (error) {
+      toast({ title: "Erro ao cadastrar empresa", description: error.message, variant: "destructive" });
+      return;
+    }
+    const entry: Client = { id: (data as any).id, name: (data as any).nome, created_at: (data as any).created_at };
+    setClients((prev) => [entry, ...prev]);
     setNewName("");
     toast({ title: "Empresa cadastrada!" });
   };
 
-  const handleDelete = (id: string) => {
-    const updated = clients.filter((c) => c.id !== id);
-    setClients(updated);
-    saveClients(updated);
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from("empresas").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Erro ao excluir empresa", description: error.message, variant: "destructive" });
+      return;
+    }
+    setClients((prev) => prev.filter((c) => c.id !== id));
   };
 
   return (
@@ -80,8 +93,8 @@ const ClientManager = ({ clients, setClients }: Props) => {
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           />
         </div>
-        <Button className="self-end" onClick={handleAdd} disabled={!newName.trim()}>
-          <Plus className="h-4 w-4 mr-1" /> Adicionar
+        <Button className="self-end" onClick={handleAdd} disabled={!newName.trim() || loading}>
+          {loading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Plus className="h-4 w-4 mr-1" />} Adicionar
         </Button>
       </div>
 
