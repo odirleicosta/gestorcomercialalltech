@@ -15,7 +15,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import CalculationHistory from "@/components/CalculationHistory";
-import ClientManager, { loadClients, saveClients, type Client } from "@/components/ClientManager";
+import ClientManager, { fetchClients, type Client } from "@/components/ClientManager";
 import MachineManager, { loadMachines, saveMachines, type Machine } from "@/components/MachineManager";
 import MachineCatalog, { loadCatalog, saveCatalog, type CatalogMachine } from "@/components/MachineCatalog";
 import { seedCatalogIfEmpty } from "@/data/machineCatalogSeed";
@@ -68,7 +68,7 @@ const PriceCalculator = () => {
 
   const [activeTab, setActiveTab] = useState("dashboard");
   const [history, setHistory] = useState<SavedCalculation[]>(loadHistory);
-  const [clients, setClients] = useState<Client[]>(loadClients);
+  const [clients, setClients] = useState<Client[]>([]);
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
   const [machines, setMachines] = useState<Machine[]>(loadMachines);
   const [showMachineSuggestions, setShowMachineSuggestions] = useState(false);
@@ -85,6 +85,12 @@ const PriceCalculator = () => {
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchClients().then(setClients).catch(() => {});
+    }
+  }, [user]);
 
   const filteredClients = clients.filter((c) =>
     c.name.toLowerCase().includes(clientName.toLowerCase())
@@ -381,13 +387,19 @@ const PriceCalculator = () => {
                           variant="outline"
                           className="shrink-0"
                           disabled={!clientName.trim() || clients.some((c) => c.name.toLowerCase() === clientName.trim().toLowerCase())}
-                          onClick={() => {
+                          onClick={async () => {
                             const trimmed = clientName.trim();
                             if (!trimmed) return;
-                            const entry: Client = { id: crypto.randomUUID(), name: trimmed, created_at: new Date().toISOString() };
-                            const updated = [entry, ...clients];
-                            setClients(updated);
-                            saveClients(updated);
+                            const { data: { user: u } } = await supabase.auth.getUser();
+                            if (!u) return;
+                            const { data, error } = await supabase
+                              .from("empresas")
+                              .insert({ nome: trimmed, user_id: u.id } as any)
+                              .select("id, nome, created_at")
+                              .single();
+                            if (error) { toast({ title: "Erro ao cadastrar", variant: "destructive" }); return; }
+                            const entry: Client = { id: (data as any).id, name: (data as any).nome, created_at: (data as any).created_at };
+                            setClients((prev) => [entry, ...prev]);
                             toast({ title: "Empresa cadastrada!" });
                           }}
                           title="Cadastrar empresa"
