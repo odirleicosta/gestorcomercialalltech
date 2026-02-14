@@ -1241,6 +1241,11 @@ const DealManager = ({ userId }: Props) => {
                         <Unlock className="h-3.5 w-3.5 mr-1.5" /> Reabrir
                       </Button>
                     )}
+                    {!editing && (
+                      <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={() => handleDelete(deal.id)}>
+                        <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Excluir
+                      </Button>
+                    )}
                     {editing && (
                       <>
                         <Button size="sm" onClick={handleSaveEdit} disabled={!editSimulation}>
