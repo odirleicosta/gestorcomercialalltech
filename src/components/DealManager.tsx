@@ -300,8 +300,9 @@ const DealManager = ({ userId }: Props) => {
     if (id && id !== "none") {
       const rep = repOptions.find(r => r.id === id);
       if (rep) {
+        const isOdirlei = rep.nome.trim().toLowerCase() === "odirlei costa";
         setSellerPct(String(rep.comissao_padrao_pct));
-        setManagerPct(String(rep.comissao_gestor_pct));
+        setManagerPct(isOdirlei ? "0" : String(rep.comissao_gestor_pct));
       }
     }
   };
