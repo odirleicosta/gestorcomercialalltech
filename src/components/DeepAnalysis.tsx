@@ -292,7 +292,153 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
     return recs.sort((a, b) => a.priority - b.priority).slice(0, 5);
   }, [closedDeals, reps, monthStatus, trendData, currentMonth, currentYear]);
 
-  // ── AI Context ──
+  // ── Strategic Trends (accumulated history) ──
+  const strategicTrends = useMemo(() => {
+    const trends: { emoji: string; text: string; type: "positive" | "negative" | "neutral" }[] = [];
+
+    // 1. Current month vs annual average
+    const yearDeals = closedDeals.filter(d => new Date(d.created_at).getFullYear() === currentYear);
+    const monthBuckets: Record<number, { fob: number; margin: number; count: number }> = {};
+    yearDeals.forEach(d => {
+      const m = new Date(d.created_at).getMonth() + 1;
+      if (!monthBuckets[m]) monthBuckets[m] = { fob: 0, margin: 0, count: 0 };
+      monthBuckets[m].fob += d.base_price;
+      monthBuckets[m].margin += d.net_margin_percent;
+      monthBuckets[m].count += 1;
+    });
+    const completedMonths = Object.entries(monthBuckets).filter(([m]) => Number(m) < currentMonth);
+    if (completedMonths.length > 0) {
+      const avgAnnualFob = completedMonths.reduce((s, [, b]) => s + b.fob, 0) / completedMonths.length;
+      const currentFob = monthStatus.currentFob;
+      if (avgAnnualFob > 0) {
+        const diff = ((currentFob - avgAnnualFob) / avgAnnualFob) * 100;
+        if (Math.abs(diff) > 5) {
+          trends.push({
+            emoji: diff > 0 ? "📈" : "📉",
+            text: `Faturamento do mês ${diff > 0 ? formatPct(diff) + " acima" : formatPct(Math.abs(diff)) + " abaixo"} da média anual (${formatUsd(avgAnnualFob)}/mês).`,
+            type: diff > 0 ? "positive" : "negative",
+          });
+        }
+      }
+    }
+
+    // 2. Current month vs previous month
+    if (trendData.length >= 2) {
+      const prev = trendData[trendData.length - 2];
+      const curr = trendData[trendData.length - 1];
+      if (prev.faturamento > 0) {
+        const diff = ((curr.faturamento - prev.faturamento) / prev.faturamento) * 100;
+        if (Math.abs(diff) > 5) {
+          trends.push({
+            emoji: diff > 0 ? "⬆️" : "⬇️",
+            text: `Faturamento ${diff > 0 ? formatPct(diff) + " acima" : formatPct(Math.abs(diff)) + " abaixo"} do mês anterior.`,
+            type: diff > 0 ? "positive" : "negative",
+          });
+        }
+      }
+    }
+
+    // 3. Current margin vs historical average
+    const allAvgMargin = closedDeals.length > 0 ? closedDeals.reduce((s, d) => s + d.net_margin_percent, 0) / closedDeals.length : 0;
+    const currMargin = currentMonthDeals.length > 0 ? currentMonthDeals.reduce((s, d) => s + d.net_margin_percent, 0) / currentMonthDeals.length : 0;
+    if (allAvgMargin > 0 && currentMonthDeals.length > 0) {
+      const diff = currMargin - allAvgMargin;
+      if (Math.abs(diff) > 1) {
+        trends.push({
+          emoji: diff > 0 ? "✅" : "⚠️",
+          text: `Margem atual ${formatPct(currMargin)} ${diff > 0 ? "acima" : "abaixo"} da média histórica (${formatPct(allAvgMargin)}).`,
+          type: diff > 0 ? "positive" : "negative",
+        });
+      }
+    }
+
+    // 4. Consecutive margin decline
+    const recentMargins = trendData.slice(-4).map(t => t.margem).filter(m => m > 0);
+    if (recentMargins.length >= 3) {
+      let consecutiveDrops = 0;
+      for (let i = 1; i < recentMargins.length; i++) {
+        if (recentMargins[i] < recentMargins[i - 1]) consecutiveDrops++;
+        else consecutiveDrops = 0;
+      }
+      if (consecutiveDrops >= 2) {
+        trends.push({
+          emoji: "🔻",
+          text: `Margem em tendência de queda há ${consecutiveDrops} meses consecutivos.`,
+          type: "negative",
+        });
+      }
+    }
+
+    // 5. Consecutive revenue decline
+    const recentFat = trendData.slice(-4).map(t => t.faturamento).filter(f => f > 0);
+    if (recentFat.length >= 3) {
+      let consecutiveDrops = 0;
+      for (let i = 1; i < recentFat.length; i++) {
+        if (recentFat[i] < recentFat[i - 1]) consecutiveDrops++;
+        else consecutiveDrops = 0;
+      }
+      if (consecutiveDrops >= 2) {
+        trends.push({
+          emoji: "🚨",
+          text: `Faturamento em queda há ${consecutiveDrops} meses consecutivos. Ação urgente.`,
+          type: "negative",
+        });
+      }
+    }
+
+    // 6. Rep growth / decline detection
+    const getRepMonthFob = (repId: string, monthIdx: number) => {
+      const t = trendData[monthIdx];
+      if (!t) return 0;
+      const [mStr, yStr] = t.month.split("/");
+      const m = SHORT_MONTHS.indexOf(mStr) + 1;
+      const y = 2000 + Number(yStr);
+      return closedDeals
+        .filter(d => d.representative_id === repId && new Date(d.created_at).getMonth() + 1 === m && new Date(d.created_at).getFullYear() === y)
+        .reduce((s, d) => s + d.base_price, 0);
+    };
+
+    if (trendData.length >= 3) {
+      reps.forEach(r => {
+        const last3 = [
+          getRepMonthFob(r.id, trendData.length - 3),
+          getRepMonthFob(r.id, trendData.length - 2),
+          getRepMonthFob(r.id, trendData.length - 1),
+        ];
+        const allPositive = last3[0] > 0 && last3[1] > last3[0] && last3[2] > last3[1];
+        const allNegative = last3[0] > 0 && last3[1] < last3[0] && last3[2] < last3[1];
+        if (allPositive) {
+          trends.push({ emoji: "🚀", text: `${r.nome} apresenta crescimento consistente nos últimos 3 meses.`, type: "positive" });
+        } else if (allNegative) {
+          trends.push({ emoji: "📉", text: `${r.nome} com queda de performance nos últimos 3 meses.`, type: "negative" });
+        }
+      });
+    }
+
+    // 7. Quarter vs same quarter previous year
+    const currentQ = Math.ceil(currentMonth / 3);
+    const qMonths = [(currentQ - 1) * 3 + 1, (currentQ - 1) * 3 + 2, (currentQ - 1) * 3 + 3];
+    const qFob = closedDeals
+      .filter(d => { const dt = new Date(d.created_at); return qMonths.includes(dt.getMonth() + 1) && dt.getFullYear() === currentYear; })
+      .reduce((s, d) => s + d.base_price, 0);
+    const prevYearQFob = closedDeals
+      .filter(d => { const dt = new Date(d.created_at); return qMonths.includes(dt.getMonth() + 1) && dt.getFullYear() === currentYear - 1; })
+      .reduce((s, d) => s + d.base_price, 0);
+    if (prevYearQFob > 0) {
+      const diff = ((qFob - prevYearQFob) / prevYearQFob) * 100;
+      if (Math.abs(diff) > 3) {
+        trends.push({
+          emoji: diff > 0 ? "📊" : "⚠️",
+          text: `Faturamento do T${currentQ} está ${formatPct(Math.abs(diff))} ${diff > 0 ? "acima" : "abaixo"} do mesmo período anterior.`,
+          type: diff > 0 ? "positive" : "negative",
+        });
+      }
+    }
+
+    return trends;
+  }, [closedDeals, currentMonthDeals, trendData, reps, monthStatus, currentMonth, currentYear]);
+
+
   const buildContext = () => {
     const lines: string[] = [];
     lines.push(`Mês: ${SHORT_MONTHS[currentMonth - 1]}/${currentYear}`);
@@ -303,6 +449,8 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
     projections.forEach(p => lines.push(`${p.label}: FOB ${formatUsd(p.fob)}, ${p.count} máq., Lucro ${formatUsd(p.profit)}, Chance ${formatPct(p.chance)}`));
     lines.push(`\nRISCOS:`);
     risks.forEach(r => lines.push(`[${r.level}] ${r.title}: ${r.desc}`));
+    lines.push(`\nTENDÊNCIAS ESTRATÉGICAS:`);
+    strategicTrends.forEach(t => lines.push(`${t.emoji} ${t.text}`));
     lines.push(`\nREPS: ${reps.map(r => r.nome).join(", ")}`);
     const clientFob: Record<string, number> = {};
     closedDeals.forEach(d => { clientFob[d.client_name] = (clientFob[d.client_name] || 0) + d.base_price; });
@@ -588,7 +736,29 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
         </div>
       )}
 
-      {/* ── 5. RECOMENDAÇÕES ESTRATÉGICAS ── */}
+      {/* ── 5. TENDÊNCIA ESTRATÉGICA ── */}
+      {strategicTrends.length > 0 && (
+        <div>
+          <h3 className="font-heading text-sm font-black uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
+            📊 Tendência Estratégica
+          </h3>
+          <div className="space-y-2">
+            {strategicTrends.map((t, i) => (
+              <div key={i} className={cn(
+                "flex items-start gap-3 rounded-lg border px-4 py-3",
+                t.type === "positive" ? "border-green-500/25 bg-green-500/[0.04]" :
+                t.type === "negative" ? "border-red-500/25 bg-red-500/[0.04]" :
+                "border-border/50 bg-muted/30"
+              )}>
+                <span className="text-base leading-none mt-0.5">{t.emoji}</span>
+                <p className="text-[11px] font-semibold text-foreground">{t.text}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── 6. RECOMENDAÇÕES ESTRATÉGICAS ── */}
       {recommendations.length > 0 && (
         <div>
           <h3 className="font-heading text-sm font-black uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
