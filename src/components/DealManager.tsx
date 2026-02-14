@@ -187,6 +187,15 @@ const DealManager = ({ userId }: Props) => {
   const [newEmpresaNome, setNewEmpresaNome] = useState("");
   const [newEmpresaCidade, setNewEmpresaCidade] = useState("");
 
+  // New modelo dialog
+  const [showNewModelo, setShowNewModelo] = useState(false);
+  const [newModeloItemIdx, setNewModeloItemIdx] = useState<number>(0);
+  const [newModeloTipo, setNewModeloTipo] = useState<string>("");
+  const [newModeloMarca, setNewModeloMarca] = useState("");
+  const [newModeloModelo, setNewModeloModelo] = useState("");
+  const [newModeloCustoFob, setNewModeloCustoFob] = useState("");
+  const [newModeloPrecoVenda, setNewModeloPrecoVenda] = useState("");
+
   // Commission history
   const [commissionLogs, setCommissionLogs] = useState<CommissionLog[]>([]);
   const [showLogsInDrawer, setShowLogsInDrawer] = useState(false);
@@ -318,6 +327,39 @@ const DealManager = ({ userId }: Props) => {
     setNewEmpresaCidade("");
     setShowNewEmpresa(false);
     toast({ title: "Empresa cadastrada!" });
+  };
+
+  // Create new modelo in catalog
+  const handleCreateModelo = async () => {
+    if (!newModeloMarca.trim() || !newModeloModelo.trim() || !newModeloTipo) return;
+    const custoFob = parseFloat(newModeloCustoFob) || 0;
+    const precoVenda = parseFloat(newModeloPrecoVenda) || 0;
+    const { data, error } = await supabase
+      .from("machine_catalog" as any)
+      .insert({
+        user_id: userId,
+        tipo: newModeloTipo,
+        marca: newModeloMarca.trim(),
+        modelo: newModeloModelo.trim(),
+        custo_fob: custoFob,
+        preco_venda_fob: precoVenda,
+      } as any)
+      .select("id, marca, modelo, tipo, custo_fob, preco_venda_fob")
+      .single();
+    if (error) {
+      toast({ title: "Erro ao cadastrar produto", description: error.message, variant: "destructive" });
+      return;
+    }
+    if (data) {
+      const newMod = data as unknown as Modelo;
+      setModelos(prev => [...prev, newMod].sort((a, b) => a.marca.localeCompare(b.marca)));
+      // Auto-select in the item
+      handleItemModeloSelect(newModeloItemIdx, newMod.id);
+    }
+    setNewModeloTipo(""); setNewModeloMarca(""); setNewModeloModelo("");
+    setNewModeloCustoFob(""); setNewModeloPrecoVenda("");
+    setShowNewModelo(false);
+    toast({ title: "Produto cadastrado no catálogo!" });
   };
 
   const selectedEmpresa = empresas.find(e => e.id === empresaId);
@@ -974,34 +1016,39 @@ const DealManager = ({ userId }: Props) => {
                     {/* Modelo */}
                     <div className="lg:col-span-2">
                       <Label className="mb-1 text-xs text-muted-foreground">Máquina *</Label>
-                      <Popover open={item.modeloOpen} onOpenChange={(open) => updateItem(idx, { modeloOpen: open })}>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" role="combobox"
-                            className="w-full justify-between bg-secondary/50 border-border font-normal text-sm h-9">
-                            {item.machineName || "Selecionar modelo..."}
-                            <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[350px] p-0 bg-popover border-border z-50" align="start">
-                          <Command>
-                            <CommandInput placeholder="Buscar marca ou modelo..." />
-                            <CommandList>
-                              <CommandEmpty>Nenhum modelo encontrado.</CommandEmpty>
-                              <CommandGroup>
-                                {modelos.map(m => (
-                                  <CommandItem key={m.id} value={`${m.marca} ${m.modelo} ${m.tipo}`} onSelect={() => handleItemModeloSelect(idx, m.id)}>
-                                    <Check className={cn("mr-2 h-4 w-4", item.modeloId === m.id ? "opacity-100" : "opacity-0")} />
-                                    <div className="flex flex-col">
-                                      <span className="text-sm font-medium">{m.marca} {m.modelo}</span>
-                                      <span className="text-xs text-muted-foreground">{m.tipo} · FOB US$ {m.custo_fob.toLocaleString("pt-BR")}</span>
-                                    </div>
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                      <div className="flex gap-1.5">
+                        <Popover open={item.modeloOpen} onOpenChange={(open) => updateItem(idx, { modeloOpen: open })}>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" role="combobox"
+                              className="flex-1 justify-between bg-secondary/50 border-border font-normal text-sm h-9">
+                              {item.machineName || "Selecionar modelo..."}
+                              <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[350px] p-0 bg-popover border-border z-50" align="start">
+                            <Command>
+                              <CommandInput placeholder="Buscar marca ou modelo..." />
+                              <CommandList>
+                                <CommandEmpty>Nenhum modelo encontrado.</CommandEmpty>
+                                <CommandGroup>
+                                  {modelos.map(m => (
+                                    <CommandItem key={m.id} value={`${m.marca} ${m.modelo} ${m.tipo}`} onSelect={() => handleItemModeloSelect(idx, m.id)}>
+                                      <Check className={cn("mr-2 h-4 w-4", item.modeloId === m.id ? "opacity-100" : "opacity-0")} />
+                                      <div className="flex flex-col">
+                                        <span className="text-sm font-medium">{m.marca} {m.modelo}</span>
+                                        <span className="text-xs text-muted-foreground">{m.tipo} · FOB US$ {m.custo_fob.toLocaleString("pt-BR")}</span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => { setNewModeloItemIdx(idx); setShowNewModelo(true); }} title="Novo produto">
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
                       {item.machineType && (
                         <p className="text-[10px] text-muted-foreground mt-0.5">{item.machineType}</p>
                       )}
@@ -1091,7 +1138,52 @@ const DealManager = ({ userId }: Props) => {
         </DialogContent>
       </Dialog>
 
-      {/* ── FILTERS ── */}
+      {/* New Modelo Dialog */}
+      <Dialog open={showNewModelo} onOpenChange={setShowNewModelo}>
+        <DialogContent className="bg-card border-border">
+          <DialogHeader><DialogTitle>Novo Produto no Catálogo</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-sm text-muted-foreground">Tipo *</Label>
+              <Select value={newModeloTipo} onValueChange={setNewModeloTipo}>
+                <SelectTrigger className="bg-secondary/50 border-border">
+                  <SelectValue placeholder="Selecionar tipo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {MACHINE_TYPES.map(t => (
+                    <SelectItem key={t} value={t}>{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-sm text-muted-foreground">Marca *</Label>
+              <Input value={newModeloMarca} onChange={(e) => setNewModeloMarca(e.target.value)} placeholder="Ex: DMTG" className="bg-secondary/50 border-border" />
+            </div>
+            <div>
+              <Label className="text-sm text-muted-foreground">Modelo *</Label>
+              <Input value={newModeloModelo} onChange={(e) => setNewModeloModelo(e.target.value)} placeholder="Ex: OKM-850D" className="bg-secondary/50 border-border" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm text-muted-foreground">Custo FOB (USD)</Label>
+                <Input type="number" step="0.01" min="0" value={newModeloCustoFob} onChange={(e) => setNewModeloCustoFob(e.target.value)} placeholder="0,00" className="bg-secondary/50 border-border" />
+              </div>
+              <div>
+                <Label className="text-sm text-muted-foreground">Preço Venda FOB (USD)</Label>
+                <Input type="number" step="0.01" min="0" value={newModeloPrecoVenda} onChange={(e) => setNewModeloPrecoVenda(e.target.value)} placeholder="0,00" className="bg-secondary/50 border-border" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewModelo(false)}>Cancelar</Button>
+            <Button onClick={handleCreateModelo} disabled={!newModeloMarca.trim() || !newModeloModelo.trim() || !newModeloTipo}>
+              <Plus className="h-4 w-4 mr-2" /> Cadastrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Card className="border-border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap gap-3 items-center">
           <div className="relative flex-1 min-w-[200px]">
