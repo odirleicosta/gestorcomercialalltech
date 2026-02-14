@@ -64,6 +64,19 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
   const [lastAnalysis, setLastAnalysis] = useState<Date | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
+  // ── Simulator state ──
+  const [simQty, setSimQty] = useState(1);
+  const [simTicket, setSimTicket] = useState(0);
+  const [simMargin, setSimMargin] = useState(25);
+  const [simRepId, setSimRepId] = useState("");
+  const [simDollar, setSimDollar] = useState(0);
+  const [simResult, setSimResult] = useState<null | {
+    newMachines: number; newFob: number; newGrossProfit: number; newNetProfit: number;
+    newAvgMargin: number; newTotalCommission: number; newMetaPct: number;
+    repName: string; repOldRank: number; repNewRank: number; repOldFob: number; repNewFob: number;
+    currentMachines: number; currentFob: number;
+  }>(null);
+
   useEffect(() => {
   const fetchData = async () => {
       setLoading(true);
@@ -439,6 +452,55 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
   }, [closedDeals, currentMonthDeals, trendData, reps, monthStatus, currentMonth, currentYear]);
 
 
+  // ── Simulator Logic ──
+  const runSimulation = () => {
+    if (simQty <= 0 || simTicket <= 0) return;
+    const addedFob = simQty * simTicket;
+    const addedGrossProfit = addedFob * (simMargin / 100);
+    const rep = reps.find(r => r.id === simRepId);
+    const sellerPct = rep ? (rep as any).comissao_padrao_pct || 3 : 3;
+    const managerPct = rep ? (rep as any).comissao_gestor_pct || 1 : 1;
+    const addedCommission = addedFob * ((sellerPct + managerPct) / 100);
+    const addedNetProfit = addedGrossProfit - addedCommission;
+
+    const currentFob = monthStatus.currentFob;
+    const currentMachines = currentMonthDeals.length;
+    const currentProfit = currentMonthDeals.reduce((s, d) => s + d.net_profit, 0);
+    const currentGrossProfit = currentMonthDeals.reduce((s, d) => s + d.gross_profit, 0);
+    const currentCommission = currentMonthDeals.reduce((s, d) => s + d.seller_commission_value + d.manager_commission_value, 0);
+
+    const newFob = currentFob + addedFob;
+    const newMachines = currentMachines + simQty;
+    const newGrossProfit = currentGrossProfit + addedGrossProfit;
+    const newNetProfit = currentProfit + addedNetProfit;
+    const newTotalCommission = currentCommission + addedCommission;
+    const totalMarginWeighted = currentMonthDeals.length > 0
+      ? ((currentMonthDeals.reduce((s, d) => s + d.net_margin_percent, 0) + simMargin * simQty) / (currentMonthDeals.length + simQty))
+      : simMargin;
+    const newMetaPct = monthStatus.metaFob > 0 ? (newFob / monthStatus.metaFob) * 100 : 0;
+
+    // Ranking impact
+    const repFobCurrent: Record<string, number> = {};
+    currentMonthDeals.forEach(d => {
+      if (d.representative_id) repFobCurrent[d.representative_id] = (repFobCurrent[d.representative_id] || 0) + d.base_price;
+    });
+    const rankBefore = Object.entries(repFobCurrent).sort((a, b) => b[1] - a[1]);
+    const repOldFob = simRepId ? (repFobCurrent[simRepId] || 0) : 0;
+    const repOldRank = simRepId ? (rankBefore.findIndex(([id]) => id === simRepId) + 1 || rankBefore.length + 1) : 0;
+
+    const repFobAfter = { ...repFobCurrent };
+    if (simRepId) repFobAfter[simRepId] = (repFobAfter[simRepId] || 0) + addedFob;
+    const rankAfter = Object.entries(repFobAfter).sort((a, b) => b[1] - a[1]);
+    const repNewRank = simRepId ? (rankAfter.findIndex(([id]) => id === simRepId) + 1) : 0;
+    const repNewFob = simRepId ? (repFobAfter[simRepId] || 0) : 0;
+
+    setSimResult({
+      newMachines, newFob, newGrossProfit, newNetProfit, newAvgMargin: totalMarginWeighted,
+      newTotalCommission, newMetaPct, repName: rep?.nome || "—",
+      repOldRank, repNewRank, repOldFob, repNewFob, currentMachines, currentFob,
+    });
+  };
+
   const buildContext = () => {
     const lines: string[] = [];
     lines.push(`Mês: ${SHORT_MONTHS[currentMonth - 1]}/${currentYear}`);
@@ -778,7 +840,140 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
         </div>
       )}
 
-      {/* ── 6. ASSISTENTE IA ── */}
+      {/* ── 7. SIMULADOR ESTRATÉGICO ── */}
+      <div>
+        <h3 className="font-heading text-sm font-black uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
+          🎯 Simulador Estratégico
+        </h3>
+        <Card className="border-border/50 bg-card shadow-sm rounded-xl p-5">
+          <div className="grid gap-4 md:grid-cols-5 mb-4">
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">Qtd. Máquinas</label>
+              <Input type="number" min={1} value={simQty} onChange={e => setSimQty(Number(e.target.value))} className="h-9 text-sm" />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">Ticket FOB (USD)</label>
+              <Input type="number" min={0} value={simTicket || ""} onChange={e => setSimTicket(Number(e.target.value))} className="h-9 text-sm" placeholder="Ex: 45000" />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">Margem (%)</label>
+              <Input type="number" min={0} max={100} value={simMargin} onChange={e => setSimMargin(Number(e.target.value))} className="h-9 text-sm" />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">Representante</label>
+              <select
+                value={simRepId}
+                onChange={e => setSimRepId(e.target.value)}
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="">Selecionar...</option>
+                {reps.map(r => <option key={r.id} value={r.id}>{r.nome}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">Dólar (opc.)</label>
+              <Input type="number" min={0} step={0.01} value={simDollar || ""} onChange={e => setSimDollar(Number(e.target.value))} className="h-9 text-sm" placeholder="Ex: 5.20" />
+            </div>
+          </div>
+          <Button onClick={runSimulation} disabled={simQty <= 0 || simTicket <= 0} className="font-heading font-black tracking-wide w-full md:w-auto">
+            🎯 Simular Cenário
+          </Button>
+
+          {simResult && (
+            <div className="mt-5 grid gap-4 md:grid-cols-3">
+              {/* Impacto na Meta */}
+              <div className="rounded-xl border-2 border-primary/30 bg-primary/[0.04] p-4">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-primary mb-3 flex items-center gap-1.5">
+                  <Target className="h-3.5 w-3.5" /> Impacto na Meta
+                </h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Máquinas</span>
+                    <span className="font-black">{simResult.currentMachines} → {simResult.newMachines}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Faturamento FOB</span>
+                    <span className="font-black">{formatUsd(simResult.currentFob)} → {formatUsd(simResult.newFob)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">% Meta</span>
+                    <span className={cn("font-black", simResult.newMetaPct >= 100 ? "text-green-600" : simResult.newMetaPct >= 80 ? "text-yellow-600" : "text-red-600")}>
+                      {formatPct(monthStatus.achieved)} → {formatPct(simResult.newMetaPct)}
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden mt-1">
+                    <div
+                      className={cn("h-full rounded-full transition-all", simResult.newMetaPct >= 100 ? "bg-green-500" : simResult.newMetaPct >= 80 ? "bg-yellow-500" : "bg-red-500")}
+                      style={{ width: `${Math.min(simResult.newMetaPct, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Impacto Financeiro */}
+              <div className="rounded-xl border-2 border-green-500/30 bg-green-500/[0.04] p-4">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-green-600 mb-3 flex items-center gap-1.5">
+                  <DollarSign className="h-3.5 w-3.5" /> Impacto Financeiro
+                </h4>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Lucro Bruto</span>
+                    <span className="font-black text-green-600">{formatUsd(simResult.newGrossProfit)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Lucro Líquido</span>
+                    <span className="font-black text-green-600">{formatUsd(simResult.newNetProfit)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Margem Média</span>
+                    <span className="font-black">{formatPct(simResult.newAvgMargin)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Comissão Total</span>
+                    <span className="font-black text-orange-500">{formatUsd(simResult.newTotalCommission)}</span>
+                  </div>
+                  {simDollar > 0 && (
+                    <div className="flex justify-between text-xs border-t border-border/50 pt-2 mt-2">
+                      <span className="text-muted-foreground">Faturamento BRL</span>
+                      <span className="font-bold">R$ {(simResult.newFob * simDollar).toLocaleString("pt-BR", { minimumFractionDigits: 0 })}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Impacto no Ranking */}
+              <div className="rounded-xl border-2 border-orange-500/30 bg-orange-500/[0.04] p-4">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-3 flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5" /> Impacto no Ranking
+                </h4>
+                {simRepId ? (
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Representante</span>
+                      <span className="font-black">{simResult.repName}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">FOB no mês</span>
+                      <span className="font-black">{formatUsd(simResult.repOldFob)} → {formatUsd(simResult.repNewFob)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Posição</span>
+                      <span className={cn("font-black", simResult.repNewRank < simResult.repOldRank ? "text-green-600" : "")}>
+                        {simResult.repOldRank > 0 ? `#${simResult.repOldRank}` : "Sem vendas"} → #{simResult.repNewRank}
+                        {simResult.repNewRank < simResult.repOldRank && " ⬆️"}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground">Selecione um representante para ver o impacto no ranking.</p>
+                )}
+              </div>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* ── 8. ASSISTENTE IA ── */}
       <div>
         <h3 className="font-heading text-sm font-black uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
           <Bot className="h-4 w-4 text-primary" /> Assistente Comercial IA
