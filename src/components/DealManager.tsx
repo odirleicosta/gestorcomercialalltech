@@ -1172,6 +1172,61 @@ const DealManager = ({ userId }: Props) => {
         );
       })()}
 
+      {/* ── STRATEGIC BLOCK: HIGHLIGHT DEAL + MARGIN INDICATOR ── */}
+      {!loading && filtered.length > 0 && (() => {
+        const totalFob = filtered.reduce((s, d) => s + d.base_price, 0);
+        const avgMargin = filtered.reduce((s, d) => s + d.net_margin_percent, 0) / filtered.length;
+        const topDeal = filtered.reduce((best, d) => d.base_price > best.base_price ? d : best, filtered[0]);
+        const impactPct = totalFob > 0 ? (topDeal.base_price / totalFob) * 100 : 0;
+        const topRep = repOptions.find(r => r.id === topDeal.representative_id);
+        const topEmp = empresas.find(e => e.id === topDeal.empresa_id);
+
+        const marginIndicator = avgMargin >= 30
+          ? { emoji: "🟢", text: "Performance saudável", color: "text-green-600" }
+          : avgMargin >= 20
+          ? { emoji: "🟡", text: "Atenção à margem", color: "text-yellow-600" }
+          : { emoji: "🔴", text: "Margem em risco", color: "text-red-600" };
+
+        return (
+          <div className="space-y-3">
+            {/* Margin health indicator */}
+            <div className={cn("flex items-center gap-2 px-1", marginIndicator.color)}>
+              <span className="text-lg">{marginIndicator.emoji}</span>
+              <span className="text-sm font-bold">{marginIndicator.text}</span>
+              <span className="text-xs opacity-70">— margem média {formatPct(avgMargin)}</span>
+            </div>
+
+            {/* Top deal card */}
+            <Card className="border-2 border-blue-400/40 bg-blue-500/[0.04] shadow-md rounded-xl px-6 py-5">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-lg">🔥</span>
+                <h3 className="font-heading text-sm font-black uppercase tracking-widest text-blue-700">Venda Destaque do Período</h3>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4">
+                {[
+                  { label: "Empresa", value: topDeal.client_name },
+                  { label: "Cidade", value: topEmp?.cidade || "—" },
+                  { label: "Modelo", value: topDeal.machine_name || "—" },
+                  { label: "Representante", value: topRep?.nome || "—" },
+                  { label: "FOB Venda", value: formatUsd(topDeal.base_price) },
+                  { label: "Margem Líq.", value: null, badge: topDeal.net_margin_percent },
+                  { label: "Impacto no Mês", value: `${impactPct.toFixed(1)}%` },
+                ].map((item) => (
+                  <div key={item.label}>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">{item.label}</p>
+                    {item.badge !== undefined && item.badge !== null ? (
+                      getMarginBadge(item.badge, true)
+                    ) : (
+                      <p className="text-sm font-bold text-foreground truncate">{item.value}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        );
+      })()}
+
       {/* ── DATA TABLE ── */}
       {loading ? (
         <p className="text-muted-foreground text-center py-8">Carregando...</p>
