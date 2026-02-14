@@ -18,7 +18,10 @@ const Auth = () => {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      toast({ title: "Erro ao entrar", description: error.message, variant: "destructive" });
+      const desc = error.message.includes("Invalid login") 
+        ? "Email ou senha incorretos. Verifique os dados e tente novamente."
+        : error.message;
+      toast({ title: "Erro ao entrar", description: desc, variant: "destructive" });
     }
     setLoading(false);
   };
@@ -27,7 +30,12 @@ const Auth = () => {
     setLoading(true);
     const { error } = await supabase.auth.signUp({ email, password });
     if (error) {
-      toast({ title: "Erro ao cadastrar", description: error.message, variant: "destructive" });
+      const desc = error.message.includes("already registered")
+        ? "Este email já possui uma conta. Tente fazer login."
+        : error.message.includes("least 6")
+        ? "A senha deve ter no mínimo 6 caracteres."
+        : error.message;
+      toast({ title: "Erro ao cadastrar", description: desc, variant: "destructive" });
     } else {
       toast({ title: "Conta criada!", description: "Verifique seu email para confirmar." });
     }

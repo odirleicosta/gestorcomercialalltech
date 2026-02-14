@@ -109,7 +109,7 @@ const RepresentativeManager = ({ userId }: Props) => {
 
   const handleSave = async () => {
     if (!nome.trim()) {
-      toast({ title: "Nome obrigatório", variant: "destructive" });
+      toast({ title: "Nome obrigatório", description: "Informe o nome do representante para continuar.", variant: "destructive" });
       return;
     }
     const payload = {
@@ -125,11 +125,11 @@ const RepresentativeManager = ({ userId }: Props) => {
 
     if (editingId) {
       const { error } = await supabase.from("representatives" as any).update(payload as any).eq("id", editingId);
-      if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+      if (error) { toast({ title: "Erro ao atualizar representante", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Representante atualizado!" });
     } else {
       const { error } = await supabase.from("representatives" as any).insert(payload as any);
-      if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+      if (error) { toast({ title: "Erro ao cadastrar representante", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Representante cadastrado!" });
     }
     resetForm();
@@ -150,7 +150,7 @@ const RepresentativeManager = ({ userId }: Props) => {
 
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from("representatives" as any).delete().eq("id", id);
-    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
+    if (error) { toast({ title: "Erro ao excluir representante", description: error.message, variant: "destructive" }); return; }
     fetchAll();
   };
 

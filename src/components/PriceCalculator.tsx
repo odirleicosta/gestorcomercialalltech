@@ -408,7 +408,7 @@ const PriceCalculator = () => {
                               .insert({ nome: trimmed, user_id: u.id } as any)
                               .select("id, nome, created_at")
                               .single();
-                            if (error) { toast({ title: "Erro ao cadastrar", variant: "destructive" }); return; }
+                            if (error) { toast({ title: "Erro ao cadastrar empresa", description: error.message, variant: "destructive" }); return; }
                             const entry: Client = { id: (data as any).id, name: (data as any).nome, cidade: (data as any).cidade ?? null, created_at: (data as any).created_at };
                             setClients((prev) => [entry, ...prev]);
                             toast({ title: "Empresa cadastrada!" });
