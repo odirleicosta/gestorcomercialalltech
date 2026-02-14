@@ -220,6 +220,72 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
     return riskList;
   }, [closedDeals, reps, monthStatus, currentMonth, currentYear]);
 
+  // ── Proactive Recommendations ──
+  const recommendations = useMemo(() => {
+    const recs: { emoji: string; title: string; action: string; priority: number }[] = [];
+
+    // 1. Ritmo insuficiente
+    const { pct, metaFob, projectedFob, achieved } = monthStatus;
+    if (metaFob > 0 && pct < 80) {
+      const faltando = metaFob - monthStatus.currentFob;
+      const diasRestantes = monthStatus.daysInMonth - monthStatus.dayOfMonth;
+      const porDia = diasRestantes > 0 ? faltando / diasRestantes : faltando;
+      recs.push({ emoji: "⚡", title: "Acelerar ritmo de vendas", action: `Faltam ${formatUsd(faltando)} para meta. Necessário ${formatUsd(porDia)}/dia nos próximos ${diasRestantes} dias.`, priority: pct < 50 ? 1 : 2 });
+    }
+
+    // 2. Margem em queda
+    const last3Deals = closedDeals.filter(d => {
+      const dt = new Date(d.created_at);
+      const monthsAgo = (currentYear - dt.getFullYear()) * 12 + (currentMonth - (dt.getMonth() + 1));
+      return monthsAgo >= 0 && monthsAgo < 3;
+    });
+    const allAvgMargin = closedDeals.length > 0 ? closedDeals.reduce((s, d) => s + d.net_margin_percent, 0) / closedDeals.length : 0;
+    const recentAvgMargin = last3Deals.length > 0 ? last3Deals.reduce((s, d) => s + d.net_margin_percent, 0) / last3Deals.length : 0;
+    if (recentAvgMargin < allAvgMargin * 0.85 && closedDeals.length >= 5) {
+      recs.push({ emoji: "📉", title: "Margem sob pressão", action: `Margem caiu de ${formatPct(allAvgMargin)} para ${formatPct(recentAvgMargin)}. Revisar política de preços e descontos.`, priority: 2 });
+    }
+
+    // 3. Representantes abaixo da média
+    const repFob: Record<string, number> = {};
+    last3Deals.forEach(d => { if (d.representative_id) repFob[d.representative_id] = (repFob[d.representative_id] || 0) + d.base_price; });
+    const avgRepFob = Object.keys(repFob).length > 0 ? Object.values(repFob).reduce((a, b) => a + b, 0) / Object.keys(repFob).length : 0;
+    const weakReps = reps.filter(r => (repFob[r.id] || 0) < avgRepFob * 0.5 && avgRepFob > 0);
+    if (weakReps.length > 0) {
+      recs.push({ emoji: "👥", title: "Equipe desbalanceada", action: `${weakReps.map(r => r.nome).join(", ")} abaixo de 50% da média. Cobrar plano de ação individual.`, priority: 3 });
+    }
+
+    // 4. Concentração de clientes
+    const clientFob: Record<string, number> = {};
+    last3Deals.forEach(d => { clientFob[d.client_name] = (clientFob[d.client_name] || 0) + d.base_price; });
+    const totalFob3m = last3Deals.reduce((s, d) => s + d.base_price, 0);
+    const concentrated = Object.entries(clientFob).filter(([, fob]) => totalFob3m > 0 && (fob / totalFob3m) * 100 > 30);
+    if (concentrated.length > 0) {
+      recs.push({ emoji: "🎯", title: "Diversificar carteira", action: `${concentrated.map(([n, f]) => `${n} (${((f / totalFob3m) * 100).toFixed(0)}%)`).join(", ")}. Prospectar novos clientes para reduzir risco.`, priority: 3 });
+    }
+
+    // 5. Projeção vs meta
+    if (metaFob > 0 && pct >= 80 && pct < 100) {
+      recs.push({ emoji: "🏁", title: "Meta ao alcance", action: `Projeção de ${formatPct(pct)} da meta. Fechar negociações em andamento para garantir o resultado.`, priority: 4 });
+    }
+
+    // 6. Meta batida - manter ritmo
+    if (metaFob > 0 && achieved >= 100) {
+      recs.push({ emoji: "🏆", title: "Meta batida — superar!", action: `Já atingiu ${formatPct(achieved)} da meta. Aproveitar o momentum para maximizar o resultado do mês.`, priority: 5 });
+    }
+
+    // 7. Comparação com mês anterior
+    const prevMonthData = trendData.length >= 2 ? trendData[trendData.length - 2] : null;
+    const currMonthData = trendData[trendData.length - 1];
+    if (prevMonthData && prevMonthData.faturamento > 0 && currMonthData) {
+      const variation = ((currMonthData.faturamento - prevMonthData.faturamento) / prevMonthData.faturamento) * 100;
+      if (variation < -20) {
+        recs.push({ emoji: "📊", title: "Queda vs mês anterior", action: `Faturamento ${formatPct(Math.abs(variation))} abaixo do mês anterior. Investigar causas e reagir.`, priority: 2 });
+      }
+    }
+
+    return recs.sort((a, b) => a.priority - b.priority).slice(0, 5);
+  }, [closedDeals, reps, monthStatus, trendData, currentMonth, currentYear]);
+
   // ── AI Context ──
   const buildContext = () => {
     const lines: string[] = [];
@@ -505,7 +571,27 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
         </div>
       )}
 
-      {/* ── 5. ASSISTENTE IA ── */}
+      {/* ── 5. RECOMENDAÇÕES ESTRATÉGICAS ── */}
+      {recommendations.length > 0 && (
+        <div>
+          <h3 className="font-heading text-sm font-black uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
+            📢 Recomendações Estratégicas
+          </h3>
+          <div className="space-y-2">
+            {recommendations.map((rec, i) => (
+              <div key={i} className="flex items-start gap-3 rounded-lg border border-primary/20 bg-primary/[0.03] px-4 py-3">
+                <span className="text-lg leading-none mt-0.5">{rec.emoji}</span>
+                <div className="min-w-0">
+                  <p className="text-xs font-black uppercase tracking-wide">{rec.title}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{rec.action}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── 6. ASSISTENTE IA ── */}
       <div>
         <h3 className="font-heading text-sm font-black uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
           <Bot className="h-4 w-4 text-primary" /> Assistente Comercial IA
