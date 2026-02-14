@@ -1118,6 +1118,39 @@ const DealManager = ({ userId }: Props) => {
         </div>
       </Card>
 
+      {/* ── KPI TOTALS ── */}
+      {!loading && filtered.length > 0 && (() => {
+        const totalFob = filtered.reduce((s, d) => s + d.base_price, 0);
+        const totalNetProfit = filtered.reduce((s, d) => s + d.net_profit, 0);
+        const totalCommission = filtered.reduce((s, d) => s + ((d.seller_commission_value + d.manager_commission_value) * (d.dollar_rate || 1)), 0);
+        const avgMargin = filtered.length > 0 ? filtered.reduce((s, d) => s + d.net_margin_percent, 0) / filtered.length : 0;
+        const kpis = [
+          { label: "FOB Total", value: formatUsd(totalFob), icon: <DollarSign className="h-4 w-4" /> },
+          { label: "Lucro Líquido", value: formatUsd(totalNetProfit), icon: <TrendingUp className="h-4 w-4" />, color: totalNetProfit >= 0 },
+          { label: "Comissão Total", value: formatBrl(totalCommission), icon: <Receipt className="h-4 w-4" /> },
+          { label: "Margem Média", value: formatPct(avgMargin), icon: <Percent className="h-4 w-4" />, badge: true, margin: avgMargin },
+        ];
+        return (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {kpis.map((k) => (
+              <Card key={k.label} className="border-border bg-card p-4 shadow-sm">
+                <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                  {k.icon}
+                  <span className="text-xs font-semibold uppercase tracking-wider">{k.label}</span>
+                </div>
+                {k.badge ? (
+                  <div className="mt-1">{getMarginBadge(k.margin!)}</div>
+                ) : (
+                  <p className={cn("text-lg font-bold tabular-nums", k.color === false ? "text-destructive" : k.color === true ? "text-accent" : "text-foreground")}>
+                    {k.value}
+                  </p>
+                )}
+              </Card>
+            ))}
+          </div>
+        );
+      })()}
+
       {/* ── DATA TABLE ── */}
       {loading ? (
         <p className="text-muted-foreground text-center py-8">Carregando...</p>
