@@ -61,9 +61,12 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [lastAnalysis, setLastAnalysis] = useState<Date | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    const fetchData = async () => {
+  const fetchData = async () => {
+      setLoading(true);
       const [dealsRes, repsRes, goalsRes] = await Promise.all([
         supabase.from("deals" as any).select("*").order("created_at", { ascending: false }),
         supabase.from("representatives" as any).select("id, nome, meta_mensal_padrao, meta_quantidade").eq("status", "ATIVO"),
@@ -73,9 +76,12 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
       if (repsRes.data) setReps(repsRes.data as unknown as RepOption[]);
       if (goalsRes.data) setGoals(goalsRes.data as unknown as MonthlyGoal[]);
       setLoading(false);
+      setLastAnalysis(new Date());
     };
     fetchData();
-  }, []);
+  }, [refreshKey]);
+
+  const handleRefreshAnalysis = () => setRefreshKey(k => k + 1);
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatMessages]);
 
@@ -414,7 +420,18 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
         </div>
       </div>
 
-      {/* ── 1. STATUS GERAL DO MÊS ── */}
+      {/* Botão Atualizar + Timestamp */}
+      <div className="flex items-center gap-4 flex-wrap">
+        <Button onClick={handleRefreshAnalysis} disabled={loading} className="font-heading font-black tracking-wide">
+          {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <span className="mr-2">🔎</span>}
+          Atualizar Análise Estratégica
+        </Button>
+        {lastAnalysis && (
+          <span className="text-xs text-muted-foreground">
+            Última análise realizada em: {lastAnalysis.toLocaleString("pt-BR")}
+          </span>
+        )}
+      </div>
       <div className={cn("rounded-xl border-2 bg-gradient-to-r p-5", sc.bg)}>
         <div className="flex items-center gap-4 flex-wrap">
           <div className={cn("h-14 w-14 rounded-xl flex items-center justify-center", sc.iconColor, "bg-background/60")}>
