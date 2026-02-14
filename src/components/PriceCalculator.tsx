@@ -291,6 +291,7 @@ const PriceCalculator = () => {
           {[
             { value: "dashboard", icon: BarChart3, label: "Dashboard" },
             { value: "deals", icon: Users, label: "Vendas" },
+            { value: "commissions", icon: DollarSign, label: "Comissões" },
             { value: "simulation", icon: Calculator, label: "Simulação" },
             { value: "reps", icon: UserPlus, label: "Representantes" },
             { value: "registry", icon: Building2, label: "Cadastros" },
@@ -329,6 +330,7 @@ const PriceCalculator = () => {
         {[
           { value: "dashboard", icon: BarChart3, label: "Dashboard" },
           { value: "deals", icon: Users, label: "Vendas" },
+          { value: "commissions", icon: DollarSign, label: "Comissões" },
           { value: "simulation", icon: Calculator, label: "Simulação" },
           { value: "reps", icon: UserPlus, label: "Representantes" },
           { value: "registry", icon: Building2, label: "Cadastros" },
@@ -354,7 +356,7 @@ const PriceCalculator = () => {
       <main className="flex-1 overflow-y-auto px-4 py-8 md:py-10 md:px-8 mt-12 md:mt-0">
         <div className="mx-auto max-w-6xl">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="hidden"><TabsList><TabsTrigger value="simulation" /><TabsTrigger value="deals" /><TabsTrigger value="reps" /><TabsTrigger value="dashboard" /><TabsTrigger value="registry" /><TabsTrigger value="catalog" /><TabsTrigger value="deep-analysis" /></TabsList></div>
+          <div className="hidden"><TabsList><TabsTrigger value="simulation" /><TabsTrigger value="deals" /><TabsTrigger value="commissions" /><TabsTrigger value="reps" /><TabsTrigger value="dashboard" /><TabsTrigger value="registry" /><TabsTrigger value="catalog" /><TabsTrigger value="deep-analysis" /></TabsList></div>
 
           <TabsContent value="simulation">
             <div className="grid gap-6 lg:grid-cols-5">
@@ -718,22 +720,11 @@ const PriceCalculator = () => {
           </TabsContent>
 
           <TabsContent value="deals">
-            <Tabs defaultValue="deals-list" className="space-y-4">
-              <TabsList className="bg-secondary/50">
-                <TabsTrigger value="deals-list" className="flex items-center gap-1.5">
-                  <Users className="h-3.5 w-3.5" /> Negociações
-                </TabsTrigger>
-                <TabsTrigger value="deals-commissions" className="flex items-center gap-1.5">
-                  <DollarSign className="h-3.5 w-3.5" /> Comissões
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="deals-list">
-                <DealManager userId={user.id} />
-              </TabsContent>
-              <TabsContent value="deals-commissions">
-                <CommissionsTab userId={user.id} />
-              </TabsContent>
-            </Tabs>
+            <DealManager userId={user.id} />
+          </TabsContent>
+
+          <TabsContent value="commissions">
+            <CommissionsTab userId={user.id} />
           </TabsContent>
 
           <TabsContent value="reps">
