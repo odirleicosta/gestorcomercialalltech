@@ -1125,26 +1125,30 @@ const DealManager = ({ userId }: Props) => {
         const totalCommission = filtered.reduce((s, d) => s + ((d.seller_commission_value + d.manager_commission_value) * (d.dollar_rate || 1)), 0);
         const avgMargin = filtered.length > 0 ? filtered.reduce((s, d) => s + d.net_margin_percent, 0) / filtered.length : 0;
         const kpis = [
-          { label: "FOB Total", value: formatUsd(totalFob), icon: <DollarSign className="h-4 w-4" /> },
-          { label: "Lucro Líquido", value: formatUsd(totalNetProfit), icon: <TrendingUp className="h-4 w-4" />, color: totalNetProfit >= 0 },
-          { label: "Comissão Total", value: formatBrl(totalCommission), icon: <Receipt className="h-4 w-4" /> },
-          { label: "Margem Média", value: formatPct(avgMargin), icon: <Percent className="h-4 w-4" />, badge: true, margin: avgMargin },
+          { label: "FOB Total", desc: "Faturamento bruto no período", value: formatUsd(totalFob), icon: <DollarSign className="h-5 w-5" /> },
+          { label: "Lucro Líquido", desc: "Após comissões descontadas", value: formatUsd(totalNetProfit), icon: <TrendingUp className="h-5 w-5" />, positive: totalNetProfit >= 0 },
+          { label: "Comissão Total", desc: "Representante + Gestor (BRL)", value: formatBrl(totalCommission), icon: <Receipt className="h-5 w-5" /> },
+          { label: "Margem Média", desc: "Média líquida do período", value: formatPct(avgMargin), icon: <Percent className="h-5 w-5" />, badge: true, margin: avgMargin },
         ];
         return (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {kpis.map((k) => (
-              <Card key={k.label} className="border-border bg-card p-4 shadow-sm">
-                <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <Card key={k.label} className="border-border bg-card px-5 py-4 shadow-sm">
+                <div className="flex items-center gap-2 text-muted-foreground mb-2">
                   {k.icon}
-                  <span className="text-xs font-semibold uppercase tracking-wider">{k.label}</span>
+                  <span className="text-xs font-bold uppercase tracking-wider">{k.label}</span>
                 </div>
                 {k.badge ? (
-                  <div className="mt-1">{getMarginBadge(k.margin!)}</div>
+                  <div className="mb-1">{getMarginBadge(k.margin!)}</div>
                 ) : (
-                  <p className={cn("text-lg font-bold tabular-nums", k.color === false ? "text-destructive" : k.color === true ? "text-accent" : "text-foreground")}>
+                  <p className={cn(
+                    "text-xl font-extrabold tabular-nums leading-tight",
+                    k.positive === false ? "text-destructive" : k.positive === true ? "text-accent" : "text-foreground"
+                  )}>
                     {k.value}
                   </p>
                 )}
+                <p className="text-[11px] text-muted-foreground mt-1">{k.desc}</p>
               </Card>
             ))}
           </div>
@@ -1157,88 +1161,87 @@ const DealManager = ({ userId }: Props) => {
       ) : sorted.length === 0 ? (
         <p className="text-muted-foreground text-center py-8">Nenhuma negociação encontrada.</p>
       ) : (
-        <Card className="border-border bg-card shadow-sm overflow-hidden">
-          <div className="overflow-x-auto max-h-[calc(100vh-320px)]">
+        <Card className="border-border bg-card shadow-sm overflow-hidden rounded-lg">
+          <div className="overflow-x-auto max-h-[calc(100vh-380px)]">
             <Table>
-              <TableHeader className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
-                <TableRow className="hover:bg-transparent border-b-2 border-border">
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap cursor-pointer select-none" onClick={() => toggleSort("created_at")}>
+              <TableHeader className="sticky top-0 z-10">
+                <TableRow className="bg-muted hover:bg-muted border-b border-border">
+                  <TableHead className="text-[11px] font-extrabold uppercase tracking-wider whitespace-nowrap cursor-pointer select-none h-11 text-muted-foreground" onClick={() => toggleSort("created_at")}>
                     <span className="flex items-center gap-1">Data <SortIcon field="created_at" /></span>
                   </TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap cursor-pointer select-none" onClick={() => toggleSort("client_name")}>
+                  <TableHead className="text-[11px] font-extrabold uppercase tracking-wider whitespace-nowrap cursor-pointer select-none h-11 text-muted-foreground" onClick={() => toggleSort("client_name")}>
                     <span className="flex items-center gap-1">Empresa <SortIcon field="client_name" /></span>
                   </TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap cursor-pointer select-none" onClick={() => toggleSort("cidade")}>
+                  <TableHead className="text-[11px] font-extrabold uppercase tracking-wider whitespace-nowrap cursor-pointer select-none h-11 text-muted-foreground" onClick={() => toggleSort("cidade")}>
                     <span className="flex items-center gap-1">Cidade/UF <SortIcon field="cidade" /></span>
                   </TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap cursor-pointer select-none" onClick={() => toggleSort("machine_type")}>
+                  <TableHead className="text-[11px] font-extrabold uppercase tracking-wider whitespace-nowrap cursor-pointer select-none h-11 text-muted-foreground" onClick={() => toggleSort("machine_type")}>
                     <span className="flex items-center gap-1">Tipo <SortIcon field="machine_type" /></span>
                   </TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap cursor-pointer select-none" onClick={() => toggleSort("machine_name")}>
+                  <TableHead className="text-[11px] font-extrabold uppercase tracking-wider whitespace-nowrap cursor-pointer select-none h-11 text-muted-foreground" onClick={() => toggleSort("machine_name")}>
                     <span className="flex items-center gap-1">Modelo <SortIcon field="machine_name" /></span>
                   </TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap cursor-pointer select-none" onClick={() => toggleSort("representative_id")}>
+                  <TableHead className="text-[11px] font-extrabold uppercase tracking-wider whitespace-nowrap cursor-pointer select-none h-11 text-muted-foreground" onClick={() => toggleSort("representative_id")}>
                     <span className="flex items-center gap-1">Representante <SortIcon field="representative_id" /></span>
                   </TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap text-right cursor-pointer select-none" onClick={() => toggleSort("base_price")}>
-                    <span className="flex items-center gap-1 justify-end">FOB Venda (USD) <SortIcon field="base_price" /></span>
+                  <TableHead className="text-[11px] font-extrabold uppercase tracking-wider whitespace-nowrap text-right cursor-pointer select-none h-11 text-muted-foreground" onClick={() => toggleSort("base_price")}>
+                    <span className="flex items-center gap-1 justify-end">FOB Venda <SortIcon field="base_price" /></span>
                   </TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap text-right cursor-pointer select-none" onClick={() => toggleSort("final_price")}>
-                    <span className="flex items-center gap-1 justify-end">CIF Venda (USD) <SortIcon field="final_price" /></span>
+                  <TableHead className="text-[11px] font-extrabold uppercase tracking-wider whitespace-nowrap text-right cursor-pointer select-none h-11 text-muted-foreground" onClick={() => toggleSort("final_price")}>
+                    <span className="flex items-center gap-1 justify-end">CIF Venda <SortIcon field="final_price" /></span>
                   </TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap text-right cursor-pointer select-none" onClick={() => toggleSort("net_margin_percent")}>
+                  <TableHead className="text-[11px] font-extrabold uppercase tracking-wider whitespace-nowrap text-right cursor-pointer select-none h-11 text-muted-foreground" onClick={() => toggleSort("net_margin_percent")}>
                     <span className="flex items-center gap-1 justify-end">Margem Líq. <SortIcon field="net_margin_percent" /></span>
                   </TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap text-right cursor-pointer select-none" onClick={() => toggleSort("net_profit")}>
-                    <span className="flex items-center gap-1 justify-end">Lucro Líq. (USD) <SortIcon field="net_profit" /></span>
+                  <TableHead className="text-[11px] font-extrabold uppercase tracking-wider whitespace-nowrap text-right cursor-pointer select-none h-11 text-muted-foreground" onClick={() => toggleSort("net_profit")}>
+                    <span className="flex items-center gap-1 justify-end">Lucro Líq. <SortIcon field="net_profit" /></span>
                   </TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap text-right cursor-pointer select-none" onClick={() => toggleSort("seller_commission_value")}>
-                    <span className="flex items-center gap-1 justify-end">Com. Rep. (BRL) <SortIcon field="seller_commission_value" /></span>
+                  <TableHead className="text-[11px] font-extrabold uppercase tracking-wider whitespace-nowrap text-right cursor-pointer select-none h-11 text-muted-foreground" onClick={() => toggleSort("seller_commission_value")}>
+                    <span className="flex items-center gap-1 justify-end">Com. Rep. <SortIcon field="seller_commission_value" /></span>
                   </TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap text-right cursor-pointer select-none" onClick={() => toggleSort("manager_commission_value")}>
-                    <span className="flex items-center gap-1 justify-end">Com. Gest. (BRL) <SortIcon field="manager_commission_value" /></span>
+                  <TableHead className="text-[11px] font-extrabold uppercase tracking-wider whitespace-nowrap text-right cursor-pointer select-none h-11 text-muted-foreground" onClick={() => toggleSort("manager_commission_value")}>
+                    <span className="flex items-center gap-1 justify-end">Com. Gest. <SortIcon field="manager_commission_value" /></span>
                   </TableHead>
-                  <TableHead className="text-[11px] font-bold uppercase tracking-wider whitespace-nowrap text-center w-[90px]">Ações</TableHead>
+                  <TableHead className="text-[11px] font-extrabold uppercase tracking-wider whitespace-nowrap text-center w-[80px] h-11 text-muted-foreground">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sorted.map((deal, idx) => {
                   const sellerBrl = deal.seller_commission_value * deal.dollar_rate;
                   const managerBrl = deal.manager_commission_value * deal.dollar_rate;
-                  const isEven = idx % 2 === 0;
                   return (
                     <TableRow
                       key={deal.id}
                       className={cn(
-                        "cursor-pointer transition-colors border-b border-border/50",
-                        isEven ? "bg-card" : "bg-muted/20",
+                        "cursor-pointer transition-colors h-10",
+                        idx % 2 === 0 ? "bg-card" : "bg-muted/15",
                         "hover:bg-primary/5"
                       )}
                       onClick={() => openDrawer(deal)}
                     >
-                      <TableCell className="text-xs whitespace-nowrap font-medium">
+                      <TableCell className="text-[13px] whitespace-nowrap py-2.5">
                         {new Date(deal.created_at).toLocaleDateString("pt-BR")}
                       </TableCell>
-                      <TableCell className="text-xs font-semibold max-w-[160px] truncate">{deal.client_name}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{getEmpresaCidade(deal)}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate">{deal.machine_type || "—"}</TableCell>
-                      <TableCell className="text-xs max-w-[180px] truncate">{deal.machine_name || "—"}</TableCell>
-                      <TableCell className="text-xs whitespace-nowrap">{getRepName(deal)}</TableCell>
-                      <TableCell className="text-xs text-right font-medium tabular-nums">{formatUsd(deal.base_price)}</TableCell>
-                      <TableCell className="text-xs text-right font-medium tabular-nums">{formatUsd(deal.final_price)}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-[13px] font-semibold max-w-[160px] truncate py-2.5">{deal.client_name}</TableCell>
+                      <TableCell className="text-[13px] text-muted-foreground whitespace-nowrap py-2.5">{getEmpresaCidade(deal)}</TableCell>
+                      <TableCell className="text-[13px] text-muted-foreground max-w-[120px] truncate py-2.5">{deal.machine_type || "—"}</TableCell>
+                      <TableCell className="text-[13px] max-w-[180px] truncate py-2.5">{deal.machine_name || "—"}</TableCell>
+                      <TableCell className="text-[13px] whitespace-nowrap py-2.5">{getRepName(deal)}</TableCell>
+                      <TableCell className="text-[13px] text-right font-semibold tabular-nums py-2.5">{formatUsd(deal.base_price)}</TableCell>
+                      <TableCell className="text-[13px] text-right font-semibold tabular-nums py-2.5">{formatUsd(deal.final_price)}</TableCell>
+                      <TableCell className="text-right py-2.5">
                         {getMarginBadge(deal.net_margin_percent)}
                       </TableCell>
-                      <TableCell className={cn("text-xs text-right font-bold tabular-nums", deal.net_profit < 0 ? "text-destructive" : "text-accent")}>
+                      <TableCell className={cn("text-[13px] text-right font-bold tabular-nums py-2.5", deal.net_profit < 0 ? "text-destructive" : "text-accent")}>
                         {formatUsd(deal.net_profit)}
                       </TableCell>
-                      <TableCell className="text-xs text-right tabular-nums">
+                      <TableCell className="text-[13px] text-right tabular-nums text-muted-foreground py-2.5">
                         {deal.dollar_rate > 0 ? formatBrl(sellerBrl) : formatUsd(deal.seller_commission_value)}
                       </TableCell>
-                      <TableCell className="text-xs text-right tabular-nums">
+                      <TableCell className="text-[13px] text-right tabular-nums text-muted-foreground py-2.5">
                         {deal.dollar_rate > 0 ? formatBrl(managerBrl) : formatUsd(deal.manager_commission_value)}
                       </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+                      <TableCell onClick={(e) => e.stopPropagation()} className="py-2.5">
                         <div className="flex gap-0.5 justify-center">
                           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openDrawer(deal)} title="Ver detalhes">
                             <Eye className="h-3.5 w-3.5" />
@@ -1723,10 +1726,11 @@ const DealManager = ({ userId }: Props) => {
 // ── Drawer Helper Components ──
 const DrawerSection = ({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) => (
   <div>
-    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mb-3">
-      {icon} {title}
-    </h4>
-    <div className="space-y-2">{children}</div>
+    <div className="flex items-center gap-2 mb-4">
+      {icon}
+      <h4 className="text-sm font-bold text-foreground uppercase tracking-wide">{title}</h4>
+    </div>
+    <div className="space-y-2 pl-1">{children}</div>
   </div>
 );
 
