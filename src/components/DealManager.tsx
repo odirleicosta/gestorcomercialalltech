@@ -1237,20 +1237,19 @@ const DealManager = ({ userId }: Props) => {
             return (
               <div className="flex flex-col h-full">
                 {/* Drawer Header */}
-                <div className="p-6 border-b border-border bg-muted/20">
+                <div className="p-5 border-b border-border bg-muted/20">
                   <SheetTitle className="text-lg font-heading font-bold text-foreground flex items-center gap-2">
                     <Building2 className="h-5 w-5 text-primary" />
                     {deal.client_name}
                   </SheetTitle>
-                  <div className="flex items-center gap-2 mt-2">
+                  <div className="flex items-center gap-2 mt-1.5">
                     <Badge variant={deal.status === "closed" ? "secondary" : "default"} className="text-xs">
                       {deal.status === "closed" ? "Fechada" : "Aberta"}
                     </Badge>
-                    {emp?.cidade && <span className="text-xs text-muted-foreground">{emp.cidade}</span>}
+                    {!editing && getMarginBadge(deal.net_margin_percent)}
                   </div>
-                  {/* Actions */}
-                  <div className="flex gap-2 mt-4">
-                    {!editing && deal.status === "open" && (
+                  <div className="flex gap-2 mt-3 flex-wrap">
+                    {!editing && (
                       <Button size="sm" variant="outline" onClick={() => startEditing(deal)}>
                         <Pencil className="h-3.5 w-3.5 mr-1.5" /> Editar
                       </Button>
@@ -1285,8 +1284,9 @@ const DealManager = ({ userId }: Props) => {
 
                 {/* Drawer Body */}
                 <ScrollArea className="flex-1">
-                  <div className="p-6 space-y-6">
-                    {/* A) Identificação */}
+                  <div className="p-5 space-y-5">
+
+                    {/* ─── A) Identificação ─── */}
                     <DrawerSection title="Identificação" icon={<Building2 className="h-4 w-4 text-primary" />}>
                       {editing ? (
                         <div className="space-y-3">
@@ -1367,18 +1367,29 @@ const DealManager = ({ userId }: Props) => {
                           </div>
                         </div>
                       ) : (
-                        <>
-                          <DrawerRow label="Empresa" value={deal.client_name} />
-                          <DrawerRow label="Cidade" value={emp?.cidade || "—"} />
-                          <DrawerRow label="Data" value={new Date(deal.created_at).toLocaleDateString("pt-BR")} />
-                          {deal.closed_at && <DrawerRow label="Fechada em" value={new Date(deal.closed_at).toLocaleDateString("pt-BR")} />}
-                          <DrawerRow label="Representante" value={rep?.nome || "—"} />
-                        </>
+                        <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1.5">
+                          <span className="text-sm text-muted-foreground">Empresa</span>
+                          <span className="text-sm font-medium text-foreground">{deal.client_name}</span>
+                          <span className="text-sm text-muted-foreground">Cidade/UF</span>
+                          <span className="text-sm font-medium text-foreground">{emp?.cidade || "—"}</span>
+                          <span className="text-sm text-muted-foreground">Data da Venda</span>
+                          <span className="text-sm font-medium text-foreground">{new Date(deal.created_at).toLocaleDateString("pt-BR")}</span>
+                          {deal.closed_at && (
+                            <>
+                              <span className="text-sm text-muted-foreground">Fechada em</span>
+                              <span className="text-sm font-medium text-foreground">{new Date(deal.closed_at).toLocaleDateString("pt-BR")}</span>
+                            </>
+                          )}
+                          <span className="text-sm text-muted-foreground">Representante</span>
+                          <span className="text-sm font-medium text-foreground">{rep?.nome || "—"}</span>
+                        </div>
                       )}
                     </DrawerSection>
 
-                    {/* B) Produtos / Itens */}
-                    <DrawerSection title={`Produtos (${editing ? editItems.length : (drawerItems.length > 0 ? drawerItems.length : 1)})`} icon={<Package className="h-4 w-4 text-primary" />}>
+                    <Separator />
+
+                    {/* ─── B) Máquina / Produtos ─── */}
+                    <DrawerSection title={`Máquina${drawerItems.length > 1 || editItems.length > 1 ? 's' : ''} (${editing ? editItems.length : (drawerItems.length || 1)})`} icon={<Wrench className="h-4 w-4 text-primary" />}>
                       {editing ? (
                         <div className="space-y-3">
                           {editItems.map((item, idx) => (
@@ -1390,7 +1401,7 @@ const DealManager = ({ userId }: Props) => {
                               )}
                               <div className="space-y-2">
                                 <div>
-                                  <Label className="text-[11px] text-muted-foreground">Máquina</Label>
+                                  <Label className="text-[11px] text-muted-foreground">Modelo</Label>
                                   <Popover open={item.modeloOpen} onOpenChange={(open) => updateEditItem(idx, { modeloOpen: open })}>
                                     <PopoverTrigger asChild>
                                       <Button variant="outline" role="combobox" className="w-full justify-between bg-secondary/50 border-border font-normal text-xs h-8">
@@ -1440,17 +1451,17 @@ const DealManager = ({ userId }: Props) => {
                       ) : drawerItems.length > 0 ? (
                         <div className="space-y-2">
                           {drawerItems.map((item) => (
-                            <div key={item.id} className="bg-muted/30 rounded-md p-3 space-y-1">
+                            <div key={item.id} className="bg-muted/30 rounded-md p-3">
                               <div className="flex justify-between items-start">
                                 <div>
-                                  <p className="text-sm font-medium text-foreground">{item.machine_name || "—"}</p>
-                                  <p className="text-[11px] text-muted-foreground">{item.machine_type}</p>
+                                  <p className="text-sm font-semibold text-foreground">{item.machine_name || "—"}</p>
+                                  <p className="text-xs text-muted-foreground">{item.machine_type}</p>
                                 </div>
                                 {item.quantity > 1 && (
                                   <Badge variant="outline" className="text-[10px]">{item.quantity}x</Badge>
                                 )}
                               </div>
-                              <div className="grid grid-cols-2 gap-x-4 text-xs mt-1">
+                              <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-0.5 text-xs mt-2">
                                 <span className="text-muted-foreground">Custo FOB:</span>
                                 <span className="text-right font-medium">{formatUsd(item.fob_cost)}</span>
                                 <span className="text-muted-foreground">Venda FOB:</span>
@@ -1462,21 +1473,29 @@ const DealManager = ({ userId }: Props) => {
                           ))}
                         </div>
                       ) : (
-                        <>
-                          <DrawerRow label="Tipo" value={deal.machine_type || "—"} />
-                          <DrawerRow label="Marca/Modelo" value={deal.machine_name || "—"} />
-                        </>
+                        <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1.5">
+                          <span className="text-sm text-muted-foreground">Tipo</span>
+                          <span className="text-sm font-medium text-foreground">{deal.machine_type || "—"}</span>
+                          <span className="text-sm text-muted-foreground">Modelo</span>
+                          <span className="text-sm font-medium text-foreground">{deal.machine_name || "—"}</span>
+                        </div>
                       )}
                     </DrawerSection>
 
-                    {/* C) Valores */}
-                    <DrawerSection title="Valores Totais" icon={<DollarSign className="h-4 w-4 text-accent" />}>
+                    <Separator />
+
+                    {/* ─── C) Valores ─── */}
+                    <DrawerSection title="Valores" icon={<DollarSign className="h-4 w-4 text-accent" />}>
                       {editing ? (
                         <div className="space-y-3">
                           {editSimulation && (
-                            <div className="bg-muted/30 rounded-md p-3 space-y-1">
-                              <DrawerRow label="Custo FOB Total" value={formatUsd(editSimulation.totalFob)} />
-                              <DrawerRow label="Venda FOB Total" value={formatUsd(editSimulation.totalVenda)} />
+                            <div className="bg-muted/30 rounded-md p-3">
+                              <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1">
+                                <span className="text-xs text-muted-foreground">FOB Venda Total</span>
+                                <span className="text-xs text-right font-semibold">{formatUsd(editSimulation.totalVenda)}</span>
+                                <span className="text-xs text-muted-foreground">Custo FOB Total</span>
+                                <span className="text-xs text-right font-semibold">{formatUsd(editSimulation.totalFob)}</span>
+                              </div>
                             </div>
                           )}
                           <div>
@@ -1489,60 +1508,114 @@ const DealManager = ({ userId }: Props) => {
                           </div>
                         </div>
                       ) : (
-                        <>
-                          <DrawerRow label="Custo FOB Total (USD)" value={formatUsd(deal.fob_cost)} />
-                          <DrawerRow label="FOB Venda Total (USD)" value={formatUsd(deal.base_price)} />
-                          {hasDollar && <DrawerRow label="FOB Venda Total (BRL)" value={formatBrl(deal.base_price * dollar)} />}
-                          <DrawerRow label="Cotação Dólar" value={hasDollar ? `R$ ${dollar.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"} />
-                          {deal.observation && <DrawerRow label="Observação" value={deal.observation} />}
-                        </>
+                        <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1.5">
+                          <span className="text-sm text-muted-foreground">FOB Venda (USD)</span>
+                          <span className="text-sm font-semibold text-foreground text-right">{formatUsd(deal.base_price)}</span>
+                          <span className="text-sm text-muted-foreground">CIF Venda (USD)</span>
+                          <span className="text-sm font-semibold text-foreground text-right">{formatUsd(deal.final_price)}</span>
+                          <span className="text-sm text-muted-foreground">Dólar Utilizado</span>
+                          <span className="text-sm font-medium text-foreground text-right">{hasDollar ? `R$ ${dollar.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"}</span>
+                          {hasDollar && (
+                            <>
+                              <span className="text-sm text-muted-foreground">FOB Venda (BRL)</span>
+                              <span className="text-sm font-medium text-foreground text-right">{formatBrl(deal.base_price * dollar)}</span>
+                            </>
+                          )}
+                          {deal.observation && (
+                            <>
+                              <span className="text-sm text-muted-foreground">Observações</span>
+                              <span className="text-sm text-foreground text-right">{deal.observation}</span>
+                            </>
+                          )}
+                        </div>
                       )}
                     </DrawerSection>
 
-                    {/* D) Comissões */}
-                    <DrawerSection title="Comissões" icon={<Percent className="h-4 w-4 text-warning" />}>
+                    <Separator />
+
+                    {/* ─── D) Comissão ─── */}
+                    <DrawerSection title="Comissão" icon={<Percent className="h-4 w-4 text-warning" />}>
                       {editing ? (
                         <div className="space-y-3">
                           <div>
-                            <Label className="text-xs text-muted-foreground">Comissão Representante (%)</Label>
+                            <Label className="text-xs text-muted-foreground">% Representante</Label>
                             <Input type="number" step="0.01" value={editForm.seller_commission_pct} onChange={(e) => setEditForm(f => ({ ...f, seller_commission_pct: e.target.value }))} className="h-8 text-sm bg-secondary/50 border-border" />
                             {editSimulation && (
-                              <p className="text-xs text-accent mt-1">= {formatUsd(editSimulation.sellerComm)}{editSimulation.dollar > 0 && ` (${formatBrl(editSimulation.sellerComm * editSimulation.dollar)})`}</p>
+                              <p className="text-xs text-accent mt-1">
+                                = {formatUsd(editSimulation.sellerComm)}
+                                {editSimulation.dollar > 0 && ` (${formatBrl(editSimulation.sellerComm * editSimulation.dollar)})`}
+                              </p>
                             )}
                           </div>
                           <div>
-                            <Label className="text-xs text-muted-foreground">Comissão Gestor (%)</Label>
+                            <Label className="text-xs text-muted-foreground">% Gestor</Label>
                             <Input type="number" step="0.01" value={editForm.manager_commission_pct} onChange={(e) => setEditForm(f => ({ ...f, manager_commission_pct: e.target.value }))} className="h-8 text-sm bg-secondary/50 border-border" />
                             {editSimulation && (
-                              <p className="text-xs text-accent mt-1">= {formatUsd(editSimulation.managerComm)}{editSimulation.dollar > 0 && ` (${formatBrl(editSimulation.managerComm * editSimulation.dollar)})`}</p>
+                              <p className="text-xs text-accent mt-1">
+                                = {formatUsd(editSimulation.managerComm)}
+                                {editSimulation.dollar > 0 && ` (${formatBrl(editSimulation.managerComm * editSimulation.dollar)})`}
+                              </p>
                             )}
                           </div>
-                          {editSimulation && (
-                            <div className="bg-muted/50 rounded-md p-3 mt-2 space-y-1">
-                              <p className="text-xs font-semibold text-muted-foreground">Prévia</p>
-                              <p className="text-xs">Lucro Líquido: <span className={cn("font-bold", editSimulation.netProfit < 0 ? "text-destructive" : "text-accent")}>{formatUsd(editSimulation.netProfit)}</span></p>
-                              <p className="text-xs">Margem Líquida: <span className={cn("font-bold", editSimulation.netMargin < 0 ? "text-destructive" : "text-accent")}>{formatPct(editSimulation.netMargin)}</span></p>
-                            </div>
-                          )}
                         </div>
                       ) : (
-                        <>
-                          <DrawerRow label="Base de Cálculo" value="FOB Venda" />
-                          <DrawerRow label={`Com. Representante (${formatPct(deal.seller_commission_pct)})`} value={`${formatUsd(deal.seller_commission_value)}${hasDollar ? ` · ${formatBrl(deal.seller_commission_value * dollar)}` : ""}`} />
-                          <DrawerRow label={`Com. Gestor (${formatPct(deal.manager_commission_pct)})`} value={`${formatUsd(deal.manager_commission_value)}${hasDollar ? ` · ${formatBrl(deal.manager_commission_value * dollar)}` : ""}`} />
-                        </>
+                        <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1.5">
+                          <span className="text-sm text-muted-foreground">% Representante</span>
+                          <span className="text-sm font-medium text-foreground text-right">{formatPct(deal.seller_commission_pct)}</span>
+                          <span className="text-sm text-muted-foreground">% Gestor</span>
+                          <span className="text-sm font-medium text-foreground text-right">{formatPct(deal.manager_commission_pct)}</span>
+                          <span className="text-sm text-muted-foreground">Comissão Rep. (USD)</span>
+                          <span className="text-sm font-semibold text-foreground text-right">{formatUsd(deal.seller_commission_value)}</span>
+                          {hasDollar && (
+                            <>
+                              <span className="text-sm text-muted-foreground">Comissão Rep. (BRL)</span>
+                              <span className="text-sm font-semibold text-foreground text-right">{formatBrl(deal.seller_commission_value * dollar)}</span>
+                            </>
+                          )}
+                          <span className="text-sm text-muted-foreground">Comissão Gestor (USD)</span>
+                          <span className="text-sm font-semibold text-foreground text-right">{formatUsd(deal.manager_commission_value)}</span>
+                          {hasDollar && (
+                            <>
+                              <span className="text-sm text-muted-foreground">Comissão Gestor (BRL)</span>
+                              <span className="text-sm font-semibold text-foreground text-right">{formatBrl(deal.manager_commission_value * dollar)}</span>
+                            </>
+                          )}
+                        </div>
                       )}
                     </DrawerSection>
 
-                    {/* E) Margens e Lucros */}
-                    {!editing && (
-                      <DrawerSection title="Margens e Lucros" icon={<TrendingUp className="h-4 w-4 text-accent" />}>
-                        <DrawerRow label="Lucro Bruto (USD)" value={formatUsd(deal.gross_profit)} accent />
-                        <DrawerRow label="Margem Bruta" value={formatPct(deal.gross_margin_percent)} />
-                        <DrawerRow label="Lucro Líquido (USD)" value={formatUsd(deal.net_profit)} accent={deal.net_profit >= 0} danger={deal.net_profit < 0} />
-                        <DrawerRow label="Margem Líquida" value={formatPct(deal.net_margin_percent)} accent={deal.net_margin_percent >= 0} danger={deal.net_margin_percent < 0} />
-                      </DrawerSection>
-                    )}
+                    <Separator />
+
+                    {/* ─── E) Resultado ─── */}
+                    <DrawerSection title="Resultado" icon={<TrendingUp className="h-4 w-4 text-accent" />}>
+                      {editing && editSimulation ? (
+                        <div className="bg-muted/30 rounded-md p-3">
+                          <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1.5">
+                            <span className="text-sm text-muted-foreground">Lucro Bruto</span>
+                            <span className="text-sm font-bold text-accent text-right">{formatUsd(editSimulation.grossProfit)}</span>
+                            <span className="text-sm text-muted-foreground">Margem Bruta</span>
+                            <span className="text-sm font-bold text-foreground text-right">{formatPct(editSimulation.grossMargin)}</span>
+                            <span className="text-sm text-muted-foreground">Lucro Líquido</span>
+                            <span className={cn("text-sm font-bold text-right", editSimulation.netProfit < 0 ? "text-destructive" : "text-accent")}>{formatUsd(editSimulation.netProfit)}</span>
+                            <span className="text-sm text-muted-foreground">Margem Líquida</span>
+                            <span className="text-right">{getMarginBadge(editSimulation.netMargin)}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-[auto,1fr] gap-x-4 gap-y-1.5">
+                          <span className="text-sm text-muted-foreground">Lucro Bruto</span>
+                          <span className="text-sm font-bold text-accent text-right">{formatUsd(deal.gross_profit)}</span>
+                          <span className="text-sm text-muted-foreground">Margem Bruta</span>
+                          <span className="text-sm font-bold text-foreground text-right">{formatPct(deal.gross_margin_percent)}</span>
+                          <span className="text-sm text-muted-foreground">Lucro Líquido</span>
+                          <span className={cn("text-sm font-bold text-right", deal.net_profit < 0 ? "text-destructive" : "text-accent")}>{formatUsd(deal.net_profit)}</span>
+                          <span className="text-sm text-muted-foreground">Margem Líquida</span>
+                          <span className="text-right">{getMarginBadge(deal.net_margin_percent)}</span>
+                        </div>
+                      )}
+                    </DrawerSection>
+
+                    <Separator />
 
                     {/* Commission History */}
                     <div>
