@@ -519,15 +519,17 @@ const DealManager = ({ userId }: Props) => {
 
   const handleClose = async (deal: Deal) => {
     if (deal.status === "closed") return;
+    // Use the sale date (created_at) as closed_at so the deal appears in the correct month
+    const closedAt = deal.created_at || new Date().toISOString();
     const { error } = await supabase
       .from("deals" as any)
-      .update({ status: "closed", closed_at: new Date().toISOString() } as any)
+      .update({ status: "closed", closed_at: closedAt } as any)
       .eq("id", deal.id);
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
     toast({ title: "Venda fechada!" });
     fetchDeals();
     if (drawerDeal?.id === deal.id) {
-      setDrawerDeal({ ...deal, status: "closed", closed_at: new Date().toISOString() });
+      setDrawerDeal({ ...deal, status: "closed", closed_at: closedAt });
     }
   };
 
