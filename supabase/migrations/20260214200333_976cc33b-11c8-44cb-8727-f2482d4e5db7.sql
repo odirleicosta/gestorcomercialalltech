@@ -1,0 +1,1 @@
+ALTER TABLE public.strategic_plans ADD COLUMN name TEXT NOT NULL DEFAULT 'Cenário';

@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   TrendingUp, TrendingDown, AlertTriangle, Target, DollarSign,
   Users, Zap, ArrowLeft, Send, Bot, User, Loader2, BarChart3,
-  ShieldAlert, Activity, Flame, CheckCircle2, AlertCircle,
+  ShieldAlert, Activity, Flame, CheckCircle2, AlertCircle, Trash2, Power,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -80,6 +80,7 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
   }>(null);
   const [plans, setPlans] = useState<any[]>([]);
   const [savingPlan, setSavingPlan] = useState(false);
+  const [scenarioName, setScenarioName] = useState("");
 
   useEffect(() => {
   const fetchData = async () => {
@@ -507,16 +508,14 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
     });
   };
 
-  const applyAsPlan = async () => {
+  const saveScenario = async () => {
     if (!simResult) return;
     setSavingPlan(true);
-    // Deactivate previous plans for this month
-    await supabase.from("strategic_plans" as any)
-      .update({ is_active: false } as any)
-      .eq("mes", currentMonth).eq("ano", currentYear);
+    const name = scenarioName.trim() || `Cenário ${plans.length + 1}`;
 
-    const { data, error } = await supabase.from("strategic_plans" as any).insert({
+    const { error } = await supabase.from("strategic_plans" as any).insert({
       user_id: userId,
+      name,
       mes: currentMonth,
       ano: currentYear,
       qty_machines: simQty,
@@ -529,18 +528,38 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
       planned_net_profit: simResult.newNetProfit,
       planned_commission: simResult.newTotalCommission,
       planned_meta_pct: simResult.newMetaPct,
-      is_active: true,
+      is_active: false,
     } as any).select();
 
     if (error) {
-      toast({ title: "Erro ao salvar plano", description: error.message, variant: "destructive" });
+      toast({ title: "Erro ao salvar cenário", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "✅ Plano aplicado!", description: `Meta planejada de ${formatUsd(simResult.newFob)} registrada.` });
-      // Refresh plans
+      toast({ title: "✅ Cenário salvo!", description: `"${name}" registrado com sucesso.` });
+      setScenarioName("");
       const plansRes = await supabase.from("strategic_plans" as any).select("*").order("created_at", { ascending: false });
       if (plansRes.data) setPlans(plansRes.data as any[]);
     }
     setSavingPlan(false);
+  };
+
+  const activateScenario = async (id: string) => {
+    // Deactivate all for this month, then activate selected
+    await supabase.from("strategic_plans" as any)
+      .update({ is_active: false } as any)
+      .eq("mes", currentMonth).eq("ano", currentYear);
+    await supabase.from("strategic_plans" as any)
+      .update({ is_active: true } as any)
+      .eq("id", id);
+    toast({ title: "✅ Cenário ativado!", description: "Meta Planejada atualizada no Dashboard." });
+    const plansRes = await supabase.from("strategic_plans" as any).select("*").order("created_at", { ascending: false });
+    if (plansRes.data) setPlans(plansRes.data as any[]);
+  };
+
+  const deleteScenario = async (id: string) => {
+    await supabase.from("strategic_plans" as any).delete().eq("id", id);
+    toast({ title: "Cenário excluído" });
+    const plansRes = await supabase.from("strategic_plans" as any).select("*").order("created_at", { ascending: false });
+    if (plansRes.data) setPlans(plansRes.data as any[]);
   };
 
   const buildContext = () => {
@@ -1013,50 +1032,123 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
                 </div>
               </div>
 
-              {/* Aplicar como Plano */}
-              <div className="mt-3">
-                <Button
-                  onClick={applyAsPlan}
-                  disabled={savingPlan}
-                  variant="outline"
-                  className="w-full font-heading font-black tracking-wide border-2 border-primary/40 hover:bg-primary/10"
-                >
-                  {savingPlan ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <span className="mr-2">📋</span>}
-                  Aplicar como Plano do Mês
-                </Button>
+              {/* Salvar Cenário */}
+              <div className="mt-4 space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    value={scenarioName}
+                    onChange={e => setScenarioName(e.target.value)}
+                    placeholder="Nome do cenário (ex: Agressivo Q1)"
+                    className="h-9 text-sm flex-1"
+                  />
+                  <Button
+                    onClick={saveScenario}
+                    disabled={savingPlan}
+                    className="font-heading font-black tracking-wide shrink-0"
+                  >
+                    {savingPlan ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <span className="mr-2">💾</span>}
+                    Salvar Cenário
+                  </Button>
+                </div>
               </div>
             </>
           )}
         </Card>
 
-        {/* Histórico de Planos */}
+        {/* ── COMPARADOR DE CENÁRIOS ── */}
         {plans.filter(p => p.mes === currentMonth && p.ano === currentYear).length > 0 && (
           <div className="mt-4">
-            <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1.5">
-              📋 Histórico de Planos — {SHORT_MONTHS[currentMonth - 1]}/{currentYear}
+            <h4 className="font-heading text-sm font-black uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
+              📊 Comparador de Cenários — {SHORT_MONTHS[currentMonth - 1]}/{currentYear}
             </h4>
-            <div className="space-y-1.5">
-              {plans.filter(p => p.mes === currentMonth && p.ano === currentYear).map((p: any) => (
-                <div key={p.id} className={cn(
-                  "flex items-center justify-between rounded-lg border px-4 py-2.5 text-xs",
-                  p.is_active ? "border-primary/30 bg-primary/[0.04]" : "border-border/50 bg-muted/30 opacity-60"
-                )}>
-                  <div className="flex items-center gap-3">
-                    {p.is_active && <Badge className="bg-primary text-primary-foreground border-0 text-[9px] h-4">ATIVO</Badge>}
-                    <span className="font-bold">{formatUsd(p.planned_fob)}</span>
-                    <span className="text-muted-foreground">{p.qty_machines} máq. • Margem {formatPct(p.margin_pct)}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={cn("font-black", p.planned_meta_pct >= 100 ? "text-green-600" : "text-orange-500")}>
-                      {formatPct(p.planned_meta_pct)}
-                    </span>
-                    <span className="text-muted-foreground text-[10px]">
-                      {new Date(p.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                    </span>
-                  </div>
+            <Card className="border-border/50 bg-card shadow-sm rounded-xl overflow-hidden">
+              {/* Meta Oficial header */}
+              <div className="bg-muted/50 border-b border-border/50 px-4 py-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-primary" />
+                  <span className="text-xs font-black uppercase tracking-wider">Meta Oficial</span>
                 </div>
-              ))}
-            </div>
+                <span className="text-sm font-black">{formatUsd(monthStatus.metaFob)}</span>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border/50 bg-muted/30">
+                      <th className="text-left px-4 py-2.5 font-black uppercase tracking-wider text-[10px] text-muted-foreground">Cenário</th>
+                      <th className="text-center px-3 py-2.5 font-black uppercase tracking-wider text-[10px] text-muted-foreground">Máquinas</th>
+                      <th className="text-center px-3 py-2.5 font-black uppercase tracking-wider text-[10px] text-muted-foreground">Faturamento</th>
+                      <th className="text-center px-3 py-2.5 font-black uppercase tracking-wider text-[10px] text-muted-foreground">Lucro</th>
+                      <th className="text-center px-3 py-2.5 font-black uppercase tracking-wider text-[10px] text-muted-foreground">Margem</th>
+                      <th className="text-center px-3 py-2.5 font-black uppercase tracking-wider text-[10px] text-muted-foreground">% Meta</th>
+                      <th className="text-center px-3 py-2.5 font-black uppercase tracking-wider text-[10px] text-muted-foreground">Δ Meta</th>
+                      <th className="text-center px-3 py-2.5 font-black uppercase tracking-wider text-[10px] text-muted-foreground">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {plans.filter(p => p.mes === currentMonth && p.ano === currentYear).map((p: any) => {
+                      const deltaFob = p.planned_fob - monthStatus.metaFob;
+                      const repName = reps.find(r => r.id === p.representative_id)?.nome;
+                      return (
+                        <tr key={p.id} className={cn(
+                          "border-b border-border/30 transition-colors",
+                          p.is_active ? "bg-primary/[0.04]" : "hover:bg-muted/30"
+                        )}>
+                          <td className="px-4 py-2.5">
+                            <div className="flex items-center gap-2">
+                              {p.is_active && <Badge className="bg-primary text-primary-foreground border-0 text-[8px] h-4 px-1.5 shrink-0">ATIVO</Badge>}
+                              <div>
+                                <p className="font-bold">{p.name || "Cenário"}</p>
+                                <p className="text-[10px] text-muted-foreground">
+                                  {repName && `${repName} • `}
+                                  {new Date(p.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="text-center px-3 py-2.5 font-black">{p.qty_machines}</td>
+                          <td className="text-center px-3 py-2.5 font-black">{formatUsd(p.planned_fob)}</td>
+                          <td className="text-center px-3 py-2.5 font-bold text-green-600">{formatUsd(p.planned_net_profit)}</td>
+                          <td className="text-center px-3 py-2.5 font-bold">{formatPct(p.margin_pct)}</td>
+                          <td className="text-center px-3 py-2.5">
+                            <span className={cn("font-black", p.planned_meta_pct >= 100 ? "text-green-600" : p.planned_meta_pct >= 80 ? "text-yellow-600" : "text-red-600")}>
+                              {formatPct(p.planned_meta_pct)}
+                            </span>
+                          </td>
+                          <td className="text-center px-3 py-2.5">
+                            <span className={cn("font-bold", deltaFob >= 0 ? "text-green-600" : "text-red-600")}>
+                              {deltaFob >= 0 ? "+" : ""}{formatUsd(deltaFob)}
+                            </span>
+                          </td>
+                          <td className="text-center px-3 py-2.5">
+                            <div className="flex items-center justify-center gap-1">
+                              {!p.is_active && (
+                                <Button
+                                  variant="ghost" size="icon"
+                                  className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10"
+                                  onClick={() => activateScenario(p.id)}
+                                  title="Ativar cenário"
+                                >
+                                  <Power className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost" size="icon"
+                                className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => deleteScenario(p.id)}
+                                title="Excluir cenário"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
           </div>
         )}
       </div>
