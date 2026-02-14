@@ -1056,101 +1056,173 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
         </Card>
 
         {/* ── COMPARADOR DE CENÁRIOS ── */}
-        {plans.filter(p => p.mes === currentMonth && p.ano === currentYear).length > 0 && (
-          <div className="mt-4">
-            <h4 className="font-heading text-sm font-black uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
-              📊 Comparador de Cenários — {SHORT_MONTHS[currentMonth - 1]}/{currentYear}
-            </h4>
-            <Card className="border-border/50 bg-card shadow-sm rounded-xl overflow-hidden">
-              {/* Meta Oficial header */}
-              <div className="bg-muted/50 border-b border-border/50 px-4 py-2.5 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Target className="h-4 w-4 text-primary" />
-                  <span className="text-xs font-black uppercase tracking-wider">Meta Oficial</span>
-                </div>
-                <span className="text-sm font-black">{formatUsd(monthStatus.metaFob)}</span>
-              </div>
+        {(() => {
+          const monthPlans = plans.filter(p => p.mes === currentMonth && p.ano === currentYear);
+          if (monthPlans.length === 0) return null;
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-border/50 bg-muted/30">
-                      <th className="text-left px-4 py-2.5 font-black uppercase tracking-wider text-[10px] text-muted-foreground">Cenário</th>
-                      <th className="text-center px-3 py-2.5 font-black uppercase tracking-wider text-[10px] text-muted-foreground">Máquinas</th>
-                      <th className="text-center px-3 py-2.5 font-black uppercase tracking-wider text-[10px] text-muted-foreground">Faturamento</th>
-                      <th className="text-center px-3 py-2.5 font-black uppercase tracking-wider text-[10px] text-muted-foreground">Lucro</th>
-                      <th className="text-center px-3 py-2.5 font-black uppercase tracking-wider text-[10px] text-muted-foreground">Margem</th>
-                      <th className="text-center px-3 py-2.5 font-black uppercase tracking-wider text-[10px] text-muted-foreground">% Meta</th>
-                      <th className="text-center px-3 py-2.5 font-black uppercase tracking-wider text-[10px] text-muted-foreground">Δ Meta</th>
-                      <th className="text-center px-3 py-2.5 font-black uppercase tracking-wider text-[10px] text-muted-foreground">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {plans.filter(p => p.mes === currentMonth && p.ano === currentYear).map((p: any) => {
-                      const deltaFob = p.planned_fob - monthStatus.metaFob;
-                      const repName = reps.find(r => r.id === p.representative_id)?.nome;
-                      return (
-                        <tr key={p.id} className={cn(
-                          "border-b border-border/30 transition-colors",
-                          p.is_active ? "bg-primary/[0.04]" : "hover:bg-muted/30"
-                        )}>
-                          <td className="px-4 py-2.5">
-                            <div className="flex items-center gap-2">
-                              {p.is_active && <Badge className="bg-primary text-primary-foreground border-0 text-[8px] h-4 px-1.5 shrink-0">ATIVO</Badge>}
-                              <div>
-                                <p className="font-bold">{p.name || "Cenário"}</p>
-                                <p className="text-[10px] text-muted-foreground">
-                                  {repName && `${repName} • `}
-                                  {new Date(p.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                                </p>
+          // Best-of highlights
+          const bestProfit = Math.max(...monthPlans.map(p => p.planned_net_profit));
+          const bestMargin = Math.max(...monthPlans.map(p => p.margin_pct));
+          const bestMeta = Math.max(...monthPlans.map(p => p.planned_meta_pct));
+
+          // Recommendation: score = normalized(profit) + normalized(margin) + normalized(meta) — most balanced wins
+          const maxFob = Math.max(...monthPlans.map(p => p.planned_fob), 1);
+          const maxProfit = Math.max(...monthPlans.map(p => p.planned_net_profit), 1);
+          const maxMarginVal = Math.max(...monthPlans.map(p => p.margin_pct), 1);
+          const maxMetaVal = Math.max(...monthPlans.map(p => p.planned_meta_pct), 1);
+          const scored = monthPlans.map(p => ({
+            ...p,
+            score: (p.planned_net_profit / maxProfit) * 0.4 + (p.margin_pct / maxMarginVal) * 0.35 + (Math.min(p.planned_meta_pct, 120) / Math.min(maxMetaVal, 120)) * 0.25,
+          }));
+          const recommended = scored.sort((a, b) => b.score - a.score)[0];
+
+          const rows = [
+            { label: "Máquinas", key: "qty_machines", format: (v: number) => String(v) },
+            { label: "Faturamento", key: "planned_fob", format: formatUsd },
+            { label: "Lucro Líquido", key: "planned_net_profit", format: formatUsd },
+            { label: "Margem", key: "margin_pct", format: formatPct },
+            { label: "Comissão Total", key: "planned_commission", format: formatUsd },
+            { label: "% Meta", key: "planned_meta_pct", format: formatPct },
+          ];
+
+          const highlightMap: Record<string, number> = {
+            planned_net_profit: bestProfit,
+            margin_pct: bestMargin,
+            planned_meta_pct: bestMeta,
+          };
+
+          // Meta oficial values for the first column
+          const metaOfficialValues: Record<string, number> = {
+            qty_machines: 0,
+            planned_fob: monthStatus.metaFob,
+            planned_net_profit: 0,
+            margin_pct: 0,
+            planned_commission: 0,
+            planned_meta_pct: 100,
+          };
+
+          return (
+            <div className="mt-4">
+              <h4 className="font-heading text-sm font-black uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
+                📊 Comparador de Cenários — {SHORT_MONTHS[currentMonth - 1]}/{currentYear}
+              </h4>
+
+              {/* Horizontal comparison table */}
+              <Card className="border-border/50 bg-card shadow-sm rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border/50 bg-muted/30">
+                        <th className="text-left px-4 py-3 font-black uppercase tracking-wider text-[10px] text-muted-foreground min-w-[120px]">Métrica</th>
+                        <th className="text-center px-4 py-3 min-w-[110px]">
+                          <div className="flex flex-col items-center gap-0.5">
+                            <Target className="h-3.5 w-3.5 text-primary" />
+                            <span className="font-black uppercase tracking-wider text-[10px] text-primary">Meta Oficial</span>
+                          </div>
+                        </th>
+                        {monthPlans.map((p: any, idx: number) => (
+                          <th key={p.id} className="text-center px-4 py-3 min-w-[130px]">
+                            <div className="flex flex-col items-center gap-0.5">
+                              <div className="flex items-center gap-1">
+                                {p.is_active && <Badge className="bg-primary text-primary-foreground border-0 text-[7px] h-3.5 px-1">ATIVO</Badge>}
+                                {p.id === recommended?.id && <Badge className="bg-green-600 text-white border-0 text-[7px] h-3.5 px-1">★</Badge>}
                               </div>
+                              <span className="font-black uppercase tracking-wider text-[10px] text-foreground">{p.name || `Cenário ${idx + 1}`}</span>
+                              <span className="text-[9px] text-muted-foreground">
+                                {new Date(p.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit" })}
+                              </span>
                             </div>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map(row => (
+                        <tr key={row.key} className="border-b border-border/20">
+                          <td className="px-4 py-2.5 font-bold uppercase tracking-wider text-[10px] text-muted-foreground">{row.label}</td>
+                          <td className="text-center px-4 py-2.5 font-bold text-muted-foreground">
+                            {metaOfficialValues[row.key] > 0 ? row.format(metaOfficialValues[row.key]) : "—"}
                           </td>
-                          <td className="text-center px-3 py-2.5 font-black">{p.qty_machines}</td>
-                          <td className="text-center px-3 py-2.5 font-black">{formatUsd(p.planned_fob)}</td>
-                          <td className="text-center px-3 py-2.5 font-bold text-green-600">{formatUsd(p.planned_net_profit)}</td>
-                          <td className="text-center px-3 py-2.5 font-bold">{formatPct(p.margin_pct)}</td>
-                          <td className="text-center px-3 py-2.5">
-                            <span className={cn("font-black", p.planned_meta_pct >= 100 ? "text-green-600" : p.planned_meta_pct >= 80 ? "text-yellow-600" : "text-red-600")}>
-                              {formatPct(p.planned_meta_pct)}
-                            </span>
-                          </td>
-                          <td className="text-center px-3 py-2.5">
-                            <span className={cn("font-bold", deltaFob >= 0 ? "text-green-600" : "text-red-600")}>
-                              {deltaFob >= 0 ? "+" : ""}{formatUsd(deltaFob)}
-                            </span>
-                          </td>
-                          <td className="text-center px-3 py-2.5">
-                            <div className="flex items-center justify-center gap-1">
-                              {!p.is_active && (
-                                <Button
-                                  variant="ghost" size="icon"
-                                  className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10"
-                                  onClick={() => activateScenario(p.id)}
-                                  title="Ativar cenário"
-                                >
-                                  <Power className="h-3.5 w-3.5" />
-                                </Button>
-                              )}
-                              <Button
-                                variant="ghost" size="icon"
-                                className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                onClick={() => deleteScenario(p.id)}
-                                title="Excluir cenário"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          </td>
+                          {monthPlans.map((p: any) => {
+                            const val = p[row.key] as number;
+                            const isBest = highlightMap[row.key] !== undefined && val === highlightMap[row.key] && monthPlans.length > 1;
+                            return (
+                              <td key={p.id} className={cn(
+                                "text-center px-4 py-2.5 font-black",
+                                isBest && "bg-green-500/10 text-green-600"
+                              )}>
+                                {row.format(val)}
+                                {isBest && <span className="ml-1 text-[9px]">🏆</span>}
+                              </td>
+                            );
+                          })}
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-          </div>
-        )}
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Actions row */}
+                <div className="border-t border-border/50 bg-muted/20 px-4 py-2.5">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    {monthPlans.map((p: any) => (
+                      <div key={p.id} className="flex items-center gap-1.5 text-[10px]">
+                        <span className="font-bold truncate max-w-[80px]">{p.name || "Cenário"}</span>
+                        {!p.is_active && (
+                          <Button variant="ghost" size="icon" className="h-6 w-6 text-primary hover:bg-primary/10" onClick={() => activateScenario(p.id)} title="Ativar">
+                            <Power className="h-3 w-3" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10" onClick={() => deleteScenario(p.id)} title="Excluir">
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </Card>
+
+              {/* ── RECOMENDAÇÃO ESTRATÉGICA ── */}
+              {monthPlans.length >= 2 && recommended && (
+                <div className="mt-3">
+                  <Card className="border-2 border-green-500/30 bg-green-500/[0.04] rounded-xl p-4">
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-green-600 mb-2 flex items-center gap-1.5">
+                      📢 Recomendação Estratégica
+                    </h4>
+                    <p className="text-xs font-semibold text-foreground">
+                      O cenário <span className="text-green-600 font-black">"{recommended.name || "Cenário"}"</span> apresenta o melhor equilíbrio entre rentabilidade e atingimento de meta.
+                    </p>
+                    <div className="mt-2 grid grid-cols-3 gap-3 text-[10px]">
+                      <div>
+                        <span className="text-muted-foreground uppercase tracking-wider font-bold">Lucro</span>
+                        <p className="font-black text-green-600">{formatUsd(recommended.planned_net_profit)}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground uppercase tracking-wider font-bold">Margem</span>
+                        <p className="font-black">{formatPct(recommended.margin_pct)}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground uppercase tracking-wider font-bold">Meta</span>
+                        <p className={cn("font-black", recommended.planned_meta_pct >= 100 ? "text-green-600" : "text-yellow-600")}>
+                          {formatPct(recommended.planned_meta_pct)}
+                        </p>
+                      </div>
+                    </div>
+                    {!recommended.is_active && (
+                      <Button
+                        onClick={() => activateScenario(recommended.id)}
+                        className="mt-3 font-heading font-black tracking-wide text-xs h-8"
+                        size="sm"
+                      >
+                        <Power className="h-3.5 w-3.5 mr-1.5" /> Ativar Cenário Recomendado
+                      </Button>
+                    )}
+                  </Card>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* ── 8. ASSISTENTE IA ── */}
