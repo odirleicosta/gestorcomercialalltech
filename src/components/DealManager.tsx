@@ -379,7 +379,7 @@ const DealManager = ({ userId }: Props) => {
       const fob = parseFloat(item.fobCost) || 0;
       const venda = parseFloat(item.precoVendaFob) || 0;
       const qty = parseInt(item.quantity) || 1;
-      if (fob <= 0 || venda <= 0) continue;
+      if (venda <= 0) continue;
       const itemFobTotal = fob * qty;
       const itemVendaTotal = venda * qty;
       const gp = itemVendaTotal - itemFobTotal;
@@ -416,7 +416,7 @@ const DealManager = ({ userId }: Props) => {
     }
 
     // Build machine name from items
-    const validItems = items.filter(it => (parseFloat(it.fobCost) || 0) > 0 && (parseFloat(it.precoVendaFob) || 0) > 0);
+    const validItems = items.filter(it => (parseFloat(it.precoVendaFob) || 0) > 0);
     if (validItems.length === 0) {
       toast({ title: "Adicione pelo menos um produto válido", variant: "destructive" });
       return;
