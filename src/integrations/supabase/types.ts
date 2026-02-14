@@ -495,6 +495,71 @@ export type Database = {
         }
         Relationships: []
       }
+      strategic_plans: {
+        Row: {
+          ano: number
+          created_at: string
+          dollar_rate: number | null
+          id: string
+          is_active: boolean
+          margin_pct: number
+          mes: number
+          planned_commission: number
+          planned_fob: number
+          planned_gross_profit: number
+          planned_meta_pct: number
+          planned_net_profit: number
+          qty_machines: number
+          representative_id: string | null
+          ticket_fob: number
+          user_id: string
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          dollar_rate?: number | null
+          id?: string
+          is_active?: boolean
+          margin_pct?: number
+          mes: number
+          planned_commission?: number
+          planned_fob?: number
+          planned_gross_profit?: number
+          planned_meta_pct?: number
+          planned_net_profit?: number
+          qty_machines?: number
+          representative_id?: string | null
+          ticket_fob?: number
+          user_id: string
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          dollar_rate?: number | null
+          id?: string
+          is_active?: boolean
+          margin_pct?: number
+          mes?: number
+          planned_commission?: number
+          planned_fob?: number
+          planned_gross_profit?: number
+          planned_meta_pct?: number
+          planned_net_profit?: number
+          qty_machines?: number
+          representative_id?: string | null
+          ticket_fob?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategic_plans_representative_id_fkey"
+            columns: ["representative_id"]
+            isOneToOne: false
+            referencedRelation: "representatives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       weekly_visits: {
         Row: {
           ano: number

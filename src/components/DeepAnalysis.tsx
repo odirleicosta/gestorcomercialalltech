@@ -16,6 +16,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface Props {
   userId: string;
@@ -52,6 +53,7 @@ const formatUsd = (v: number) => `US$ ${v.toLocaleString("pt-BR", { minimumFract
 const formatPct = (v: number) => `${v.toFixed(1)}%`;
 
 const DeepAnalysis = ({ userId, onBack }: Props) => {
+  const { toast } = useToast();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [reps, setReps] = useState<RepOption[]>([]);
   const [goals, setGoals] = useState<MonthlyGoal[]>([]);
@@ -76,18 +78,22 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
     repName: string; repOldRank: number; repNewRank: number; repOldFob: number; repNewFob: number;
     currentMachines: number; currentFob: number;
   }>(null);
+  const [plans, setPlans] = useState<any[]>([]);
+  const [savingPlan, setSavingPlan] = useState(false);
 
   useEffect(() => {
   const fetchData = async () => {
       setLoading(true);
-      const [dealsRes, repsRes, goalsRes] = await Promise.all([
+      const [dealsRes, repsRes, goalsRes, plansRes] = await Promise.all([
         supabase.from("deals" as any).select("*").order("created_at", { ascending: false }),
-        supabase.from("representatives" as any).select("id, nome, meta_mensal_padrao, meta_quantidade").eq("status", "ATIVO"),
+        supabase.from("representatives" as any).select("id, nome, meta_mensal_padrao, meta_quantidade, comissao_padrao_pct, comissao_gestor_pct").eq("status", "ATIVO"),
         supabase.from("monthly_goals" as any).select("*"),
+        supabase.from("strategic_plans" as any).select("*").order("created_at", { ascending: false }),
       ]);
       if (dealsRes.data) setDeals(dealsRes.data as unknown as Deal[]);
       if (repsRes.data) setReps(repsRes.data as unknown as RepOption[]);
       if (goalsRes.data) setGoals(goalsRes.data as unknown as MonthlyGoal[]);
+      if (plansRes.data) setPlans(plansRes.data as any[]);
       setLoading(false);
       setLastAnalysis(new Date());
     };
@@ -501,6 +507,42 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
     });
   };
 
+  const applyAsPlan = async () => {
+    if (!simResult) return;
+    setSavingPlan(true);
+    // Deactivate previous plans for this month
+    await supabase.from("strategic_plans" as any)
+      .update({ is_active: false } as any)
+      .eq("mes", currentMonth).eq("ano", currentYear);
+
+    const { data, error } = await supabase.from("strategic_plans" as any).insert({
+      user_id: userId,
+      mes: currentMonth,
+      ano: currentYear,
+      qty_machines: simQty,
+      ticket_fob: simTicket,
+      margin_pct: simMargin,
+      representative_id: simRepId || null,
+      dollar_rate: simDollar || 0,
+      planned_fob: simResult.newFob,
+      planned_gross_profit: simResult.newGrossProfit,
+      planned_net_profit: simResult.newNetProfit,
+      planned_commission: simResult.newTotalCommission,
+      planned_meta_pct: simResult.newMetaPct,
+      is_active: true,
+    } as any).select();
+
+    if (error) {
+      toast({ title: "Erro ao salvar plano", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "✅ Plano aplicado!", description: `Meta planejada de ${formatUsd(simResult.newFob)} registrada.` });
+      // Refresh plans
+      const plansRes = await supabase.from("strategic_plans" as any).select("*").order("created_at", { ascending: false });
+      if (plansRes.data) setPlans(plansRes.data as any[]);
+    }
+    setSavingPlan(false);
+  };
+
   const buildContext = () => {
     const lines: string[] = [];
     lines.push(`Mês: ${SHORT_MONTHS[currentMonth - 1]}/${currentYear}`);
@@ -880,97 +922,143 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
           </Button>
 
           {simResult && (
-            <div className="mt-5 grid gap-4 md:grid-cols-3">
-              {/* Impacto na Meta */}
-              <div className="rounded-xl border-2 border-primary/30 bg-primary/[0.04] p-4">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-primary mb-3 flex items-center gap-1.5">
-                  <Target className="h-3.5 w-3.5" /> Impacto na Meta
-                </h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Máquinas</span>
-                    <span className="font-black">{simResult.currentMachines} → {simResult.newMachines}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Faturamento FOB</span>
-                    <span className="font-black">{formatUsd(simResult.currentFob)} → {formatUsd(simResult.newFob)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">% Meta</span>
-                    <span className={cn("font-black", simResult.newMetaPct >= 100 ? "text-green-600" : simResult.newMetaPct >= 80 ? "text-yellow-600" : "text-red-600")}>
-                      {formatPct(monthStatus.achieved)} → {formatPct(simResult.newMetaPct)}
-                    </span>
-                  </div>
-                  <div className="h-2 rounded-full bg-muted overflow-hidden mt-1">
-                    <div
-                      className={cn("h-full rounded-full transition-all", simResult.newMetaPct >= 100 ? "bg-green-500" : simResult.newMetaPct >= 80 ? "bg-yellow-500" : "bg-red-500")}
-                      style={{ width: `${Math.min(simResult.newMetaPct, 100)}%` }}
-                    />
+            <>
+              <div className="mt-5 grid gap-4 md:grid-cols-3">
+                {/* Impacto na Meta */}
+                <div className="rounded-xl border-2 border-primary/30 bg-primary/[0.04] p-4">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-primary mb-3 flex items-center gap-1.5">
+                    <Target className="h-3.5 w-3.5" /> Impacto na Meta
+                  </h4>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Máquinas</span>
+                      <span className="font-black">{simResult.currentMachines} → {simResult.newMachines}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Faturamento FOB</span>
+                      <span className="font-black">{formatUsd(simResult.currentFob)} → {formatUsd(simResult.newFob)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">% Meta</span>
+                      <span className={cn("font-black", simResult.newMetaPct >= 100 ? "text-green-600" : simResult.newMetaPct >= 80 ? "text-yellow-600" : "text-red-600")}>
+                        {formatPct(monthStatus.achieved)} → {formatPct(simResult.newMetaPct)}
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted overflow-hidden mt-1">
+                      <div
+                        className={cn("h-full rounded-full transition-all", simResult.newMetaPct >= 100 ? "bg-green-500" : simResult.newMetaPct >= 80 ? "bg-yellow-500" : "bg-red-500")}
+                        style={{ width: `${Math.min(simResult.newMetaPct, 100)}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Impacto Financeiro */}
-              <div className="rounded-xl border-2 border-green-500/30 bg-green-500/[0.04] p-4">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-green-600 mb-3 flex items-center gap-1.5">
-                  <DollarSign className="h-3.5 w-3.5" /> Impacto Financeiro
-                </h4>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Lucro Bruto</span>
-                    <span className="font-black text-green-600">{formatUsd(simResult.newGrossProfit)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Lucro Líquido</span>
-                    <span className="font-black text-green-600">{formatUsd(simResult.newNetProfit)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Margem Média</span>
-                    <span className="font-black">{formatPct(simResult.newAvgMargin)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Comissão Total</span>
-                    <span className="font-black text-orange-500">{formatUsd(simResult.newTotalCommission)}</span>
-                  </div>
-                  {simDollar > 0 && (
-                    <div className="flex justify-between text-xs border-t border-border/50 pt-2 mt-2">
-                      <span className="text-muted-foreground">Faturamento BRL</span>
-                      <span className="font-bold">R$ {(simResult.newFob * simDollar).toLocaleString("pt-BR", { minimumFractionDigits: 0 })}</span>
+                {/* Impacto Financeiro */}
+                <div className="rounded-xl border-2 border-green-500/30 bg-green-500/[0.04] p-4">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-green-600 mb-3 flex items-center gap-1.5">
+                    <DollarSign className="h-3.5 w-3.5" /> Impacto Financeiro
+                  </h4>
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Lucro Bruto</span>
+                      <span className="font-black text-green-600">{formatUsd(simResult.newGrossProfit)}</span>
                     </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Lucro Líquido</span>
+                      <span className="font-black text-green-600">{formatUsd(simResult.newNetProfit)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Margem Média</span>
+                      <span className="font-black">{formatPct(simResult.newAvgMargin)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Comissão Total</span>
+                      <span className="font-black text-orange-500">{formatUsd(simResult.newTotalCommission)}</span>
+                    </div>
+                    {simDollar > 0 && (
+                      <div className="flex justify-between text-xs border-t border-border/50 pt-2 mt-2">
+                        <span className="text-muted-foreground">Faturamento BRL</span>
+                        <span className="font-bold">R$ {(simResult.newFob * simDollar).toLocaleString("pt-BR", { minimumFractionDigits: 0 })}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Impacto no Ranking */}
+                <div className="rounded-xl border-2 border-orange-500/30 bg-orange-500/[0.04] p-4">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-3 flex items-center gap-1.5">
+                    <Users className="h-3.5 w-3.5" /> Impacto no Ranking
+                  </h4>
+                  {simRepId ? (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Representante</span>
+                        <span className="font-black">{simResult.repName}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">FOB no mês</span>
+                        <span className="font-black">{formatUsd(simResult.repOldFob)} → {formatUsd(simResult.repNewFob)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Posição</span>
+                        <span className={cn("font-black", simResult.repNewRank < simResult.repOldRank ? "text-green-600" : "")}>
+                          {simResult.repOldRank > 0 ? `#${simResult.repOldRank}` : "Sem vendas"} → #{simResult.repNewRank}
+                          {simResult.repNewRank < simResult.repOldRank && " ⬆️"}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">Selecione um representante para ver o impacto no ranking.</p>
                   )}
                 </div>
               </div>
 
-              {/* Impacto no Ranking */}
-              <div className="rounded-xl border-2 border-orange-500/30 bg-orange-500/[0.04] p-4">
-                <h4 className="text-[10px] font-black uppercase tracking-widest text-orange-600 mb-3 flex items-center gap-1.5">
-                  <Users className="h-3.5 w-3.5" /> Impacto no Ranking
-                </h4>
-                {simRepId ? (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Representante</span>
-                      <span className="font-black">{simResult.repName}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">FOB no mês</span>
-                      <span className="font-black">{formatUsd(simResult.repOldFob)} → {formatUsd(simResult.repNewFob)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Posição</span>
-                      <span className={cn("font-black", simResult.repNewRank < simResult.repOldRank ? "text-green-600" : "")}>
-                        {simResult.repOldRank > 0 ? `#${simResult.repOldRank}` : "Sem vendas"} → #{simResult.repNewRank}
-                        {simResult.repNewRank < simResult.repOldRank && " ⬆️"}
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-[11px] text-muted-foreground">Selecione um representante para ver o impacto no ranking.</p>
-                )}
+              {/* Aplicar como Plano */}
+              <div className="mt-3">
+                <Button
+                  onClick={applyAsPlan}
+                  disabled={savingPlan}
+                  variant="outline"
+                  className="w-full font-heading font-black tracking-wide border-2 border-primary/40 hover:bg-primary/10"
+                >
+                  {savingPlan ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <span className="mr-2">📋</span>}
+                  Aplicar como Plano do Mês
+                </Button>
               </div>
-            </div>
+            </>
           )}
         </Card>
+
+        {/* Histórico de Planos */}
+        {plans.filter(p => p.mes === currentMonth && p.ano === currentYear).length > 0 && (
+          <div className="mt-4">
+            <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 flex items-center gap-1.5">
+              📋 Histórico de Planos — {SHORT_MONTHS[currentMonth - 1]}/{currentYear}
+            </h4>
+            <div className="space-y-1.5">
+              {plans.filter(p => p.mes === currentMonth && p.ano === currentYear).map((p: any) => (
+                <div key={p.id} className={cn(
+                  "flex items-center justify-between rounded-lg border px-4 py-2.5 text-xs",
+                  p.is_active ? "border-primary/30 bg-primary/[0.04]" : "border-border/50 bg-muted/30 opacity-60"
+                )}>
+                  <div className="flex items-center gap-3">
+                    {p.is_active && <Badge className="bg-primary text-primary-foreground border-0 text-[9px] h-4">ATIVO</Badge>}
+                    <span className="font-bold">{formatUsd(p.planned_fob)}</span>
+                    <span className="text-muted-foreground">{p.qty_machines} máq. • Margem {formatPct(p.margin_pct)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={cn("font-black", p.planned_meta_pct >= 100 ? "text-green-600" : "text-orange-500")}>
+                      {formatPct(p.planned_meta_pct)}
+                    </span>
+                    <span className="text-muted-foreground text-[10px]">
+                      {new Date(p.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── 8. ASSISTENTE IA ── */}
