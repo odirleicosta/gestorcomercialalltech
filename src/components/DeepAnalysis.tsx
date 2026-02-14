@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   TrendingUp, TrendingDown, AlertTriangle, Target, DollarSign,
   Users, Zap, ArrowLeft, Send, Bot, User, Loader2, BarChart3,
-  ShieldAlert, Activity, Flame,
+  ShieldAlert, Activity, Flame, CheckCircle2, AlertCircle,
 } from "lucide-react";
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -57,7 +57,6 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
   const [goals, setGoals] = useState<MonthlyGoal[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // AI Chat
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
@@ -84,10 +83,9 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
   const currentMonth = now.getMonth() + 1;
   const currentYear = now.getFullYear();
 
-  // Closed deals only
   const closedDeals = useMemo(() => deals.filter(d => d.status === "closed"), [deals]);
 
-  // ── 6-month trend data ──
+  // ── 6-month trend ──
   const trendData = useMemo(() => {
     const data: { month: string; faturamento: number; lucro: number; margem: number; count: number }[] = [];
     for (let i = 5; i >= 0; i--) {
@@ -103,10 +101,7 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
       const margem = monthDeals.length > 0
         ? monthDeals.reduce((s, d) => s + d.net_margin_percent, 0) / monthDeals.length
         : 0;
-      data.push({
-        month: `${SHORT_MONTHS[m - 1]}/${String(y).slice(2)}`,
-        faturamento, lucro, margem, count: monthDeals.length,
-      });
+      data.push({ month: `${SHORT_MONTHS[m - 1]}/${String(y).slice(2)}`, faturamento, lucro, margem, count: monthDeals.length });
     }
     return data;
   }, [closedDeals, currentMonth, currentYear]);
@@ -118,27 +113,48 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
       return dt.getMonth() + 1 === currentMonth && dt.getFullYear() === currentYear;
     }), [closedDeals, currentMonth, currentYear]);
 
-  // ── Projections ──
-  const projections = useMemo(() => {
+  // ── Month status ──
+  const monthStatus = useMemo(() => {
     const dayOfMonth = now.getDate();
     const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
     const currentFob = currentMonthDeals.reduce((s, d) => s + d.base_price, 0);
+    const projectedFob = dayOfMonth > 0 ? (currentFob / dayOfMonth) * daysInMonth : 0;
+    const metaFob = goals.filter(g => g.mes === currentMonth && g.ano === currentYear).reduce((s, g) => s + g.meta_valor, 0) || reps.reduce((s, r) => s + r.meta_mensal_padrao, 0);
+    const pct = metaFob > 0 ? (projectedFob / metaFob) * 100 : 0;
+    const achieved = metaFob > 0 ? (currentFob / metaFob) * 100 : 0;
+
+    let level: "green" | "yellow" | "red" = "green";
+    let phrase = "";
+    if (pct >= 90) {
+      level = "green";
+      phrase = `Meta saudável — projeção de ${formatPct(pct)} da meta com ${formatUsd(currentFob)} realizado.`;
+    } else if (pct >= 60) {
+      level = "yellow";
+      phrase = `Atenção — ritmo atual projeta ${formatPct(pct)} da meta. Acelere as vendas.`;
+    } else {
+      level = "red";
+      phrase = `Meta comprometida — projeção de apenas ${formatPct(pct)} da meta. Ação imediata necessária.`;
+    }
+
+    return { level, phrase, projectedFob, metaFob, currentFob, pct, achieved, dayOfMonth, daysInMonth };
+  }, [currentMonthDeals, goals, reps, currentMonth, currentYear, now]);
+
+  // ── Projections ──
+  const projections = useMemo(() => {
+    const { dayOfMonth, daysInMonth, currentFob } = monthStatus;
     const currentCount = currentMonthDeals.length;
     const currentProfit = currentMonthDeals.reduce((s, d) => s + d.net_profit, 0);
 
-    // Conservative: current pace
     const conservativeRate = dayOfMonth > 0 ? currentFob / dayOfMonth : 0;
     const conservativeFob = conservativeRate * daysInMonth;
     const conservativeCount = dayOfMonth > 0 ? Math.round((currentCount / dayOfMonth) * daysInMonth) : 0;
     const conservativeProfit = dayOfMonth > 0 ? (currentProfit / dayOfMonth) * daysInMonth : 0;
 
-    // Realistic: avg last 3 months
-    const last3 = trendData.slice(-4, -1); // exclude current month
+    const last3 = trendData.slice(-4, -1);
     const avg3Fob = last3.length > 0 ? last3.reduce((s, d) => s + d.faturamento, 0) / last3.length : 0;
     const avg3Count = last3.length > 0 ? Math.round(last3.reduce((s, d) => s + d.count, 0) / last3.length) : 0;
     const avg3Profit = last3.length > 0 ? last3.reduce((s, d) => s + d.lucro, 0) / last3.length : 0;
 
-    // Aggressive: best month this year
     const yearDeals = closedDeals.filter(d => new Date(d.created_at).getFullYear() === currentYear);
     const monthBuckets: Record<number, { fob: number; count: number; profit: number }> = {};
     yearDeals.forEach(d => {
@@ -151,99 +167,76 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
     let bestMonth = { fob: 0, count: 0, profit: 0 };
     Object.values(monthBuckets).forEach(b => { if (b.fob > bestMonth.fob) bestMonth = b; });
 
-    // Meta
-    const totalGoalValue = goals
-      .filter(g => g.mes === currentMonth && g.ano === currentYear)
-      .reduce((s, g) => s + g.meta_valor, 0);
-    const totalGoalQtd = goals
-      .filter(g => g.mes === currentMonth && g.ano === currentYear)
-      .reduce((s, g) => s + g.meta_quantidade, 0);
-    const metaFob = totalGoalValue > 0 ? totalGoalValue : reps.reduce((s, r) => s + r.meta_mensal_padrao, 0);
-
+    const { metaFob } = monthStatus;
     const chancePct = (projected: number) => metaFob > 0 ? Math.min(100, (projected / metaFob) * 100) : 0;
 
     return [
-      { label: "Conservador", emoji: "🐢", desc: "Ritmo atual", fob: conservativeFob, count: conservativeCount, profit: conservativeProfit, chance: chancePct(conservativeFob), color: "border-yellow-400/40 bg-yellow-500/[0.04]" },
-      { label: "Realista", emoji: "📊", desc: "Média 3 meses", fob: avg3Fob, count: avg3Count, profit: avg3Profit, chance: chancePct(avg3Fob), color: "border-blue-400/40 bg-blue-500/[0.04]" },
-      { label: "Agressivo", emoji: "🔥", desc: "Melhor mês do ano", fob: bestMonth.fob, count: bestMonth.count, profit: bestMonth.profit, chance: chancePct(bestMonth.fob), color: "border-green-400/40 bg-green-500/[0.04]" },
+      { label: "Conservador", emoji: "🐢", desc: "Ritmo atual", fob: conservativeFob, count: conservativeCount, profit: conservativeProfit, chance: chancePct(conservativeFob), border: "border-l-yellow-500" },
+      { label: "Realista", emoji: "📊", desc: "Média 3 meses", fob: avg3Fob, count: avg3Count, profit: avg3Profit, chance: chancePct(avg3Fob), border: "border-l-blue-500" },
+      { label: "Agressivo", emoji: "🔥", desc: "Melhor mês do ano", fob: bestMonth.fob, count: bestMonth.count, profit: bestMonth.profit, chance: chancePct(bestMonth.fob), border: "border-l-green-500" },
     ];
-  }, [currentMonthDeals, trendData, closedDeals, goals, reps, currentMonth, currentYear, now]);
+  }, [currentMonthDeals, trendData, closedDeals, monthStatus, currentYear]);
 
   // ── Strategic Risks ──
   const risks = useMemo(() => {
-    const riskList: { level: "high" | "medium" | "low"; title: string; desc: string; icon: any }[] = [];
+    const riskList: { level: "high" | "medium"; title: string; desc: string; icon: any }[] = [];
     const last3Deals = closedDeals.filter(d => {
       const dt = new Date(d.created_at);
       const monthsAgo = (currentYear - dt.getFullYear()) * 12 + (currentMonth - (dt.getMonth() + 1));
       return monthsAgo >= 0 && monthsAgo < 3;
     });
 
-    // Client concentration
     const clientFob: Record<string, number> = {};
     last3Deals.forEach(d => { clientFob[d.client_name] = (clientFob[d.client_name] || 0) + d.base_price; });
     const totalFob3m = last3Deals.reduce((s, d) => s + d.base_price, 0);
     Object.entries(clientFob).forEach(([name, fob]) => {
       const pct = totalFob3m > 0 ? (fob / totalFob3m) * 100 : 0;
       if (pct > 40) {
-        riskList.push({ level: "high", title: "Dependência de cliente", desc: `"${name}" representa ${pct.toFixed(0)}% do faturamento dos últimos 3 meses.`, icon: AlertTriangle });
+        riskList.push({ level: "high", title: "Concentração de cliente", desc: `"${name}" = ${pct.toFixed(0)}% do faturamento.`, icon: AlertTriangle });
       }
     });
 
-    // Reps below average
     const repFob: Record<string, number> = {};
     last3Deals.forEach(d => { if (d.representative_id) repFob[d.representative_id] = (repFob[d.representative_id] || 0) + d.base_price; });
     const avgRepFob = Object.keys(repFob).length > 0 ? Object.values(repFob).reduce((a, b) => a + b, 0) / Object.keys(repFob).length : 0;
     reps.forEach(r => {
       const fob = repFob[r.id] || 0;
       if (fob < avgRepFob * 0.5 && avgRepFob > 0) {
-        riskList.push({ level: "medium", title: "Representante abaixo da média", desc: `${r.nome}: ${formatUsd(fob)} (média: ${formatUsd(avgRepFob)}).`, icon: Users });
+        riskList.push({ level: "medium", title: "Rep. abaixo da média", desc: `${r.nome}: ${formatUsd(fob)} (média: ${formatUsd(avgRepFob)})`, icon: Users });
       }
     });
 
-    // Margin below historical average
     const allAvgMargin = closedDeals.length > 0 ? closedDeals.reduce((s, d) => s + d.net_margin_percent, 0) / closedDeals.length : 0;
     const recentAvgMargin = last3Deals.length > 0 ? last3Deals.reduce((s, d) => s + d.net_margin_percent, 0) / last3Deals.length : 0;
     if (recentAvgMargin < allAvgMargin * 0.85 && closedDeals.length >= 5) {
-      riskList.push({ level: "medium", title: "Margem abaixo da média histórica", desc: `Média recente: ${formatPct(recentAvgMargin)} vs histórica: ${formatPct(allAvgMargin)}.`, icon: TrendingDown });
+      riskList.push({ level: "medium", title: "Margem em queda", desc: `Recente: ${formatPct(recentAvgMargin)} vs histórica: ${formatPct(allAvgMargin)}`, icon: TrendingDown });
     }
 
-    // Insufficient pace
-    const dayOfMonth = now.getDate();
-    const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
-    const currentFob = currentMonthDeals.reduce((s, d) => s + d.base_price, 0);
-    const projectedFob = dayOfMonth > 0 ? (currentFob / dayOfMonth) * daysInMonth : 0;
-    const metaFob = goals.filter(g => g.mes === currentMonth && g.ano === currentYear).reduce((s, g) => s + g.meta_valor, 0) || reps.reduce((s, r) => s + r.meta_mensal_padrao, 0);
+    const { projectedFob, metaFob } = monthStatus;
     if (metaFob > 0 && projectedFob < metaFob * 0.7) {
-      riskList.push({ level: "high", title: "Ritmo insuficiente", desc: `Projeção: ${formatUsd(projectedFob)} vs Meta: ${formatUsd(metaFob)} (${formatPct((projectedFob / metaFob) * 100)}).`, icon: Activity });
-    }
-
-    if (riskList.length === 0) {
-      riskList.push({ level: "low", title: "Nenhum risco crítico detectado", desc: "Os indicadores estão dentro dos parâmetros normais.", icon: Target });
+      riskList.push({ level: "high", title: "Ritmo insuficiente", desc: `Projeção ${formatPct((projectedFob / metaFob) * 100)} da meta`, icon: Activity });
     }
 
     return riskList;
-  }, [closedDeals, currentMonthDeals, reps, goals, currentMonth, currentYear, now]);
+  }, [closedDeals, reps, monthStatus, currentMonth, currentYear]);
 
-  // ── AI Context builder ──
+  // ── AI Context ──
   const buildContext = () => {
     const lines: string[] = [];
-    lines.push(`Mês atual: ${SHORT_MONTHS[currentMonth - 1]}/${currentYear}`);
-    lines.push(`Total de vendas fechadas: ${closedDeals.length}`);
+    lines.push(`Mês: ${SHORT_MONTHS[currentMonth - 1]}/${currentYear}`);
+    lines.push(`Vendas fechadas: ${closedDeals.length}`);
     lines.push(`\nTENDÊNCIA 6 MESES:`);
-    trendData.forEach(t => lines.push(`${t.month}: Faturamento ${formatUsd(t.faturamento)}, Lucro ${formatUsd(t.lucro)}, Margem ${formatPct(t.margem)}, ${t.count} vendas`));
+    trendData.forEach(t => lines.push(`${t.month}: Fat ${formatUsd(t.faturamento)}, Lucro ${formatUsd(t.lucro)}, Margem ${formatPct(t.margem)}, ${t.count} vendas`));
     lines.push(`\nPROJEÇÕES:`);
     projections.forEach(p => lines.push(`${p.label}: FOB ${formatUsd(p.fob)}, ${p.count} máq., Lucro ${formatUsd(p.profit)}, Chance ${formatPct(p.chance)}`));
     lines.push(`\nRISCOS:`);
     risks.forEach(r => lines.push(`[${r.level}] ${r.title}: ${r.desc}`));
-    lines.push(`\nREPRESENTANTES ATIVOS: ${reps.map(r => r.nome).join(", ")}`);
-
-    // Top 5 clients
+    lines.push(`\nREPS: ${reps.map(r => r.nome).join(", ")}`);
     const clientFob: Record<string, number> = {};
     closedDeals.forEach(d => { clientFob[d.client_name] = (clientFob[d.client_name] || 0) + d.base_price; });
     const top5 = Object.entries(clientFob).sort((a, b) => b[1] - a[1]).slice(0, 5);
-    lines.push(`\nTOP 5 CLIENTES (FOB total):`);
+    lines.push(`\nTOP 5 CLIENTES:`);
     top5.forEach(([name, fob]) => lines.push(`- ${name}: ${formatUsd(fob)}`));
-
     return lines.join("\n");
   };
 
@@ -317,7 +310,7 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
           }
         }
       }
-    } catch (e) {
+    } catch {
       setChatMessages(prev => [...prev, { role: "assistant", content: "❌ Erro de conexão com o assistente." }]);
     }
     setChatLoading(false);
@@ -331,121 +324,147 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
     );
   }
 
-  const riskColor = (level: string) => {
-    if (level === "high") return "border-red-500/40 bg-red-500/[0.06] text-red-700";
-    if (level === "medium") return "border-yellow-500/40 bg-yellow-500/[0.06] text-yellow-700";
-    return "border-green-500/40 bg-green-500/[0.06] text-green-700";
+  const statusConfig = {
+    green: { bg: "from-green-500/20 to-green-600/5 border-green-500/40", icon: CheckCircle2, iconColor: "text-green-500", label: "META SAUDÁVEL", labelBg: "bg-green-500" },
+    yellow: { bg: "from-yellow-500/20 to-yellow-600/5 border-yellow-500/40", icon: AlertCircle, iconColor: "text-yellow-500", label: "ATENÇÃO", labelBg: "bg-yellow-500" },
+    red: { bg: "from-red-500/20 to-red-600/5 border-red-500/40", icon: ShieldAlert, iconColor: "text-red-500", label: "META COMPROMETIDA", labelBg: "bg-red-500" },
   };
 
-  const riskBadge = (level: string) => {
-    if (level === "high") return <Badge className="bg-red-500 text-white border-0 text-[10px] font-bold">ALTO</Badge>;
-    if (level === "medium") return <Badge className="bg-yellow-500 text-white border-0 text-[10px] font-bold">MÉDIO</Badge>;
-    return <Badge className="bg-green-500 text-white border-0 text-[10px] font-bold">BAIXO</Badge>;
-  };
+  const sc = statusConfig[monthStatus.level];
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3 bg-foreground/[0.03] rounded-xl px-6 py-5 border border-border/40">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={onBack} className="h-10 w-10">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h2 className="font-heading text-3xl font-black text-foreground tracking-tight flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/15 flex items-center justify-center">
-                <Zap className="h-5 w-5 text-primary" />
-              </div>
-              ANÁLISE PROFUNDA
-            </h2>
-            <p className="text-sm text-muted-foreground mt-1 ml-[52px]">Inteligência comercial e projeções estratégicas</p>
+      <div className="flex items-center gap-4 bg-foreground/[0.03] rounded-xl px-6 py-4 border border-border/40">
+        <Button variant="ghost" size="icon" onClick={onBack} className="h-9 w-9 shrink-0">
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div>
+          <h2 className="font-heading text-2xl font-black text-foreground tracking-tight flex items-center gap-2">
+            <Zap className="h-5 w-5 text-primary" />
+            ANÁLISE PROFUNDA
+          </h2>
+          <p className="text-xs text-muted-foreground">Inteligência comercial • {SHORT_MONTHS[currentMonth - 1]}/{currentYear}</p>
+        </div>
+      </div>
+
+      {/* ── 1. STATUS GERAL DO MÊS ── */}
+      <div className={cn("rounded-xl border-2 bg-gradient-to-r p-5", sc.bg)}>
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className={cn("h-14 w-14 rounded-xl flex items-center justify-center", sc.iconColor, "bg-background/60")}>
+            <sc.icon className="h-7 w-7" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <Badge className={cn("text-white border-0 text-[10px] font-black tracking-widest", sc.labelBg)}>{sc.label}</Badge>
+              <span className="text-xs text-muted-foreground">Dia {monthStatus.dayOfMonth}/{monthStatus.daysInMonth}</span>
+            </div>
+            <p className="text-sm font-semibold text-foreground">{monthStatus.phrase}</p>
+          </div>
+          <div className="flex gap-6 text-center">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Realizado</p>
+              <p className="text-lg font-black">{formatUsd(monthStatus.currentFob)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Meta</p>
+              <p className="text-lg font-black">{formatUsd(monthStatus.metaFob)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Projeção</p>
+              <p className={cn("text-lg font-black", monthStatus.level === "green" ? "text-green-600" : monthStatus.level === "yellow" ? "text-yellow-600" : "text-red-600")}>
+                {formatPct(monthStatus.pct)}
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── 1. TENDÊNCIA 6 MESES ── */}
+      {/* ── 2. TENDÊNCIA 6 MESES ── */}
       <div>
-        <h3 className="font-heading text-lg font-black uppercase tracking-wider text-foreground mb-4 flex items-center gap-2">
-          <BarChart3 className="h-5 w-5 text-primary" /> Tendência 6 Meses
+        <h3 className="font-heading text-sm font-black uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
+          <BarChart3 className="h-4 w-4 text-primary" /> Tendência 6 Meses
         </h3>
-        <div className="grid gap-4 lg:grid-cols-3">
-          {/* Faturamento */}
-          <Card className="border-border bg-card p-5 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Faturamento (FOB)</p>
-            <ResponsiveContainer width="100%" height={180}>
+        <div className="grid gap-3 lg:grid-cols-3">
+          <Card className="border-border/50 bg-card p-4 shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Faturamento</p>
+            <ResponsiveContainer width="100%" height={160}>
               <AreaChart data={trendData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+                <XAxis dataKey="month" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" />
+                <YAxis tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip formatter={(v: number) => formatUsd(v)} />
-                <Area type="monotone" dataKey="faturamento" stroke="hsl(217, 91%, 60%)" fill="hsl(217, 91%, 60%, 0.15)" strokeWidth={2} name="Faturamento" />
+                <Area type="monotone" dataKey="faturamento" stroke="hsl(217, 91%, 60%)" fill="hsl(217, 91%, 60%, 0.12)" strokeWidth={2} />
               </AreaChart>
             </ResponsiveContainer>
           </Card>
 
-          {/* Lucro */}
-          <Card className="border-border bg-card p-5 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Lucro Líquido</p>
-            <ResponsiveContainer width="100%" height={180}>
+          <Card className="border-border/50 bg-card p-4 shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Lucro</p>
+            <ResponsiveContainer width="100%" height={160}>
               <BarChart data={trendData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
+                <XAxis dataKey="month" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" />
+                <YAxis tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" tickFormatter={v => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip formatter={(v: number) => formatUsd(v)} />
-                <Bar dataKey="lucro" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} name="Lucro" />
+                <Bar dataKey="lucro" fill="hsl(142, 71%, 45%)" radius={[3, 3, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </Card>
 
-          {/* Margem */}
-          <Card className="border-border bg-card p-5 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Margem Média</p>
-            <ResponsiveContainer width="100%" height={180}>
+          <Card className="border-border/50 bg-card p-4 shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Margem Média</p>
+            <ResponsiveContainer width="100%" height={160}>
               <LineChart data={trendData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-                <YAxis tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" domain={[0, 'auto']} tickFormatter={v => `${v}%`} />
+                <XAxis dataKey="month" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" />
+                <YAxis tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" domain={[0, 'auto']} tickFormatter={v => `${v}%`} />
                 <Tooltip formatter={(v: number) => formatPct(v)} />
-                <Line type="monotone" dataKey="margem" stroke="hsl(25, 95%, 53%)" strokeWidth={2.5} dot={{ fill: "hsl(25, 95%, 53%)", r: 4 }} name="Margem" />
+                <Line type="monotone" dataKey="margem" stroke="hsl(25, 95%, 53%)" strokeWidth={2.5} dot={{ fill: "hsl(25, 95%, 53%)", r: 3 }} />
               </LineChart>
             </ResponsiveContainer>
           </Card>
         </div>
       </div>
 
-      {/* ── 2. PROJEÇÕES ── */}
+      {/* ── 3. PROJEÇÕES ── */}
       <div>
-        <h3 className="font-heading text-lg font-black uppercase tracking-wider text-foreground mb-4 flex items-center gap-2">
-          <Target className="h-5 w-5 text-primary" /> Projeção Automática — {SHORT_MONTHS[currentMonth - 1]}/{currentYear}
+        <h3 className="font-heading text-sm font-black uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
+          <Target className="h-4 w-4 text-primary" /> Projeção — {SHORT_MONTHS[currentMonth - 1]}/{currentYear}
         </h3>
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-3">
           {projections.map(p => (
-            <Card key={p.label} className={cn("border-2 shadow-sm rounded-xl px-6 py-5", p.color)}>
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-xl">{p.emoji}</span>
+            <Card key={p.label} className={cn("border-l-4 border-border/50 shadow-sm rounded-xl px-5 py-4", p.border)}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">{p.emoji}</span>
                 <div>
-                  <h4 className="font-heading text-sm font-black uppercase tracking-widest">{p.label}</h4>
+                  <h4 className="font-heading text-xs font-black uppercase tracking-widest">{p.label}</h4>
                   <p className="text-[10px] text-muted-foreground">{p.desc}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Máquinas</p>
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Máquinas</p>
                   <p className="text-xl font-black">{p.count}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Faturamento</p>
-                  <p className="text-base font-black">{formatUsd(p.fob)}</p>
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Faturamento</p>
+                  <p className="text-sm font-black">{formatUsd(p.fob)}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Lucro</p>
-                  <p className="text-base font-bold text-green-600">{formatUsd(p.profit)}</p>
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Lucro</p>
+                  <p className="text-sm font-bold text-green-600">{formatUsd(p.profit)}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Chance Meta</p>
-                  <p className={cn("text-xl font-black", p.chance >= 80 ? "text-green-600" : p.chance >= 50 ? "text-yellow-600" : "text-red-600")}>
-                    {formatPct(p.chance)}
-                  </p>
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Chance Meta</p>
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className={cn("h-full rounded-full transition-all", p.chance >= 80 ? "bg-green-500" : p.chance >= 50 ? "bg-yellow-500" : "bg-red-500")} style={{ width: `${Math.min(p.chance, 100)}%` }} />
+                    </div>
+                    <span className={cn("text-xs font-black", p.chance >= 80 ? "text-green-600" : p.chance >= 50 ? "text-yellow-600" : "text-red-600")}>
+                      {formatPct(p.chance)}
+                    </span>
+                  </div>
                 </div>
               </div>
             </Card>
@@ -453,48 +472,53 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
         </div>
       </div>
 
-      {/* ── 3. RISCOS ESTRATÉGICOS ── */}
-      <div>
-        <h3 className="font-heading text-lg font-black uppercase tracking-wider text-foreground mb-4 flex items-center gap-2">
-          <ShieldAlert className="h-5 w-5 text-destructive" /> Riscos Estratégicos
-        </h3>
-        <div className="grid gap-3 md:grid-cols-2">
-          {risks.map((r, i) => (
-            <Card key={i} className={cn("border-2 rounded-xl px-5 py-4 flex items-start gap-4", riskColor(r.level))}>
-              <div className="h-10 w-10 rounded-lg bg-background/80 flex items-center justify-center shrink-0 mt-0.5">
-                <r.icon className="h-5 w-5" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <p className="font-bold text-sm">{r.title}</p>
-                  {riskBadge(r.level)}
+      {/* ── 4. RISCOS ESTRATÉGICOS (only if risks exist) ── */}
+      {risks.length > 0 && (
+        <div>
+          <h3 className="font-heading text-sm font-black uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
+            <ShieldAlert className="h-4 w-4 text-destructive" /> Riscos Detectados
+          </h3>
+          <div className="grid gap-2 md:grid-cols-2">
+            {risks.map((r, i) => (
+              <div key={i} className={cn(
+                "flex items-center gap-3 rounded-lg border px-4 py-3",
+                r.level === "high" ? "border-red-500/30 bg-red-500/[0.05]" : "border-yellow-500/30 bg-yellow-500/[0.05]"
+              )}>
+                <div className={cn(
+                  "h-8 w-8 rounded-lg flex items-center justify-center shrink-0",
+                  r.level === "high" ? "bg-red-500/15 text-red-500" : "bg-yellow-500/15 text-yellow-500"
+                )}>
+                  <r.icon className="h-4 w-4" />
                 </div>
-                <p className="text-xs opacity-80">{r.desc}</p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-bold">{r.title}</p>
+                    <Badge className={cn("text-white border-0 text-[9px] font-bold h-4", r.level === "high" ? "bg-red-500" : "bg-yellow-500")}>
+                      {r.level === "high" ? "ALTO" : "MÉDIO"}
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">{r.desc}</p>
+                </div>
               </div>
-            </Card>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* ── 4. ASSISTENTE COMERCIAL IA ── */}
+      {/* ── 5. ASSISTENTE IA ── */}
       <div>
-        <h3 className="font-heading text-lg font-black uppercase tracking-wider text-foreground mb-4 flex items-center gap-2">
-          <Bot className="h-5 w-5 text-primary" /> Assistente Comercial IA
+        <h3 className="font-heading text-sm font-black uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
+          <Bot className="h-4 w-4 text-primary" /> Assistente Comercial IA
         </h3>
-        <Card className="border-border bg-card shadow-sm rounded-xl overflow-hidden">
-          <ScrollArea className="h-[350px] p-4">
+        <Card className="border-border/50 bg-card shadow-sm rounded-xl overflow-hidden">
+          <ScrollArea className="h-[300px] p-4">
             {chatMessages.length === 0 && (
-              <div className="text-center text-muted-foreground py-12 space-y-3">
-                <Bot className="h-10 w-10 mx-auto opacity-30" />
-                <p className="text-sm font-medium">Pergunte sobre seus dados comerciais</p>
-                <div className="flex flex-wrap gap-2 justify-center">
-                  {[
-                    "Qual meu melhor representante?",
-                    "Qual a tendência de margem?",
-                    "Onde posso melhorar?",
-                    "Resumo do mês atual",
-                  ].map(q => (
-                    <Button key={q} variant="outline" size="sm" className="text-xs h-7"
+              <div className="text-center text-muted-foreground py-10 space-y-3">
+                <Bot className="h-8 w-8 mx-auto opacity-25" />
+                <p className="text-xs font-medium">Pergunte sobre seus dados</p>
+                <div className="flex flex-wrap gap-1.5 justify-center">
+                  {["Melhor representante?", "Tendência de margem?", "Onde melhorar?", "Resumo do mês"].map(q => (
+                    <Button key={q} variant="outline" size="sm" className="text-[10px] h-6 px-2"
                       onClick={() => { setChatInput(q); }}>
                       {q}
                     </Button>
@@ -503,54 +527,52 @@ const DeepAnalysis = ({ userId, onBack }: Props) => {
               </div>
             )}
             {chatMessages.map((msg, i) => (
-              <div key={i} className={cn("mb-4 flex gap-3", msg.role === "user" ? "justify-end" : "justify-start")}>
+              <div key={i} className={cn("mb-3 flex gap-2", msg.role === "user" ? "justify-end" : "justify-start")}>
                 {msg.role === "assistant" && (
-                  <div className="h-7 w-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0 mt-1">
-                    <Bot className="h-3.5 w-3.5 text-primary" />
+                  <div className="h-6 w-6 rounded-full bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+                    <Bot className="h-3 w-3 text-primary" />
                   </div>
                 )}
                 <div className={cn(
-                  "max-w-[80%] rounded-xl px-4 py-3 text-sm",
-                  msg.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted"
+                  "max-w-[80%] rounded-xl px-3 py-2 text-xs",
+                  msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
                 )}>
                   {msg.role === "assistant" ? (
-                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                    <div className="prose prose-xs max-w-none dark:prose-invert [&_p]:text-xs [&_li]:text-xs">
                       <ReactMarkdown>{msg.content}</ReactMarkdown>
                     </div>
                   ) : msg.content}
                 </div>
                 {msg.role === "user" && (
-                  <div className="h-7 w-7 rounded-full bg-foreground/10 flex items-center justify-center shrink-0 mt-1">
-                    <User className="h-3.5 w-3.5" />
+                  <div className="h-6 w-6 rounded-full bg-foreground/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <User className="h-3 w-3" />
                   </div>
                 )}
               </div>
             ))}
             {chatLoading && chatMessages[chatMessages.length - 1]?.role !== "assistant" && (
-              <div className="flex gap-3 mb-4">
-                <div className="h-7 w-7 rounded-full bg-primary/15 flex items-center justify-center shrink-0 mt-1">
-                  <Bot className="h-3.5 w-3.5 text-primary" />
+              <div className="flex gap-2 mb-3">
+                <div className="h-6 w-6 rounded-full bg-primary/15 flex items-center justify-center shrink-0">
+                  <Bot className="h-3 w-3 text-primary" />
                 </div>
-                <div className="bg-muted rounded-xl px-4 py-3">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <div className="bg-muted rounded-xl px-3 py-2">
+                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
                 </div>
               </div>
             )}
             <div ref={chatEndRef} />
           </ScrollArea>
-          <div className="border-t border-border p-3 flex gap-2">
+          <div className="border-t border-border/50 p-2.5 flex gap-2">
             <Input
               value={chatInput}
               onChange={e => setChatInput(e.target.value)}
-              placeholder="Pergunte sobre seus dados comerciais..."
-              className="bg-secondary/50 border-border text-sm"
+              placeholder="Pergunte sobre seus dados..."
+              className="bg-secondary/50 border-border/50 text-xs h-8"
               onKeyDown={e => e.key === "Enter" && sendMessage()}
               disabled={chatLoading}
             />
-            <Button onClick={sendMessage} disabled={!chatInput.trim() || chatLoading} size="icon" className="shrink-0">
-              {chatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            <Button onClick={sendMessage} disabled={!chatInput.trim() || chatLoading} size="icon" className="shrink-0 h-8 w-8">
+              {chatLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
             </Button>
           </div>
         </Card>
