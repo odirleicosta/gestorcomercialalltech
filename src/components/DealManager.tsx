@@ -503,6 +503,14 @@ const DealManager = ({ userId }: Props) => {
   };
 
   // ── Drawer Edit Logic ──
+  const [editItems, setEditItems] = useState<DealItem[]>([]);
+  const [editEmpresaId, setEditEmpresaId] = useState("");
+  const [editRepId, setEditRepId] = useState("");
+  const [editDate, setEditDate] = useState<Date | undefined>(undefined);
+  const [editDateOpen, setEditDateOpen] = useState(false);
+  const [editEmpresaOpen, setEditEmpresaOpen] = useState(false);
+  const [editRepOpen, setEditRepOpen] = useState(false);
+
   const startEditing = (deal: Deal) => {
     setEditForm({
       fob_cost: deal.fob_cost,
@@ -512,30 +520,105 @@ const DealManager = ({ userId }: Props) => {
       manager_commission_pct: deal.manager_commission_pct,
       observation: deal.observation || "",
     });
+    setEditEmpresaId(deal.empresa_id || "");
+    setEditRepId(deal.representative_id || "");
+    setEditDate(new Date(deal.created_at));
+    // Convert drawerItems to editable DealItem[]
+    if (drawerItems.length > 0) {
+      setEditItems(drawerItems.map(di => ({
+        modeloId: di.modelo_id || "",
+        machineName: di.machine_name,
+        machineType: di.machine_type,
+        fobCost: String(di.quantity > 1 ? di.fob_cost / di.quantity : di.fob_cost),
+        precoVendaFob: String(di.quantity > 1 ? di.preco_venda_fob / di.quantity : di.preco_venda_fob),
+        quantity: String(di.quantity),
+        modeloOpen: false,
+      })));
+    } else {
+      setEditItems([{
+        modeloId: deal.modelo_id || "",
+        machineName: deal.machine_name,
+        machineType: deal.machine_type,
+        fobCost: String(deal.fob_cost),
+        precoVendaFob: String(deal.base_price),
+        quantity: "1",
+        modeloOpen: false,
+      }]);
+    }
     setEditing(true);
+  };
+
+  const updateEditItem = (index: number, updates: Partial<DealItem>) => {
+    setEditItems(prev => prev.map((item, i) => i === index ? { ...item, ...updates } : item));
+  };
+  const addEditItem = () => setEditItems(prev => [...prev, emptyItem()]);
+  const removeEditItem = (index: number) => {
+    if (editItems.length <= 1) return;
+    setEditItems(prev => prev.filter((_, i) => i !== index));
+  };
+  const handleEditItemModeloSelect = (index: number, id: string) => {
+    const modelo = modelos.find(m => m.id === id);
+    if (modelo) {
+      updateEditItem(index, {
+        modeloId: id, modeloOpen: false,
+        machineName: `${modelo.marca} ${modelo.modelo}`,
+        machineType: modelo.tipo,
+        fobCost: String(modelo.custo_fob),
+        precoVendaFob: modelo.preco_venda_fob > 0 ? String(modelo.preco_venda_fob) : "",
+      });
+    }
+  };
+  const handleEditRepSelect = (id: string) => {
+    setEditRepId(id);
+    setEditRepOpen(false);
+    if (id && id !== "none") {
+      const rep = repOptions.find(r => r.id === id);
+      if (rep) {
+        setEditForm((f: any) => ({ ...f, seller_commission_pct: String(rep.comissao_padrao_pct), manager_commission_pct: String(rep.comissao_gestor_pct) }));
+      }
+    }
   };
 
   const editSimulation = useMemo(() => {
     if (!editing) return null;
-    const fob = parseFloat(editForm.fob_cost) || 0;
-    const basePrice = parseFloat(editForm.base_price) || 0;
     const sPct = parseFloat(editForm.seller_commission_pct) || 0;
     const mPct = parseFloat(editForm.manager_commission_pct) || 0;
-    if (fob <= 0 || basePrice <= 0) return null;
-
-    const grossProfit = basePrice - fob;
-    const grossMargin = basePrice > 0 ? (grossProfit / basePrice) * 100 : 0;
-    const sellerComm = basePrice * (sPct / 100);
-    const managerComm = basePrice * (mPct / 100);
-    const netProfit = grossProfit - sellerComm - managerComm;
-    const netMargin = basePrice > 0 ? (netProfit / basePrice) * 100 : 0;
     const dollar = parseFloat(editForm.dollar_rate) || 0;
 
-    return { grossProfit, grossMargin, sellerComm, managerComm, netProfit, netMargin, dollar };
-  }, [editForm, editing]);
+    let totalFob = 0;
+    let totalVenda = 0;
+    for (const item of editItems) {
+      const fob = parseFloat(item.fobCost) || 0;
+      const venda = parseFloat(item.precoVendaFob) || 0;
+      const qty = parseInt(item.quantity) || 1;
+      if (fob <= 0 || venda <= 0) continue;
+      totalFob += fob * qty;
+      totalVenda += venda * qty;
+    }
+    if (totalVenda <= 0) return null;
+
+    const grossProfit = totalVenda - totalFob;
+    const grossMargin = totalVenda > 0 ? (grossProfit / totalVenda) * 100 : 0;
+    const sellerComm = totalVenda * (sPct / 100);
+    const managerComm = totalVenda * (mPct / 100);
+    const netProfit = grossProfit - sellerComm - managerComm;
+    const netMargin = totalVenda > 0 ? (netProfit / totalVenda) * 100 : 0;
+
+    return { totalFob, totalVenda, grossProfit, grossMargin, sellerComm, managerComm, netProfit, netMargin, dollar };
+  }, [editForm, editing, editItems]);
 
   const handleSaveEdit = async () => {
     if (!drawerDeal || !editSimulation) return;
+    if (!editEmpresaId) {
+      toast({ title: "Selecione uma empresa", variant: "destructive" });
+      return;
+    }
+    const validItems = editItems.filter(it => (parseFloat(it.fobCost) || 0) > 0 && (parseFloat(it.precoVendaFob) || 0) > 0);
+    if (validItems.length === 0) {
+      toast({ title: "Adicione pelo menos um produto válido", variant: "destructive" });
+      return;
+    }
+
     const sPct = parseFloat(editForm.seller_commission_pct) || 0;
     const mPct = parseFloat(editForm.manager_commission_pct) || 0;
 
@@ -551,10 +634,24 @@ const DealManager = ({ userId }: Props) => {
       await supabase.from("commission_history" as any).insert(logs as any);
     }
 
+    const machineNames = validItems.map(it => {
+      const qty = parseInt(it.quantity) || 1;
+      return qty > 1 ? `${qty}x ${it.machineName}` : it.machineName;
+    });
+    const machineName = machineNames.join(", ");
+    const machineType = validItems.map(it => it.machineType).filter(Boolean).join(", ");
+    const editedEmpresa = empresas.find(e => e.id === editEmpresaId);
+
     const update = {
-      fob_cost: parseFloat(editForm.fob_cost) || 0,
-      base_price: parseFloat(editForm.base_price) || 0,
-      final_price: parseFloat(editForm.base_price) || 0,
+      client_name: editedEmpresa?.nome || drawerDeal.client_name,
+      empresa_id: editEmpresaId,
+      representative_id: editRepId && editRepId !== "none" ? editRepId : null,
+      modelo_id: validItems.length === 1 ? (validItems[0].modeloId || null) : null,
+      machine_name: machineName,
+      machine_type: machineType,
+      fob_cost: editSimulation.totalFob,
+      base_price: editSimulation.totalVenda,
+      final_price: editSimulation.totalVenda,
       dollar_rate: parseFloat(editForm.dollar_rate) || 0,
       gross_profit: editSimulation.grossProfit,
       gross_margin_percent: editSimulation.grossMargin,
@@ -567,15 +664,37 @@ const DealManager = ({ userId }: Props) => {
       net_profit: editSimulation.netProfit,
       net_margin_percent: editSimulation.netMargin,
       observation: editForm.observation?.trim() || null,
+      ...(editDate ? { created_at: editDate.toISOString() } : {}),
     };
 
     const { error } = await supabase.from("deals" as any).update(update as any).eq("id", drawerDeal.id);
     if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); return; }
 
+    // Replace deal_items: delete old, insert new
+    await supabase.from("deal_items" as any).delete().eq("deal_id", drawerDeal.id);
+    const dealItems = validItems.map(it => {
+      const fob = parseFloat(it.fobCost) || 0;
+      const venda = parseFloat(it.precoVendaFob) || 0;
+      const qty = parseInt(it.quantity) || 1;
+      const totalFob = fob * qty;
+      const totalVenda = venda * qty;
+      const gp = totalVenda - totalFob;
+      const gm = totalVenda > 0 ? (gp / totalVenda) * 100 : 0;
+      return {
+        deal_id: drawerDeal.id, user_id: userId, modelo_id: it.modeloId || null,
+        machine_name: it.machineName, machine_type: it.machineType,
+        fob_cost: totalFob, preco_venda_fob: totalVenda,
+        gross_profit: gp, gross_margin_percent: gm, quantity: qty,
+      };
+    });
+    await supabase.from("deal_items" as any).insert(dealItems as any);
+
     toast({ title: "Negociação atualizada!" });
     setEditing(false);
     fetchDeals();
-    setDrawerDeal(prev => prev ? { ...prev, ...update } as Deal : null);
+    const updatedDeal = { ...drawerDeal, ...update } as Deal;
+    setDrawerDeal(updatedDeal);
+    fetchDealItems(drawerDeal.id);
   };
 
   // ── Filtering & Sorting ──
@@ -1140,18 +1259,158 @@ const DealManager = ({ userId }: Props) => {
                   <div className="p-6 space-y-6">
                     {/* A) Identificação */}
                     <DrawerSection title="Identificação" icon={<Building2 className="h-4 w-4 text-primary" />}>
-                      <DrawerRow label="Empresa" value={deal.client_name} />
-                      <DrawerRow label="Cidade" value={emp?.cidade || "—"} />
-                      <DrawerRow label="Data" value={new Date(deal.created_at).toLocaleDateString("pt-BR")} />
-                      {deal.closed_at && <DrawerRow label="Fechada em" value={new Date(deal.closed_at).toLocaleDateString("pt-BR")} />}
-                      <DrawerRow label="Representante" value={rep?.nome || "—"} />
+                      {editing ? (
+                        <div className="space-y-3">
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Empresa *</Label>
+                            <Popover open={editEmpresaOpen} onOpenChange={setEditEmpresaOpen}>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" role="combobox" className="w-full justify-between bg-secondary/50 border-border font-normal text-sm h-9">
+                                  {empresas.find(e => e.id === editEmpresaId)?.nome || "Selecionar empresa..."}
+                                  <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[300px] p-0 bg-popover border-border z-[60]" align="start">
+                                <Command>
+                                  <CommandInput placeholder="Buscar empresa..." />
+                                  <CommandList>
+                                    <CommandEmpty>Nenhuma empresa encontrada.</CommandEmpty>
+                                    <CommandGroup>
+                                      {empresas.map(e => (
+                                        <CommandItem key={e.id} value={e.nome} onSelect={() => { setEditEmpresaId(e.id); setEditEmpresaOpen(false); }}>
+                                          <Check className={cn("mr-2 h-4 w-4", editEmpresaId === e.id ? "opacity-100" : "opacity-0")} />
+                                          <div className="flex flex-col">
+                                            <span className="text-sm">{e.nome}</span>
+                                            {e.cidade && <span className="text-xs text-muted-foreground">{e.cidade}</span>}
+                                          </div>
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Data da Venda</Label>
+                            <Popover open={editDateOpen} onOpenChange={setEditDateOpen}>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-9 bg-secondary/50 border-border text-sm")}>
+                                  <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                                  {editDate ? format(editDate, "dd/MM/yyyy") : "Selecionar data"}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0 bg-popover border-border z-[60]" align="start">
+                                <Calendar mode="single" selected={editDate} onSelect={(d) => { setEditDate(d); setEditDateOpen(false); }} initialFocus className={cn("p-3 pointer-events-auto")} />
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Representante</Label>
+                            <Popover open={editRepOpen} onOpenChange={setEditRepOpen}>
+                              <PopoverTrigger asChild>
+                                <Button variant="outline" role="combobox" className="w-full justify-between bg-secondary/50 border-border font-normal text-sm h-9">
+                                  {repOptions.find(r => r.id === editRepId)?.nome || "Nenhum"}
+                                  <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-[280px] p-0 bg-popover border-border z-[60]" align="start">
+                                <Command>
+                                  <CommandInput placeholder="Buscar representante..." />
+                                  <CommandList>
+                                    <CommandEmpty>Nenhum encontrado.</CommandEmpty>
+                                    <CommandGroup>
+                                      <CommandItem value="nenhum" onSelect={() => { setEditRepId("none"); setEditRepOpen(false); }}>
+                                        <Check className={cn("mr-2 h-4 w-4", !editRepId || editRepId === "none" ? "opacity-100" : "opacity-0")} />
+                                        Nenhum
+                                      </CommandItem>
+                                      {repOptions.map(r => (
+                                        <CommandItem key={r.id} value={r.nome} onSelect={() => handleEditRepSelect(r.id)}>
+                                          <Check className={cn("mr-2 h-4 w-4", editRepId === r.id ? "opacity-100" : "opacity-0")} />
+                                          {r.nome}
+                                        </CommandItem>
+                                      ))}
+                                    </CommandGroup>
+                                  </CommandList>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <DrawerRow label="Empresa" value={deal.client_name} />
+                          <DrawerRow label="Cidade" value={emp?.cidade || "—"} />
+                          <DrawerRow label="Data" value={new Date(deal.created_at).toLocaleDateString("pt-BR")} />
+                          {deal.closed_at && <DrawerRow label="Fechada em" value={new Date(deal.closed_at).toLocaleDateString("pt-BR")} />}
+                          <DrawerRow label="Representante" value={rep?.nome || "—"} />
+                        </>
+                      )}
                     </DrawerSection>
 
                     {/* B) Produtos / Itens */}
-                    <DrawerSection title={`Produtos (${drawerItems.length > 0 ? drawerItems.length : 1})`} icon={<Package className="h-4 w-4 text-primary" />}>
-                      {drawerItems.length > 0 ? (
+                    <DrawerSection title={`Produtos (${editing ? editItems.length : (drawerItems.length > 0 ? drawerItems.length : 1)})`} icon={<Package className="h-4 w-4 text-primary" />}>
+                      {editing ? (
+                        <div className="space-y-3">
+                          {editItems.map((item, idx) => (
+                            <Card key={idx} className="border-border bg-muted/20 p-3 relative">
+                              {editItems.length > 1 && (
+                                <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-6 w-6" onClick={() => removeEditItem(idx)}>
+                                  <X className="h-3 w-3 text-destructive" />
+                                </Button>
+                              )}
+                              <div className="space-y-2">
+                                <div>
+                                  <Label className="text-[11px] text-muted-foreground">Máquina</Label>
+                                  <Popover open={item.modeloOpen} onOpenChange={(open) => updateEditItem(idx, { modeloOpen: open })}>
+                                    <PopoverTrigger asChild>
+                                      <Button variant="outline" role="combobox" className="w-full justify-between bg-secondary/50 border-border font-normal text-xs h-8">
+                                        {item.machineName || "Selecionar modelo..."}
+                                        <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[300px] p-0 bg-popover border-border z-[60]" align="start">
+                                      <Command>
+                                        <CommandInput placeholder="Buscar..." />
+                                        <CommandList>
+                                          <CommandEmpty>Nenhum modelo.</CommandEmpty>
+                                          <CommandGroup>
+                                            {modelos.map(m => (
+                                              <CommandItem key={m.id} value={`${m.marca} ${m.modelo} ${m.tipo}`} onSelect={() => handleEditItemModeloSelect(idx, m.id)}>
+                                                <Check className={cn("mr-2 h-3 w-3", item.modeloId === m.id ? "opacity-100" : "opacity-0")} />
+                                                <span className="text-xs">{m.marca} {m.modelo} <span className="text-muted-foreground">({m.tipo})</span></span>
+                                              </CommandItem>
+                                            ))}
+                                          </CommandGroup>
+                                        </CommandList>
+                                      </Command>
+                                    </PopoverContent>
+                                  </Popover>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2">
+                                  <div>
+                                    <Label className="text-[11px] text-muted-foreground">Custo FOB</Label>
+                                    <Input type="number" step="0.01" value={item.fobCost} onChange={(e) => updateEditItem(idx, { fobCost: e.target.value })} className="h-7 text-xs bg-secondary/50 border-border" />
+                                  </div>
+                                  <div>
+                                    <Label className="text-[11px] text-muted-foreground">Venda FOB</Label>
+                                    <Input type="number" step="0.01" value={item.precoVendaFob} onChange={(e) => updateEditItem(idx, { precoVendaFob: e.target.value })} className="h-7 text-xs bg-secondary/50 border-border" />
+                                  </div>
+                                  <div>
+                                    <Label className="text-[11px] text-muted-foreground">Qtd</Label>
+                                    <Input type="number" min="1" value={item.quantity} onChange={(e) => updateEditItem(idx, { quantity: e.target.value })} className="h-7 text-xs bg-secondary/50 border-border" />
+                                  </div>
+                                </div>
+                              </div>
+                            </Card>
+                          ))}
+                          <Button variant="outline" size="sm" onClick={addEditItem} className="w-full h-7 text-xs">
+                            <Plus className="h-3 w-3 mr-1" /> Adicionar Produto
+                          </Button>
+                        </div>
+                      ) : drawerItems.length > 0 ? (
                         <div className="space-y-2">
-                          {drawerItems.map((item, idx) => (
+                          {drawerItems.map((item) => (
                             <div key={item.id} className="bg-muted/30 rounded-md p-3 space-y-1">
                               <div className="flex justify-between items-start">
                                 <div>
@@ -1185,21 +1444,19 @@ const DealManager = ({ userId }: Props) => {
                     <DrawerSection title="Valores Totais" icon={<DollarSign className="h-4 w-4 text-accent" />}>
                       {editing ? (
                         <div className="space-y-3">
-                          <div>
-                            <Label className="text-xs text-muted-foreground">Custo FOB Total (USD)</Label>
-                            <Input type="number" step="0.01" value={editForm.fob_cost} onChange={(e) => setEditForm(f => ({ ...f, fob_cost: e.target.value }))} className="h-8 text-sm bg-secondary/50 border-border" />
-                          </div>
-                          <div>
-                            <Label className="text-xs text-muted-foreground">Preço Venda FOB Total (USD)</Label>
-                            <Input type="number" step="0.01" value={editForm.base_price} onChange={(e) => setEditForm(f => ({ ...f, base_price: e.target.value }))} className="h-8 text-sm bg-secondary/50 border-border" />
-                          </div>
+                          {editSimulation && (
+                            <div className="bg-muted/30 rounded-md p-3 space-y-1">
+                              <DrawerRow label="Custo FOB Total" value={formatUsd(editSimulation.totalFob)} />
+                              <DrawerRow label="Venda FOB Total" value={formatUsd(editSimulation.totalVenda)} />
+                            </div>
+                          )}
                           <div>
                             <Label className="text-xs text-muted-foreground">Cotação do Dólar</Label>
-                            <Input type="number" step="0.01" value={editForm.dollar_rate} onChange={(e) => setEditForm(f => ({ ...f, dollar_rate: e.target.value }))} className="h-8 text-sm bg-secondary/50 border-border" />
+                            <Input type="number" step="0.01" value={editForm.dollar_rate} onChange={(e) => setEditForm((f: any) => ({ ...f, dollar_rate: e.target.value }))} className="h-8 text-sm bg-secondary/50 border-border" />
                           </div>
                           <div>
                             <Label className="text-xs text-muted-foreground">Observação</Label>
-                            <Textarea value={editForm.observation} onChange={(e) => setEditForm(f => ({ ...f, observation: e.target.value }))} className="text-sm bg-secondary/50 border-border" rows={2} />
+                            <Textarea value={editForm.observation} onChange={(e) => setEditForm((f: any) => ({ ...f, observation: e.target.value }))} className="text-sm bg-secondary/50 border-border" rows={2} />
                           </div>
                         </div>
                       ) : (
