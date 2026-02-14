@@ -123,6 +123,66 @@ export type Database = {
           },
         ]
       }
+      deal_items: {
+        Row: {
+          created_at: string
+          deal_id: string
+          fob_cost: number
+          gross_margin_percent: number
+          gross_profit: number
+          id: string
+          machine_name: string
+          machine_type: string
+          modelo_id: string | null
+          preco_venda_fob: number
+          quantity: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          fob_cost?: number
+          gross_margin_percent?: number
+          gross_profit?: number
+          id?: string
+          machine_name?: string
+          machine_type?: string
+          modelo_id?: string | null
+          preco_venda_fob?: number
+          quantity?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          fob_cost?: number
+          gross_margin_percent?: number
+          gross_profit?: number
+          id?: string
+          machine_name?: string
+          machine_type?: string
+          modelo_id?: string | null
+          preco_venda_fob?: number
+          quantity?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_items_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_items_modelo_id_fkey"
+            columns: ["modelo_id"]
+            isOneToOne: false
+            referencedRelation: "machine_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deals: {
         Row: {
           base_price: number

@@ -104,12 +104,39 @@ interface CommissionLog {
   changed_at: string;
 }
 
+interface DealItem {
+  modeloId: string;
+  machineName: string;
+  machineType: string;
+  fobCost: string;
+  precoVendaFob: string;
+  quantity: string;
+  modeloOpen: boolean;
+}
+
+interface DealItemDb {
+  id: string;
+  deal_id: string;
+  modelo_id: string | null;
+  machine_name: string;
+  machine_type: string;
+  fob_cost: number;
+  preco_venda_fob: number;
+  gross_profit: number;
+  gross_margin_percent: number;
+  quantity: number;
+}
+
 interface Props {
   userId: string;
 }
 
 type SortField = "created_at" | "client_name" | "machine_name" | "base_price" | "net_margin_percent" | "net_profit";
 type SortDir = "asc" | "desc";
+
+const emptyItem = (): DealItem => ({
+  modeloId: "", machineName: "", machineType: "", fobCost: "", precoVendaFob: "", quantity: "1", modeloOpen: false,
+});
 
 const DealManager = ({ userId }: Props) => {
   const { toast } = useToast();
@@ -128,6 +155,7 @@ const DealManager = ({ userId }: Props) => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState<Record<string, any>>({});
+  const [drawerItems, setDrawerItems] = useState<DealItemDb[]>([]);
 
   // Default commission from profile
   const [defaultSellerPct, setDefaultSellerPct] = useState(3);
@@ -140,10 +168,7 @@ const DealManager = ({ userId }: Props) => {
 
   // Form state for new deal
   const [empresaId, setEmpresaId] = useState("");
-  const [modeloId, setModeloId] = useState("");
-  const [machineType, setMachineType] = useState("");
-  const [fobCost, setFobCost] = useState("");
-  const [precoVendaFob, setPrecoVendaFob] = useState("");
+  const [items, setItems] = useState<DealItem[]>([emptyItem()]);
   const [dollarRate, setDollarRate] = useState("");
   const [sellerPct, setSellerPct] = useState("");
   const [managerPct, setManagerPct] = useState("");
@@ -155,7 +180,6 @@ const DealManager = ({ userId }: Props) => {
 
   // Combobox open states
   const [empresaOpen, setEmpresaOpen] = useState(false);
-  const [modeloOpen, setModeloOpen] = useState(false);
   const [repOpen, setRepOpen] = useState(false);
 
   // New empresa dialog
@@ -214,24 +238,49 @@ const DealManager = ({ userId }: Props) => {
     if (data) setCommissionLogs(data as unknown as CommissionLog[]);
   };
 
+  const fetchDealItems = async (dealId: string) => {
+    const { data } = await supabase
+      .from("deal_items" as any)
+      .select("*")
+      .eq("deal_id", dealId)
+      .order("created_at", { ascending: true });
+    if (data) setDrawerItems(data as unknown as DealItemDb[]);
+    else setDrawerItems([]);
+  };
+
   // Pre-fill defaults when opening form
   const openForm = () => {
     setSellerPct(String(defaultSellerPct));
     setManagerPct(String(defaultManagerPct));
+    setItems([emptyItem()]);
     setShowForm(true);
   };
 
-  // Auto-fill when selecting a model
-  const handleModeloSelect = (id: string) => {
-    setModeloId(id);
-    setModeloOpen(false);
+  // Item management
+  const updateItem = (index: number, updates: Partial<DealItem>) => {
+    setItems(prev => prev.map((item, i) => i === index ? { ...item, ...updates } : item));
+  };
+
+  const addItem = () => {
+    setItems(prev => [...prev, emptyItem()]);
+  };
+
+  const removeItem = (index: number) => {
+    if (items.length <= 1) return;
+    setItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleItemModeloSelect = (index: number, id: string) => {
     const modelo = modelos.find(m => m.id === id);
     if (modelo) {
-      setMachineType(modelo.tipo);
-      setFobCost(String(modelo.custo_fob));
-      if (modelo.preco_venda_fob > 0) {
-        setPrecoVendaFob(String(modelo.preco_venda_fob));
-      }
+      updateItem(index, {
+        modeloId: id,
+        modeloOpen: false,
+        machineName: `${modelo.marca} ${modelo.modelo}`,
+        machineType: modelo.tipo,
+        fobCost: String(modelo.custo_fob),
+        precoVendaFob: modelo.preco_venda_fob > 0 ? String(modelo.preco_venda_fob) : "",
+      });
     }
   };
 
@@ -272,38 +321,51 @@ const DealManager = ({ userId }: Props) => {
   };
 
   const selectedEmpresa = empresas.find(e => e.id === empresaId);
-  const selectedModelo = modelos.find(m => m.id === modeloId);
   const selectedRep = repOptions.find(r => r.id === representativeId);
 
   const simulation = useMemo(() => {
-    const fob = parseFloat(fobCost) || 0;
-    const vendaFob = parseFloat(precoVendaFob) || 0;
     const sPct = parseFloat(sellerPct) || 0;
     const mPct = parseFloat(managerPct) || 0;
-    if (fob <= 0 || vendaFob <= 0) return null;
-
-    const basePrice = vendaFob;
-    const grossProfit = basePrice - fob;
-    const grossMargin = basePrice > 0 ? (grossProfit / basePrice) * 100 : 0;
-
-    const sellerComm = basePrice * (sPct / 100);
-    const managerComm = basePrice * (mPct / 100);
-    const netProfit = grossProfit - sellerComm - managerComm;
-    const netMargin = basePrice > 0 ? (netProfit / basePrice) * 100 : 0;
-
     const dollar = parseFloat(dollarRate) || 0;
     const hasDollar = dollar > 0;
-    const sellerCommBrl = sellerComm * dollar;
-    const managerCommBrl = managerComm * dollar;
+
+    let totalFob = 0;
+    let totalVenda = 0;
+    const itemSims: { fob: number; venda: number; qty: number; grossProfit: number; grossMargin: number }[] = [];
+
+    for (const item of items) {
+      const fob = parseFloat(item.fobCost) || 0;
+      const venda = parseFloat(item.precoVendaFob) || 0;
+      const qty = parseInt(item.quantity) || 1;
+      if (fob <= 0 || venda <= 0) continue;
+      const itemFobTotal = fob * qty;
+      const itemVendaTotal = venda * qty;
+      const gp = itemVendaTotal - itemFobTotal;
+      const gm = itemVendaTotal > 0 ? (gp / itemVendaTotal) * 100 : 0;
+      totalFob += itemFobTotal;
+      totalVenda += itemVendaTotal;
+      itemSims.push({ fob: itemFobTotal, venda: itemVendaTotal, qty, grossProfit: gp, grossMargin: gm });
+    }
+
+    if (totalVenda <= 0) return null;
+
+    const grossProfit = totalVenda - totalFob;
+    const grossMargin = totalVenda > 0 ? (grossProfit / totalVenda) * 100 : 0;
+    const sellerComm = totalVenda * (sPct / 100);
+    const managerComm = totalVenda * (mPct / 100);
+    const netProfit = grossProfit - sellerComm - managerComm;
+    const netMargin = totalVenda > 0 ? (netProfit / totalVenda) * 100 : 0;
 
     return {
-      fob, basePrice, finalPrice: basePrice, grossProfit, grossMargin,
+      totalFob, totalVenda, grossProfit, grossMargin,
       sellerComm, managerComm, netProfit, netMargin,
-      dollar, hasDollar, sellerCommBrl, managerCommBrl,
-      basePriceBrl: hasDollar ? basePrice * dollar : 0,
-      finalPriceBrl: hasDollar ? basePrice * dollar : 0,
+      dollar, hasDollar,
+      sellerCommBrl: sellerComm * dollar,
+      managerCommBrl: managerComm * dollar,
+      basePriceBrl: hasDollar ? totalVenda * dollar : 0,
+      itemSims,
     };
-  }, [fobCost, precoVendaFob, sellerPct, managerPct, dollarRate]);
+  }, [items, sellerPct, managerPct, dollarRate]);
 
   const handleSave = async () => {
     if (!simulation || !empresaId) {
@@ -311,20 +373,32 @@ const DealManager = ({ userId }: Props) => {
       return;
     }
 
-    const machineName = selectedModelo ? `${selectedModelo.marca} ${selectedModelo.modelo}` : "";
+    // Build machine name from items
+    const validItems = items.filter(it => (parseFloat(it.fobCost) || 0) > 0 && (parseFloat(it.precoVendaFob) || 0) > 0);
+    if (validItems.length === 0) {
+      toast({ title: "Adicione pelo menos um produto válido", variant: "destructive" });
+      return;
+    }
+
+    const machineNames = validItems.map(it => {
+      const qty = parseInt(it.quantity) || 1;
+      return qty > 1 ? `${qty}x ${it.machineName}` : it.machineName;
+    });
+    const machineName = machineNames.join(", ");
+    const machineType = validItems.map(it => it.machineType).filter(Boolean).join(", ");
 
     const insert = {
       user_id: userId,
       client_name: selectedEmpresa?.nome || "",
       machine_name: machineName,
       machine_type: machineType,
-      fob_cost: simulation.fob,
+      fob_cost: simulation.totalFob,
       dollar_rate: simulation.dollar,
       estimated_tax_percent: 0,
       estimated_tax_value: 0,
       desired_margin_percent: simulation.grossMargin,
-      base_price: simulation.basePrice,
-      final_price: simulation.finalPrice,
+      base_price: simulation.totalVenda,
+      final_price: simulation.totalVenda,
       gross_profit: simulation.grossProfit,
       gross_margin_percent: simulation.grossMargin,
       commission_base: "FOB",
@@ -337,20 +411,42 @@ const DealManager = ({ userId }: Props) => {
       observation: observation.trim() || null,
       representative_id: representativeId && representativeId !== "none" ? representativeId : null,
       empresa_id: empresaId,
-      modelo_id: modeloId || null,
+      modelo_id: validItems.length === 1 ? (validItems[0].modeloId || null) : null,
       ...(saleDate ? { created_at: saleDate.toISOString() } : {}),
     };
 
-    const { error } = await supabase.from("deals" as any).insert(insert as any);
-    if (error) {
-      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+    const { data: dealData, error } = await supabase.from("deals" as any).insert(insert as any).select("id").single();
+    if (error || !dealData) {
+      toast({ title: "Erro ao salvar", description: error?.message, variant: "destructive" });
       return;
     }
 
-    if (selectedModelo && (!selectedModelo.preco_venda_fob || selectedModelo.preco_venda_fob === 0) && simulation.basePrice > 0) {
-      setPendingSavePriceData({ modeloId: selectedModelo.id, basePrice: simulation.basePrice });
-      setShowSavePricePrompt(true);
-    }
+    const dealId = (dealData as any).id;
+
+    // Insert deal items
+    const dealItems = validItems.map(it => {
+      const fob = parseFloat(it.fobCost) || 0;
+      const venda = parseFloat(it.precoVendaFob) || 0;
+      const qty = parseInt(it.quantity) || 1;
+      const totalFob = fob * qty;
+      const totalVenda = venda * qty;
+      const gp = totalVenda - totalFob;
+      const gm = totalVenda > 0 ? (gp / totalVenda) * 100 : 0;
+      return {
+        deal_id: dealId,
+        user_id: userId,
+        modelo_id: it.modeloId || null,
+        machine_name: it.machineName,
+        machine_type: it.machineType,
+        fob_cost: totalFob,
+        preco_venda_fob: totalVenda,
+        gross_profit: gp,
+        gross_margin_percent: gm,
+        quantity: qty,
+      };
+    });
+
+    await supabase.from("deal_items" as any).insert(dealItems as any);
 
     toast({ title: "Negociação salva!" });
     resetForm();
@@ -358,22 +454,8 @@ const DealManager = ({ userId }: Props) => {
   };
 
   const resetForm = () => {
-    setEmpresaId(""); setModeloId(""); setMachineType(""); setFobCost(""); setPrecoVendaFob(""); setDollarRate("");
+    setEmpresaId(""); setItems([emptyItem()]); setDollarRate("");
     setSellerPct(""); setManagerPct(""); setObservation(""); setRepresentativeId(""); setSaleDate(undefined); setShowForm(false);
-  };
-
-  const handleConfirmSavePrice = async () => {
-    if (!pendingSavePriceData) return;
-    const { error } = await supabase
-      .from("machine_catalog" as any)
-      .update({ preco_venda_fob: pendingSavePriceData.basePrice } as any)
-      .eq("id", pendingSavePriceData.modeloId);
-    if (!error) {
-      setModelos(prev => prev.map(m => m.id === pendingSavePriceData.modeloId ? { ...m, preco_venda_fob: pendingSavePriceData.basePrice } : m));
-      toast({ title: "Preço de venda atualizado no catálogo!" });
-    }
-    setShowSavePricePrompt(false);
-    setPendingSavePriceData(null);
   };
 
   const handleClose = async (deal: Deal) => {
@@ -493,7 +575,6 @@ const DealManager = ({ userId }: Props) => {
     toast({ title: "Negociação atualizada!" });
     setEditing(false);
     fetchDeals();
-    // Update drawer deal locally
     setDrawerDeal(prev => prev ? { ...prev, ...update } as Deal : null);
   };
 
@@ -564,6 +645,7 @@ const DealManager = ({ userId }: Props) => {
     setEditing(false);
     setShowLogsInDrawer(false);
     fetchCommissionLogs(deal.id);
+    fetchDealItems(deal.id);
   };
 
   const MONTHS_PT = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
@@ -582,12 +664,13 @@ const DealManager = ({ userId }: Props) => {
         </div>
       </div>
 
-
       {/* New deal form */}
       {showForm && (
         <Card className="border-border bg-card p-6 shadow-sm">
           <h3 className="font-heading text-base font-semibold text-card-foreground mb-4">Nova Negociação</h3>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          
+          {/* Deal-level fields */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-6">
             {/* Empresa */}
             <div>
               <Label className="mb-1.5 text-sm text-muted-foreground">Empresa *</Label>
@@ -624,58 +707,6 @@ const DealManager = ({ userId }: Props) => {
                   <Plus className="h-4 w-4" />
                 </Button>
               </div>
-            </div>
-
-            {/* Modelo */}
-            <div>
-              <Label className="mb-1.5 text-sm text-muted-foreground">Máquina *</Label>
-              <Popover open={modeloOpen} onOpenChange={setModeloOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" role="combobox" aria-expanded={modeloOpen}
-                    className="w-full justify-between bg-secondary/50 border-border font-normal text-sm h-10">
-                    {selectedModelo ? `${selectedModelo.marca} ${selectedModelo.modelo}` : "Selecionar modelo..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[350px] p-0 bg-popover border-border z-50" align="start">
-                  <Command>
-                    <CommandInput placeholder="Buscar marca ou modelo..." />
-                    <CommandList>
-                      <CommandEmpty>Nenhum modelo encontrado.</CommandEmpty>
-                      <CommandGroup>
-                        {modelos.map(m => (
-                          <CommandItem key={m.id} value={`${m.marca} ${m.modelo} ${m.tipo}`} onSelect={() => handleModeloSelect(m.id)}>
-                            <Check className={cn("mr-2 h-4 w-4", modeloId === m.id ? "opacity-100" : "opacity-0")} />
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium">{m.marca} {m.modelo}</span>
-                              <span className="text-xs text-muted-foreground">{m.tipo} · FOB US$ {m.custo_fob.toLocaleString("pt-BR")}</span>
-                            </div>
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {/* Tipo da Máquina */}
-            <div>
-              <Label className="mb-1.5 text-sm text-muted-foreground">Tipo da Máquina</Label>
-              <Input value={machineType} readOnly placeholder="Preenchido automaticamente" className="bg-muted/50 border-border text-muted-foreground" />
-            </div>
-
-            <div>
-              <Label className="mb-1.5 text-sm text-muted-foreground">Custo FOB (USD) *</Label>
-              <Input type="number" step="0.01" min="0" value={fobCost} onChange={(e) => setFobCost(e.target.value)} placeholder="0,00" className="bg-secondary/50 border-border" />
-            </div>
-            <div>
-              <Label className="mb-1.5 text-sm text-muted-foreground">Cotação do Dólar</Label>
-              <Input type="number" step="0.01" min="0" value={dollarRate} onChange={(e) => setDollarRate(e.target.value)} placeholder="0,00" className="bg-secondary/50 border-border" />
-            </div>
-            <div>
-              <Label className="mb-1.5 text-sm text-muted-foreground">Preço de Venda FOB (USD) *</Label>
-              <Input type="number" step="0.01" min="0" value={precoVendaFob} onChange={(e) => setPrecoVendaFob(e.target.value)} placeholder="0,00" className="bg-secondary/50 border-border" />
             </div>
 
             {/* Representante */}
@@ -716,6 +747,11 @@ const DealManager = ({ userId }: Props) => {
             </div>
 
             <div>
+              <Label className="mb-1.5 text-sm text-muted-foreground">Cotação do Dólar</Label>
+              <Input type="number" step="0.01" min="0" value={dollarRate} onChange={(e) => setDollarRate(e.target.value)} placeholder="0,00" className="bg-secondary/50 border-border" />
+            </div>
+
+            <div>
               <Label className="mb-1.5 text-sm text-muted-foreground">Comissão Vendedor (%)</Label>
               <Input type="number" step="0.01" min="0" value={sellerPct} onChange={(e) => setSellerPct(e.target.value)} placeholder="0,00" className="bg-secondary/50 border-border" />
               {simulation && (
@@ -751,11 +787,99 @@ const DealManager = ({ userId }: Props) => {
                 </PopoverContent>
               </Popover>
             </div>
+          </div>
 
-            <div className="md:col-span-2 lg:col-span-2">
-              <Label className="mb-1.5 text-sm text-muted-foreground">Observação</Label>
-              <Textarea value={observation} onChange={(e) => setObservation(e.target.value)} placeholder="Observações sobre a negociação..." className="bg-secondary/50 border-border" />
+          {/* Products / Items */}
+          <Separator className="mb-4" />
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-card-foreground flex items-center gap-2">
+                <Package className="h-4 w-4" /> Produtos ({items.length})
+              </h4>
+              <Button variant="outline" size="sm" onClick={addItem} className="h-7 text-xs">
+                <Plus className="h-3 w-3 mr-1" /> Adicionar Produto
+              </Button>
             </div>
+
+            <div className="space-y-3">
+              {items.map((item, idx) => (
+                <Card key={idx} className="border-border bg-muted/20 p-4 relative">
+                  {items.length > 1 && (
+                    <Button
+                      variant="ghost" size="icon"
+                      className="absolute top-2 right-2 h-6 w-6"
+                      onClick={() => removeItem(idx)}
+                      title="Remover produto"
+                    >
+                      <X className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                  )}
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+                    {/* Modelo */}
+                    <div className="lg:col-span-2">
+                      <Label className="mb-1 text-xs text-muted-foreground">Máquina *</Label>
+                      <Popover open={item.modeloOpen} onOpenChange={(open) => updateItem(idx, { modeloOpen: open })}>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" role="combobox"
+                            className="w-full justify-between bg-secondary/50 border-border font-normal text-sm h-9">
+                            {item.machineName || "Selecionar modelo..."}
+                            <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[350px] p-0 bg-popover border-border z-50" align="start">
+                          <Command>
+                            <CommandInput placeholder="Buscar marca ou modelo..." />
+                            <CommandList>
+                              <CommandEmpty>Nenhum modelo encontrado.</CommandEmpty>
+                              <CommandGroup>
+                                {modelos.map(m => (
+                                  <CommandItem key={m.id} value={`${m.marca} ${m.modelo} ${m.tipo}`} onSelect={() => handleItemModeloSelect(idx, m.id)}>
+                                    <Check className={cn("mr-2 h-4 w-4", item.modeloId === m.id ? "opacity-100" : "opacity-0")} />
+                                    <div className="flex flex-col">
+                                      <span className="text-sm font-medium">{m.marca} {m.modelo}</span>
+                                      <span className="text-xs text-muted-foreground">{m.tipo} · FOB US$ {m.custo_fob.toLocaleString("pt-BR")}</span>
+                                    </div>
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
+                      {item.machineType && (
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{item.machineType}</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label className="mb-1 text-xs text-muted-foreground">Custo FOB (USD) *</Label>
+                      <Input type="number" step="0.01" min="0" value={item.fobCost}
+                        onChange={(e) => updateItem(idx, { fobCost: e.target.value })}
+                        placeholder="0,00" className="bg-secondary/50 border-border h-9 text-sm" />
+                    </div>
+
+                    <div>
+                      <Label className="mb-1 text-xs text-muted-foreground">Preço Venda FOB *</Label>
+                      <Input type="number" step="0.01" min="0" value={item.precoVendaFob}
+                        onChange={(e) => updateItem(idx, { precoVendaFob: e.target.value })}
+                        placeholder="0,00" className="bg-secondary/50 border-border h-9 text-sm" />
+                    </div>
+
+                    <div>
+                      <Label className="mb-1 text-xs text-muted-foreground">Qtd</Label>
+                      <Input type="number" step="1" min="1" value={item.quantity}
+                        onChange={(e) => updateItem(idx, { quantity: e.target.value })}
+                        placeholder="1" className="bg-secondary/50 border-border h-9 text-sm" />
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          <div className="md:col-span-2 lg:col-span-2 mb-4">
+            <Label className="mb-1.5 text-sm text-muted-foreground">Observação</Label>
+            <Textarea value={observation} onChange={(e) => setObservation(e.target.value)} placeholder="Observações sobre a negociação..." className="bg-secondary/50 border-border" />
           </div>
 
           {/* Live simulation preview */}
@@ -763,7 +887,7 @@ const DealManager = ({ userId }: Props) => {
             <Card className="mt-4 border-primary/20 bg-primary/5 p-4">
               <h4 className="font-heading text-sm font-semibold text-primary mb-3">Prévia da Simulação</h4>
               <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-4 text-sm">
-                <div><span className="text-muted-foreground">Preço Venda FOB:</span> <span className="font-semibold">{formatUsd(simulation.basePrice)}</span></div>
+                <div><span className="text-muted-foreground">Total FOB Venda:</span> <span className="font-semibold">{formatUsd(simulation.totalVenda)}</span></div>
                 <div><span className="text-muted-foreground">Lucro Bruto:</span> <span className="font-semibold text-accent">{formatUsd(simulation.grossProfit)}</span></div>
                 <div><span className="text-muted-foreground">Margem Bruta:</span> <span className="font-semibold">{formatPct(simulation.grossMargin)}</span></div>
                 <div><span className="text-muted-foreground">Com. Vendedor ({formatPct(parseFloat(sellerPct) || 0)}):</span> <span className="font-semibold text-warning">{formatUsd(simulation.sellerComm)}{simulation.hasDollar && ` (${simulation.sellerCommBrl.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })})`}</span></div>
@@ -773,7 +897,7 @@ const DealManager = ({ userId }: Props) => {
               </div>
               {simulation.hasDollar && (
                 <div className="mt-2 text-xs text-muted-foreground">
-                  Venda FOB BRL: {simulation.basePriceBrl.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                  Total FOB BRL: {simulation.basePriceBrl.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                 </div>
               )}
             </Card>
@@ -915,8 +1039,8 @@ const DealManager = ({ userId }: Props) => {
                         </TableCell>
                         <TableCell className="text-xs font-medium max-w-[150px] truncate">{deal.client_name}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">{getEmpresaCidade(deal)}</TableCell>
-                        <TableCell className="text-xs max-w-[140px] truncate">{deal.machine_name || "—"}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">{deal.machine_type || "—"}</TableCell>
+                        <TableCell className="text-xs max-w-[180px] truncate">{deal.machine_name || "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[120px] truncate">{deal.machine_type || "—"}</TableCell>
                         <TableCell className="text-xs">{getRepName(deal)}</TableCell>
                         <TableCell className="text-xs text-right font-medium">{formatUsd(deal.base_price)}</TableCell>
                         <TableCell className={cn("text-xs text-right font-bold", deal.net_margin_percent < 0 ? "text-destructive" : "text-accent")}>
@@ -964,7 +1088,6 @@ const DealManager = ({ userId }: Props) => {
             const deal = drawerDeal;
             const emp = empresas.find(e => e.id === deal.empresa_id);
             const rep = repOptions.find(r => r.id === deal.representative_id);
-            const modelo = modelos.find(m => m.id === deal.modelo_id);
             const dollar = editing ? (parseFloat(editForm.dollar_rate) || 0) : deal.dollar_rate;
             const hasDollar = dollar > 0;
 
@@ -1024,23 +1147,50 @@ const DealManager = ({ userId }: Props) => {
                       <DrawerRow label="Representante" value={rep?.nome || "—"} />
                     </DrawerSection>
 
-                    {/* B) Máquina */}
-                    <DrawerSection title="Máquina" icon={<Package className="h-4 w-4 text-primary" />}>
-                      <DrawerRow label="Tipo" value={deal.machine_type || "—"} />
-                      <DrawerRow label="Marca/Modelo" value={deal.machine_name || "—"} />
-                      {modelo && <DrawerRow label="Custo FOB Catálogo" value={formatUsd(modelo.custo_fob)} />}
+                    {/* B) Produtos / Itens */}
+                    <DrawerSection title={`Produtos (${drawerItems.length > 0 ? drawerItems.length : 1})`} icon={<Package className="h-4 w-4 text-primary" />}>
+                      {drawerItems.length > 0 ? (
+                        <div className="space-y-2">
+                          {drawerItems.map((item, idx) => (
+                            <div key={item.id} className="bg-muted/30 rounded-md p-3 space-y-1">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <p className="text-sm font-medium text-foreground">{item.machine_name || "—"}</p>
+                                  <p className="text-[11px] text-muted-foreground">{item.machine_type}</p>
+                                </div>
+                                {item.quantity > 1 && (
+                                  <Badge variant="outline" className="text-[10px]">{item.quantity}x</Badge>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-2 gap-x-4 text-xs mt-1">
+                                <span className="text-muted-foreground">Custo FOB:</span>
+                                <span className="text-right font-medium">{formatUsd(item.fob_cost)}</span>
+                                <span className="text-muted-foreground">Venda FOB:</span>
+                                <span className="text-right font-medium">{formatUsd(item.preco_venda_fob)}</span>
+                                <span className="text-muted-foreground">Margem Bruta:</span>
+                                <span className="text-right font-medium">{formatPct(item.gross_margin_percent)}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <>
+                          <DrawerRow label="Tipo" value={deal.machine_type || "—"} />
+                          <DrawerRow label="Marca/Modelo" value={deal.machine_name || "—"} />
+                        </>
+                      )}
                     </DrawerSection>
 
                     {/* C) Valores */}
-                    <DrawerSection title="Valores" icon={<DollarSign className="h-4 w-4 text-accent" />}>
+                    <DrawerSection title="Valores Totais" icon={<DollarSign className="h-4 w-4 text-accent" />}>
                       {editing ? (
                         <div className="space-y-3">
                           <div>
-                            <Label className="text-xs text-muted-foreground">Custo FOB (USD)</Label>
+                            <Label className="text-xs text-muted-foreground">Custo FOB Total (USD)</Label>
                             <Input type="number" step="0.01" value={editForm.fob_cost} onChange={(e) => setEditForm(f => ({ ...f, fob_cost: e.target.value }))} className="h-8 text-sm bg-secondary/50 border-border" />
                           </div>
                           <div>
-                            <Label className="text-xs text-muted-foreground">Preço Venda FOB (USD)</Label>
+                            <Label className="text-xs text-muted-foreground">Preço Venda FOB Total (USD)</Label>
                             <Input type="number" step="0.01" value={editForm.base_price} onChange={(e) => setEditForm(f => ({ ...f, base_price: e.target.value }))} className="h-8 text-sm bg-secondary/50 border-border" />
                           </div>
                           <div>
@@ -1054,9 +1204,9 @@ const DealManager = ({ userId }: Props) => {
                         </div>
                       ) : (
                         <>
-                          <DrawerRow label="Custo FOB (USD)" value={formatUsd(deal.fob_cost)} />
-                          <DrawerRow label="FOB Venda (USD)" value={formatUsd(deal.base_price)} />
-                          {hasDollar && <DrawerRow label="FOB Venda (BRL)" value={formatBrl(deal.base_price * dollar)} />}
+                          <DrawerRow label="Custo FOB Total (USD)" value={formatUsd(deal.fob_cost)} />
+                          <DrawerRow label="FOB Venda Total (USD)" value={formatUsd(deal.base_price)} />
+                          {hasDollar && <DrawerRow label="FOB Venda Total (BRL)" value={formatBrl(deal.base_price * dollar)} />}
                           <DrawerRow label="Cotação Dólar" value={hasDollar ? `R$ ${dollar.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—"} />
                           {deal.observation && <DrawerRow label="Observação" value={deal.observation} />}
                         </>
@@ -1158,7 +1308,19 @@ const DealManager = ({ userId }: Props) => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => { setShowSavePricePrompt(false); setPendingSavePriceData(null); }}>Não</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmSavePrice}>Sim, salvar no catálogo</AlertDialogAction>
+            <AlertDialogAction onClick={async () => {
+              if (!pendingSavePriceData) return;
+              const { error } = await supabase
+                .from("machine_catalog" as any)
+                .update({ preco_venda_fob: pendingSavePriceData.basePrice } as any)
+                .eq("id", pendingSavePriceData.modeloId);
+              if (!error) {
+                setModelos(prev => prev.map(m => m.id === pendingSavePriceData.modeloId ? { ...m, preco_venda_fob: pendingSavePriceData.basePrice } : m));
+                toast({ title: "Preço de venda atualizado no catálogo!" });
+              }
+              setShowSavePricePrompt(false);
+              setPendingSavePriceData(null);
+            }}>Sim, salvar no catálogo</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
