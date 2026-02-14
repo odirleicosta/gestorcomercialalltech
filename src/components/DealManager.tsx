@@ -410,15 +410,32 @@ const DealManager = ({ userId }: Props) => {
   }, [items, sellerPct, managerPct, dollarRate]);
 
   const handleSave = async () => {
-    if (!simulation || !empresaId) {
-      toast({ title: "Selecione uma empresa e preencha os dados", variant: "destructive" });
+    if (!empresaId) {
+      toast({ title: "Empresa obrigatória", description: "Selecione uma empresa para registrar a venda.", variant: "destructive" });
+      return;
+    }
+
+    const itemsWithoutModel = items.filter(it => !it.machineName);
+    if (itemsWithoutModel.length > 0) {
+      toast({ title: "Produto sem modelo", description: "Selecione um modelo do catálogo para cada produto.", variant: "destructive" });
+      return;
+    }
+
+    const itemsWithoutPrice = items.filter(it => (parseFloat(it.precoVendaFob) || 0) <= 0);
+    if (itemsWithoutPrice.length > 0) {
+      toast({ title: "Preço de venda obrigatório", description: "Informe o Preço Venda FOB para todos os produtos. Valor deve ser maior que zero.", variant: "destructive" });
+      return;
+    }
+
+    if (!simulation) {
+      toast({ title: "Simulação inválida", description: "Verifique os dados dos produtos. Pelo menos um produto precisa ter Preço Venda FOB preenchido.", variant: "destructive" });
       return;
     }
 
     // Build machine name from items
     const validItems = items.filter(it => (parseFloat(it.precoVendaFob) || 0) > 0);
     if (validItems.length === 0) {
-      toast({ title: "Adicione pelo menos um produto válido", variant: "destructive" });
+      toast({ title: "Nenhum produto válido", description: "Adicione pelo menos um produto com Preço Venda FOB maior que zero.", variant: "destructive" });
       return;
     }
 
