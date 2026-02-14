@@ -504,6 +504,7 @@ export type Database = {
           is_active: boolean
           margin_pct: number
           mes: number
+          name: string
           planned_commission: number
           planned_fob: number
           planned_gross_profit: number
@@ -522,6 +523,7 @@ export type Database = {
           is_active?: boolean
           margin_pct?: number
           mes: number
+          name?: string
           planned_commission?: number
           planned_fob?: number
           planned_gross_profit?: number
@@ -540,6 +542,7 @@ export type Database = {
           is_active?: boolean
           margin_pct?: number
           mes?: number
+          name?: string
           planned_commission?: number
           planned_fob?: number
           planned_gross_profit?: number
