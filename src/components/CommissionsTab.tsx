@@ -381,33 +381,38 @@ const CommissionsTab = ({ userId }: Props) => {
                     <TableHead>Máquina</TableHead>
                     <TableHead className="text-right">FOB (USD)</TableHead>
                     <TableHead className="text-right">% Com.</TableHead>
-                    <TableHead className="text-right">Comissão</TableHead>
+                    <TableHead className="text-right">Com. (USD)</TableHead>
                     <TableHead className="text-right">Dólar</TableHead>
+                    <TableHead className="text-right">Pago (R$)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {modalData.deals.map(d => {
                     const totalComm = d.seller_commission_value + d.manager_commission_value;
                     const totalPct = d.seller_commission_pct + d.manager_commission_pct;
+                    const commBrl = totalComm * (d.dollar_rate || 0);
                     return (
                       <TableRow key={d.id}>
                         <TableCell className="text-sm">{d.client_name}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{d.machine_name || "—"}</TableCell>
                         <TableCell className="text-right text-sm">{formatUsd(d.fob_cost)}</TableCell>
                         <TableCell className="text-right text-sm">{formatPct(totalPct)}</TableCell>
-                        <TableCell className="text-right text-sm font-semibold">{formatUsd(totalComm)}</TableCell>
+                        <TableCell className="text-right text-sm">{formatUsd(totalComm)}</TableCell>
                         <TableCell className="text-right text-sm text-muted-foreground">
                           R$ {d.dollar_rate.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </TableCell>
+                        <TableCell className="text-right text-sm font-semibold text-[#22C55E]">
+                          R$ {commBrl.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </TableCell>
                       </TableRow>
                     );
                   })}
                   <TableRow className="border-t-2 border-primary/30 bg-primary/5 font-bold">
-                    <TableCell colSpan={4} className="font-bold text-sm">TOTAL</TableCell>
-                    <TableCell className="text-right font-bold text-sm">
-                      {formatUsd(modalData.deals.reduce((s, d) => s + d.seller_commission_value + d.manager_commission_value, 0))}
-                    </TableCell>
+                    <TableCell colSpan={5} className="font-bold text-sm">TOTAL</TableCell>
                     <TableCell />
+                    <TableCell className="text-right font-bold text-sm text-[#22C55E]">
+                      R$ {modalData.deals.reduce((s, d) => s + (d.seller_commission_value + d.manager_commission_value) * (d.dollar_rate || 0), 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
