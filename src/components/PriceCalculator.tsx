@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   DollarSign, Percent, TrendingUp, Package, Receipt,
   Save, AlertTriangle, History, Calculator, RotateCcw, User, StickyNote,
-  Building2, Plus, Wrench, Copy, Users, BarChart3, LogOut, UserPlus,
+  Building2, Plus, Wrench, Copy, Users, BarChart3, LogOut, UserPlus, Zap,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +19,7 @@ import ClientManager, { fetchClients, type Client } from "@/components/ClientMan
 import MachineManager, { loadMachines, saveMachines, type Machine } from "@/components/MachineManager";
 import MachineCatalog, { fetchCatalog, type CatalogMachine } from "@/components/MachineCatalog";
 import DealManager from "@/components/DealManager";
+import DeepAnalysis from "@/components/DeepAnalysis";
 import ExecutiveDashboard from "@/components/ExecutiveDashboard";
 import RepresentativeManager from "@/components/RepresentativeManager";
 import CommissionsTab from "@/components/CommissionsTab";
@@ -294,6 +295,7 @@ const PriceCalculator = () => {
             { value: "reps", icon: UserPlus, label: "Representantes" },
             { value: "registry", icon: Building2, label: "Cadastros" },
             { value: "catalog", icon: Package, label: "Catálogo" },
+            { value: "deep-analysis", icon: Zap, label: "Análise Profunda" },
           ].map(({ value, icon: Icon, label }) => (
             <button
               key={value}
@@ -331,6 +333,7 @@ const PriceCalculator = () => {
           { value: "reps", icon: UserPlus, label: "Representantes" },
           { value: "registry", icon: Building2, label: "Cadastros" },
           { value: "catalog", icon: Package, label: "Catálogo" },
+          { value: "deep-analysis", icon: Zap, label: "Análise" },
         ].map(({ value, icon: Icon, label }) => (
           <button
             key={value}
@@ -351,7 +354,7 @@ const PriceCalculator = () => {
       <main className="flex-1 overflow-y-auto px-4 py-8 md:py-10 md:px-8 mt-12 md:mt-0">
         <div className="mx-auto max-w-6xl">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="hidden"><TabsList><TabsTrigger value="simulation" /><TabsTrigger value="deals" /><TabsTrigger value="reps" /><TabsTrigger value="dashboard" /><TabsTrigger value="registry" /><TabsTrigger value="catalog" /></TabsList></div>
+          <div className="hidden"><TabsList><TabsTrigger value="simulation" /><TabsTrigger value="deals" /><TabsTrigger value="reps" /><TabsTrigger value="dashboard" /><TabsTrigger value="registry" /><TabsTrigger value="catalog" /><TabsTrigger value="deep-analysis" /></TabsList></div>
 
           <TabsContent value="simulation">
             <div className="grid gap-6 lg:grid-cols-5">
@@ -749,6 +752,10 @@ const PriceCalculator = () => {
 
           <TabsContent value="catalog">
             <MachineCatalog catalog={catalog} setCatalog={setCatalog} userId={user.id} />
+          </TabsContent>
+
+          <TabsContent value="deep-analysis">
+            <DeepAnalysis userId={user.id} onBack={() => setActiveTab("dashboard")} />
           </TabsContent>
         </Tabs>
         </div>
