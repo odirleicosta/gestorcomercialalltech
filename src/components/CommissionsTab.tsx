@@ -48,7 +48,7 @@ const CommissionsTab = ({ userId }: Props) => {
   const [deals, setDeals] = useState<DealCommission[]>([]);
   const [reps, setReps] = useState<RepOption[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modalData, setModalData] = useState<{ repName: string; month: string; deals: DealCommission[] } | null>(null);
+  const [modalData, setModalData] = useState<{ repName: string; month: string; deals: DealCommission[]; type: 'seller' | 'manager' } | null>(null);
 
   const now = new Date();
   const [filterYear, setFilterYear] = useState(now.getFullYear());
@@ -96,28 +96,41 @@ const CommissionsTab = ({ userId }: Props) => {
     return { sellerTotal, managerTotal, totalComm, totalVendas, count, commPerMachine, pctFaturamento };
   }, [closedDeals]);
 
-  // Rep x Month pivot
+  // Rep x Month pivot (seller commissions only per rep)
   const repMonthPivot = useMemo(() => {
-    const pivot = new Map<string, { repId: string; nome: string; months: number[]; monthDeals: DealCommission[][]; total: number }>();
+    const pivot = new Map<string, { repId: string; nome: string; months: number[]; monthDeals: DealCommission[][]; total: number; type: 'seller' | 'manager' }>();
 
     reps.forEach(r => {
-      pivot.set(r.id, { repId: r.id, nome: r.nome, months: Array(12).fill(0), monthDeals: Array.from({ length: 12 }, () => []), total: 0 });
+      pivot.set(r.id, { repId: r.id, nome: r.nome, months: Array(12).fill(0), monthDeals: Array.from({ length: 12 }, () => []), total: 0, type: 'seller' });
     });
+
+    // Manager row
+    pivot.set("__gestor__", { repId: "__gestor__", nome: "🏢 Gestor Comercial", months: Array(12).fill(0), monthDeals: Array.from({ length: 12 }, () => []), total: 0, type: 'manager' });
 
     closedDeals.forEach(d => {
+      const m = new Date(d.closed_at!).getMonth();
+
+      // Seller commission per rep
       const key = d.representative_id || "__none__";
       if (!pivot.has(key)) {
-        pivot.set(key, { repId: key, nome: getRepName(d.representative_id), months: Array(12).fill(0), monthDeals: Array.from({ length: 12 }, () => []), total: 0 });
+        pivot.set(key, { repId: key, nome: getRepName(d.representative_id), months: Array(12).fill(0), monthDeals: Array.from({ length: 12 }, () => []), total: 0, type: 'seller' });
       }
-      const entry = pivot.get(key)!;
-      const m = new Date(d.closed_at!).getMonth();
-      const comm = d.seller_commission_value + d.manager_commission_value;
-      entry.months[m] += comm;
-      entry.monthDeals[m].push(d);
-      entry.total += comm;
+      const sellerEntry = pivot.get(key)!;
+      sellerEntry.months[m] += d.seller_commission_value;
+      sellerEntry.monthDeals[m].push(d);
+      sellerEntry.total += d.seller_commission_value;
+
+      // Manager commission aggregated
+      const gestorEntry = pivot.get("__gestor__")!;
+      gestorEntry.months[m] += d.manager_commission_value;
+      gestorEntry.monthDeals[m].push(d);
+      gestorEntry.total += d.manager_commission_value;
     });
 
-    return Array.from(pivot.values()).filter(r => r.total > 0).sort((a, b) => b.total - a.total);
+    const rows = Array.from(pivot.values()).filter(r => r.total > 0);
+    const gestorRow = rows.find(r => r.repId === "__gestor__");
+    const sellerRows = rows.filter(r => r.repId !== "__gestor__").sort((a, b) => b.total - a.total);
+    return gestorRow ? [...sellerRows, gestorRow] : sellerRows;
   }, [closedDeals, reps]);
 
   // Monthly column totals
@@ -257,14 +270,14 @@ const CommissionsTab = ({ userId }: Props) => {
                 </TableHeader>
                 <TableBody>
                   {repMonthPivot.map(r => (
-                    <TableRow key={r.repId}>
-                      <TableCell className="font-medium text-sm sticky left-0 bg-card z-10">{r.nome}</TableCell>
+                    <TableRow key={r.repId} className={r.repId === "__gestor__" ? "border-t-2 border-[#3B82F6]/30 bg-[#3B82F6]/5" : ""}>
+                      <TableCell className={`font-medium text-sm sticky left-0 z-10 ${r.repId === "__gestor__" ? "bg-[#3B82F6]/5 text-[#3B82F6] font-bold" : "bg-card"}`}>{r.nome}</TableCell>
                       {r.months.map((v, i) => (
                         <TableCell
                           key={i}
                           className={`text-right text-xs ${v > 0 ? "cursor-pointer hover:bg-primary/10 text-foreground font-medium" : "text-muted-foreground/40"}`}
                           onClick={() => {
-                            if (v > 0) setModalData({ repName: r.nome, month: MONTHS[i], deals: r.monthDeals[i] });
+                            if (v > 0) setModalData({ repName: r.nome, month: MONTHS[i], deals: r.monthDeals[i], type: r.type });
                           }}
                         >
                           {v > 0 ? formatUsdShort(v) : "—"}
@@ -380,24 +393,27 @@ const CommissionsTab = ({ userId }: Props) => {
                     <TableHead>Cliente</TableHead>
                     <TableHead>Máquina</TableHead>
                     <TableHead className="text-right">FOB (USD)</TableHead>
-                    <TableHead className="text-right">% Com.</TableHead>
-                    <TableHead className="text-right">Com. (USD)</TableHead>
+                    <TableHead className="text-right">% Vend.</TableHead>
+                    <TableHead className="text-right">% Gestor</TableHead>
+                    <TableHead className="text-right">Com. Vend. (USD)</TableHead>
+                    <TableHead className="text-right">Com. Gestor (USD)</TableHead>
                     <TableHead className="text-right">Dólar</TableHead>
                     <TableHead className="text-right">Pago (R$)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {modalData.deals.map(d => {
-                    const totalComm = d.seller_commission_value + d.manager_commission_value;
-                    const totalPct = d.seller_commission_pct + d.manager_commission_pct;
-                    const commBrl = totalComm * (d.dollar_rate || 0);
+                    const relevantComm = modalData.type === 'manager' ? d.manager_commission_value : d.seller_commission_value;
+                    const commBrl = relevantComm * (d.dollar_rate || 0);
                     return (
                       <TableRow key={d.id}>
                         <TableCell className="text-sm">{d.client_name}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{d.machine_name || "—"}</TableCell>
                         <TableCell className="text-right text-sm">{formatUsd(d.fob_cost)}</TableCell>
-                        <TableCell className="text-right text-sm">{formatPct(totalPct)}</TableCell>
-                        <TableCell className="text-right text-sm">{formatUsd(totalComm)}</TableCell>
+                        <TableCell className="text-right text-sm">{formatPct(d.seller_commission_pct)}</TableCell>
+                        <TableCell className="text-right text-sm">{formatPct(d.manager_commission_pct)}</TableCell>
+                        <TableCell className={`text-right text-sm ${modalData.type === 'seller' ? 'font-semibold' : 'text-muted-foreground'}`}>{formatUsd(d.seller_commission_value)}</TableCell>
+                        <TableCell className={`text-right text-sm ${modalData.type === 'manager' ? 'font-semibold text-[#3B82F6]' : 'text-muted-foreground'}`}>{formatUsd(d.manager_commission_value)}</TableCell>
                         <TableCell className="text-right text-sm text-muted-foreground">
                           R$ {d.dollar_rate.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </TableCell>
@@ -408,10 +424,13 @@ const CommissionsTab = ({ userId }: Props) => {
                     );
                   })}
                   <TableRow className="border-t-2 border-primary/30 bg-primary/5 font-bold">
-                    <TableCell colSpan={5} className="font-bold text-sm">TOTAL</TableCell>
+                    <TableCell colSpan={7} className="font-bold text-sm">TOTAL</TableCell>
                     <TableCell />
                     <TableCell className="text-right font-bold text-sm text-[#22C55E]">
-                      R$ {modalData.deals.reduce((s, d) => s + (d.seller_commission_value + d.manager_commission_value) * (d.dollar_rate || 0), 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      R$ {modalData.deals.reduce((s, d) => {
+                        const comm = modalData.type === 'manager' ? d.manager_commission_value : d.seller_commission_value;
+                        return s + comm * (d.dollar_rate || 0);
+                      }, 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </TableCell>
                   </TableRow>
                 </TableBody>
