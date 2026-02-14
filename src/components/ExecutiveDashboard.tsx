@@ -309,13 +309,23 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         {reps.length > 0 && (
           <div className="flex items-center gap-3">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide w-10">Rep.</span>
-            <Select value={filterRep} onValueChange={setFilterRep}>
-              <SelectTrigger className="w-[180px] bg-white border-border text-sm h-8 rounded-full"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {reps.map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setFilterRep("all")}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${filterRep === "all" ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"}`}
+              >
+                Todos
+              </button>
+              {reps.map(r => (
+                <button
+                  key={r.id}
+                  onClick={() => setFilterRep(r.id)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${filterRep === r.id ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"}`}
+                >
+                  {r.nome}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
