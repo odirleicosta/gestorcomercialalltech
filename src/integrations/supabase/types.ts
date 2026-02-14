@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      auditoria_resultados: {
+        Row: {
+          criado_em: string
+          descricao: string | null
+          diferenca_valor: number
+          id: string
+          pedido: string
+          relatorio_id: string
+          status: Database["public"]["Enums"]["auditoria_status_enum"]
+          user_id: string
+        }
+        Insert: {
+          criado_em?: string
+          descricao?: string | null
+          diferenca_valor?: number
+          id?: string
+          pedido: string
+          relatorio_id: string
+          status?: Database["public"]["Enums"]["auditoria_status_enum"]
+          user_id: string
+        }
+        Update: {
+          criado_em?: string
+          descricao?: string | null
+          diferenca_valor?: number
+          id?: string
+          pedido?: string
+          relatorio_id?: string
+          status?: Database["public"]["Enums"]["auditoria_status_enum"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auditoria_resultados_relatorio_id_fkey"
+            columns: ["relatorio_id"]
+            isOneToOne: false
+            referencedRelation: "relatorios_mensais"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calculations: {
         Row: {
           client_name: string | null
@@ -81,6 +122,65 @@ export type Database = {
             columns: ["representative_id"]
             isOneToOne: false
             referencedRelation: "representatives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      comissoes_linhas: {
+        Row: {
+          cliente: string
+          created_at: string
+          empresa_origem: Database["public"]["Enums"]["empresa_origem_enum"]
+          hash_linha: string
+          id: string
+          parcela_atual: number
+          parcela_total: number
+          pedido: string
+          percentual_comissao: number
+          produto: string
+          relatorio_id: string
+          user_id: string
+          valor_comissao: number
+          valor_fob: number
+        }
+        Insert: {
+          cliente: string
+          created_at?: string
+          empresa_origem?: Database["public"]["Enums"]["empresa_origem_enum"]
+          hash_linha: string
+          id?: string
+          parcela_atual?: number
+          parcela_total?: number
+          pedido: string
+          percentual_comissao?: number
+          produto: string
+          relatorio_id: string
+          user_id: string
+          valor_comissao?: number
+          valor_fob?: number
+        }
+        Update: {
+          cliente?: string
+          created_at?: string
+          empresa_origem?: Database["public"]["Enums"]["empresa_origem_enum"]
+          hash_linha?: string
+          id?: string
+          parcela_atual?: number
+          parcela_total?: number
+          pedido?: string
+          percentual_comissao?: number
+          produto?: string
+          relatorio_id?: string
+          user_id?: string
+          valor_comissao?: number
+          valor_fob?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comissoes_linhas_relatorio_id_fkey"
+            columns: ["relatorio_id"]
+            isOneToOne: false
+            referencedRelation: "relatorios_mensais"
             referencedColumns: ["id"]
           },
         ]
@@ -450,6 +550,39 @@ export type Database = {
         }
         Relationships: []
       }
+      relatorios_mensais: {
+        Row: {
+          arquivo_pdf_url: string | null
+          data_upload: string
+          id: string
+          mes_referencia: string
+          total_allservice: number
+          total_alltech: number
+          total_geral: number
+          user_id: string
+        }
+        Insert: {
+          arquivo_pdf_url?: string | null
+          data_upload?: string
+          id?: string
+          mes_referencia: string
+          total_allservice?: number
+          total_alltech?: number
+          total_geral?: number
+          user_id: string
+        }
+        Update: {
+          arquivo_pdf_url?: string | null
+          data_upload?: string
+          id?: string
+          mes_referencia?: string
+          total_allservice?: number
+          total_alltech?: number
+          total_geral?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       representatives: {
         Row: {
           comissao_gestor_pct: number
@@ -615,7 +748,8 @@ export type Database = {
       is_calculation_owner: { Args: { calc_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      auditoria_status_enum: "OK" | "ALERTA" | "ERRO"
+      empresa_origem_enum: "ALLTECH" | "ALLSERVICE"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -742,6 +876,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      auditoria_status_enum: ["OK", "ALERTA", "ERRO"],
+      empresa_origem_enum: ["ALLTECH", "ALLSERVICE"],
+    },
   },
 } as const
