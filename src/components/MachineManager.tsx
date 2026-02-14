@@ -41,7 +41,7 @@ const MachineManager = ({ machines, setMachines }: Props) => {
     const trimmed = newName.trim();
     if (!trimmed) return;
     if (machines.some((m) => m.name.toLowerCase() === trimmed.toLowerCase())) {
-      toast({ title: "Máquina já cadastrada", variant: "destructive" });
+      toast({ title: "Máquina duplicada", description: `A máquina "${trimmed}" já está cadastrada no sistema.`, variant: "destructive" });
       return;
     }
     const entry: Machine = { id: crypto.randomUUID(), name: trimmed, created_at: new Date().toISOString() };

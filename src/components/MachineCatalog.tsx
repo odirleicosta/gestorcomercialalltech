@@ -151,23 +151,23 @@ const MachineCatalog = ({ catalog, setCatalog, userId }: Props) => {
     const fob = parseFloat(newFob) || 0;
     const precoVenda = parseFloat(newPrecoVenda) || 0;
     if (!tipo || !marca || !modelo) {
-      toast({ title: "Preencha Tipo, Marca e Modelo", variant: "destructive" });
+      toast({ title: "Campos obrigatórios", description: "Preencha Tipo, Marca e Modelo para cadastrar o produto.", variant: "destructive" });
       return;
     }
     if (fob < 0 || precoVenda < 0) {
-      toast({ title: "Preços não podem ser negativos", variant: "destructive" });
+      toast({ title: "Valores inválidos", description: "Custo FOB e Preço de Venda não podem ser negativos.", variant: "destructive" });
       return;
     }
     if (precoVenda <= 0) {
-      toast({ title: "Preço de Venda FOB é obrigatório", variant: "destructive" });
+      toast({ title: "Preço de Venda obrigatório", description: "Informe o Preço de Venda FOB. O valor deve ser maior que zero.", variant: "destructive" });
       return;
     }
     if (precoVenda < fob) {
-      toast({ title: "Preço de venda não pode ser menor que o custo", variant: "destructive" });
+      toast({ title: "Preço inconsistente", description: "O Preço de Venda FOB não pode ser menor que o Custo FOB.", variant: "destructive" });
       return;
     }
     if (catalog.some((m) => m.modelo.toLowerCase() === modelo.toLowerCase() && m.marca.toLowerCase() === marca.toLowerCase())) {
-      toast({ title: "Modelo já cadastrado para esta marca", variant: "destructive" });
+      toast({ title: "Produto duplicado", description: `O modelo "${modelo}" da marca "${marca}" já está cadastrado no catálogo.`, variant: "destructive" });
       return;
     }
 
@@ -188,7 +188,7 @@ const MachineCatalog = ({ catalog, setCatalog, userId }: Props) => {
     setSaving(false);
 
     if (error) {
-      toast({ title: "Erro ao cadastrar", description: error.message, variant: "destructive" });
+      toast({ title: "Erro ao cadastrar produto", description: error.message, variant: "destructive" });
       return;
     }
 
@@ -211,7 +211,7 @@ const MachineCatalog = ({ catalog, setCatalog, userId }: Props) => {
   const handleDelete = async (id: string) => {
     const { error } = await supabase.from("machine_catalog").delete().eq("id", id);
     if (error) {
-      toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+      toast({ title: "Erro ao excluir produto", description: `Não foi possível remover o produto. ${error.message}`, variant: "destructive" });
       return;
     }
     setCatalog(prev => prev.filter((m) => m.id !== id));
@@ -270,7 +270,7 @@ const MachineCatalog = ({ catalog, setCatalog, userId }: Props) => {
       .eq("id", id);
 
     if (error) {
-      toast({ title: "Erro ao atualizar", description: error.message, variant: "destructive" });
+      toast({ title: "Erro ao atualizar produto", description: `Falha ao salvar as alterações. ${error.message}`, variant: "destructive" });
       return;
     }
 
@@ -353,7 +353,7 @@ const MachineCatalog = ({ catalog, setCatalog, userId }: Props) => {
 
         toast({ title: `Importação concluída: ${newCount} novos, ${updatedCount} atualizados, ${skipped} ignorados` });
       } catch {
-        toast({ title: "Erro ao ler o arquivo Excel", variant: "destructive" });
+        toast({ title: "Erro ao importar", description: "Não foi possível ler o arquivo Excel. Verifique o formato e tente novamente.", variant: "destructive" });
       }
     };
     reader.readAsArrayBuffer(file);

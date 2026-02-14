@@ -38,9 +38,12 @@ const ClientManager = ({ clients, setClients }: Props) => {
 
   const handleAdd = async () => {
     const trimmed = newName.trim();
-    if (!trimmed) return;
+    if (!trimmed) {
+      toast({ title: "Nome obrigatório", description: "Informe o nome da empresa para cadastrar.", variant: "destructive" });
+      return;
+    }
     if (clients.some((c) => c.name.toLowerCase() === trimmed.toLowerCase())) {
-      toast({ title: "Empresa já cadastrada", variant: "destructive" });
+      toast({ title: "Empresa duplicada", description: `A empresa "${trimmed}" já está cadastrada no sistema.`, variant: "destructive" });
       return;
     }
     setLoading(true);
