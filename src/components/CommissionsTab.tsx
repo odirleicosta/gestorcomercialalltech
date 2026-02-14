@@ -84,16 +84,16 @@ const CommissionsTab = ({ userId }: Props) => {
     });
   }, [deals, filterYear]);
 
-  // Year totals
+  // Year totals (in BRL)
   const yearTotals = useMemo(() => {
-    const sellerTotal = closedDeals.reduce((s, d) => s + d.seller_commission_value, 0);
-    const managerTotal = closedDeals.reduce((s, d) => s + d.manager_commission_value, 0);
+    const sellerTotal = closedDeals.reduce((s, d) => s + d.seller_commission_value * (d.dollar_rate || 0), 0);
+    const managerTotal = closedDeals.reduce((s, d) => s + d.manager_commission_value * (d.dollar_rate || 0), 0);
     const totalComm = sellerTotal + managerTotal;
-    const totalVendas = closedDeals.reduce((s, d) => s + d.base_price, 0);
+    const totalVendasBrl = closedDeals.reduce((s, d) => s + d.base_price * (d.dollar_rate || 0), 0);
     const count = closedDeals.length;
     const commPerMachine = count > 0 ? totalComm / count : 0;
-    const pctFaturamento = totalVendas > 0 ? (totalComm / totalVendas) * 100 : 0;
-    return { sellerTotal, managerTotal, totalComm, totalVendas, count, commPerMachine, pctFaturamento };
+    const pctFaturamento = totalVendasBrl > 0 ? (totalComm / totalVendasBrl) * 100 : 0;
+    return { sellerTotal, managerTotal, totalComm, totalVendasBrl, count, commPerMachine, pctFaturamento };
   }, [closedDeals]);
 
   // Rep x Month pivot (seller commissions only per rep)
@@ -109,22 +109,23 @@ const CommissionsTab = ({ userId }: Props) => {
 
     closedDeals.forEach(d => {
       const m = new Date(d.closed_at!).getMonth();
+      const rate = d.dollar_rate || 0;
 
-      // Seller commission per rep
+      // Seller commission per rep (BRL)
       const key = d.representative_id || "__none__";
       if (!pivot.has(key)) {
         pivot.set(key, { repId: key, nome: getRepName(d.representative_id), months: Array(12).fill(0), monthDeals: Array.from({ length: 12 }, () => []), total: 0, type: 'seller' });
       }
       const sellerEntry = pivot.get(key)!;
-      sellerEntry.months[m] += d.seller_commission_value;
+      sellerEntry.months[m] += d.seller_commission_value * rate;
       sellerEntry.monthDeals[m].push(d);
-      sellerEntry.total += d.seller_commission_value;
+      sellerEntry.total += d.seller_commission_value * rate;
 
-      // Manager commission aggregated
+      // Manager commission aggregated (BRL)
       const gestorEntry = pivot.get("__gestor__")!;
-      gestorEntry.months[m] += d.manager_commission_value;
+      gestorEntry.months[m] += d.manager_commission_value * rate;
       gestorEntry.monthDeals[m].push(d);
-      gestorEntry.total += d.manager_commission_value;
+      gestorEntry.total += d.manager_commission_value * rate;
     });
 
     const rows = Array.from(pivot.values()).filter(r => r.total > 0);
@@ -144,21 +145,23 @@ const CommissionsTab = ({ userId }: Props) => {
   const insights = useMemo(() => {
     if (closedDeals.length === 0) return null;
 
-    // Maior comissão individual
+    // Maior comissão individual (BRL)
     const maxDeal = closedDeals.reduce((best, d) => {
-      const comm = d.seller_commission_value + d.manager_commission_value;
-      return comm > (best.seller_commission_value + best.manager_commission_value) ? d : best;
+      const comm = (d.seller_commission_value + d.manager_commission_value) * (d.dollar_rate || 0);
+      const bestComm = (best.seller_commission_value + best.manager_commission_value) * (best.dollar_rate || 0);
+      return comm > bestComm ? d : best;
     }, closedDeals[0]);
 
-    // Ranking por comissão (rep)
+    // Ranking por comissão (rep) em BRL
     const repCommMap = new Map<string, { nome: string; total: number; count: number; grossProfit: number; vendas: number }>();
     closedDeals.forEach(d => {
       const key = d.representative_id || "__none__";
+      const rate = d.dollar_rate || 0;
       const existing = repCommMap.get(key) || { nome: getRepName(d.representative_id), total: 0, count: 0, grossProfit: 0, vendas: 0 };
-      existing.total += d.seller_commission_value + d.manager_commission_value;
+      existing.total += (d.seller_commission_value + d.manager_commission_value) * rate;
       existing.count += 1;
-      existing.grossProfit += d.gross_profit;
-      existing.vendas += d.base_price;
+      existing.grossProfit += d.gross_profit * rate;
+      existing.vendas += d.base_price * rate;
       repCommMap.set(key, existing);
     });
     const ranking = Array.from(repCommMap.values()).sort((a, b) => b.total - a.total);
@@ -166,13 +169,15 @@ const CommissionsTab = ({ userId }: Props) => {
     return { maxDeal, ranking };
   }, [closedDeals, reps]);
 
+  const formatBrl = (v: number) =>
+    `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const formatUsd = (v: number) =>
     `US$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const formatPct = (v: number) =>
     v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + "%";
-  const formatUsdShort = (v: number) => {
-    if (v >= 1000) return `US$ ${(v / 1000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}k`;
-    return formatUsd(v);
+  const formatBrlShort = (v: number) => {
+    if (v >= 1000) return `R$ ${(v / 1000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}k`;
+    return formatBrl(v);
   };
 
   if (loading) return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
@@ -208,7 +213,7 @@ const CommissionsTab = ({ userId }: Props) => {
             </div>
             <span className="text-xs text-muted-foreground">Total Comissões</span>
           </div>
-          <p className="text-lg font-bold text-foreground">{formatUsd(yearTotals.totalComm)}</p>
+          <p className="text-lg font-bold text-foreground">{formatBrl(yearTotals.totalComm)}</p>
         </Card>
         <Card className="p-4 border-border bg-card shadow-sm">
           <div className="flex items-center gap-2 mb-1">
@@ -217,7 +222,7 @@ const CommissionsTab = ({ userId }: Props) => {
             </div>
             <span className="text-xs text-muted-foreground">Com. Vendedores</span>
           </div>
-          <p className="text-lg font-bold text-foreground">{formatUsd(yearTotals.sellerTotal)}</p>
+          <p className="text-lg font-bold text-foreground">{formatBrl(yearTotals.sellerTotal)}</p>
         </Card>
         <Card className="p-4 border-border bg-card shadow-sm">
           <div className="flex items-center gap-2 mb-1">
@@ -226,7 +231,7 @@ const CommissionsTab = ({ userId }: Props) => {
             </div>
             <span className="text-xs text-muted-foreground">Com. Gestor</span>
           </div>
-          <p className="text-lg font-bold text-foreground">{formatUsd(yearTotals.managerTotal)}</p>
+          <p className="text-lg font-bold text-foreground">{formatBrl(yearTotals.managerTotal)}</p>
         </Card>
         <Card className="p-4 border-border bg-card shadow-sm">
           <div className="flex items-center gap-2 mb-1">
@@ -244,7 +249,7 @@ const CommissionsTab = ({ userId }: Props) => {
             </div>
             <span className="text-xs text-muted-foreground">Com. Média/Máq</span>
           </div>
-          <p className="text-lg font-bold text-foreground">{yearTotals.count > 0 ? formatUsd(yearTotals.commPerMachine) : "—"}</p>
+          <p className="text-lg font-bold text-foreground">{yearTotals.count > 0 ? formatBrl(yearTotals.commPerMachine) : "—"}</p>
         </Card>
       </div>
 
@@ -280,10 +285,10 @@ const CommissionsTab = ({ userId }: Props) => {
                             if (v > 0) setModalData({ repName: r.nome, month: MONTHS[i], deals: r.monthDeals[i], type: r.type });
                           }}
                         >
-                          {v > 0 ? formatUsdShort(v) : "—"}
+                          {v > 0 ? formatBrlShort(v) : "—"}
                         </TableCell>
                       ))}
-                      <TableCell className="text-right text-sm font-bold">{formatUsd(r.total)}</TableCell>
+                      <TableCell className="text-right text-sm font-bold">{formatBrl(r.total)}</TableCell>
                     </TableRow>
                   ))}
                   {/* Total row */}
@@ -291,10 +296,10 @@ const CommissionsTab = ({ userId }: Props) => {
                     <TableCell className="font-bold text-sm sticky left-0 bg-primary/5 z-10">TOTAL</TableCell>
                     {monthColumnTotals.map((v, i) => (
                       <TableCell key={i} className="text-right text-xs font-bold">
-                        {v > 0 ? formatUsdShort(v) : "—"}
+                        {v > 0 ? formatBrlShort(v) : "—"}
                       </TableCell>
                     ))}
-                    <TableCell className="text-right text-sm font-bold">{formatUsd(yearTotals.totalComm)}</TableCell>
+                    <TableCell className="text-right text-sm font-bold">{formatBrl(yearTotals.totalComm)}</TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
@@ -317,7 +322,7 @@ const CommissionsTab = ({ userId }: Props) => {
                 <span className="text-sm font-semibold text-foreground">Maior Comissão do Ano</span>
               </div>
               <p className="text-lg font-bold text-foreground">
-                {formatUsd(insights.maxDeal.seller_commission_value + insights.maxDeal.manager_commission_value)}
+                {formatBrl((insights.maxDeal.seller_commission_value + insights.maxDeal.manager_commission_value) * (insights.maxDeal.dollar_rate || 0))}
               </p>
               <p className="text-xs text-muted-foreground">
                 {insights.maxDeal.client_name} — {insights.maxDeal.machine_name} — {getRepName(insights.maxDeal.representative_id)}
@@ -330,7 +335,7 @@ const CommissionsTab = ({ userId }: Props) => {
                 <Target className="h-4 w-4 text-[#3B82F6]" />
                 <span className="text-sm font-semibold text-foreground">Comissão Média por Máquina</span>
               </div>
-              <p className="text-lg font-bold text-foreground">{formatUsd(yearTotals.commPerMachine)}</p>
+              <p className="text-lg font-bold text-foreground">{formatBrl(yearTotals.commPerMachine)}</p>
               <p className="text-xs text-muted-foreground">{yearTotals.count} máquinas vendidas no ano</p>
             </div>
 
@@ -349,7 +354,7 @@ const CommissionsTab = ({ userId }: Props) => {
                       </Badge>
                       <span className="text-foreground">{r.nome}</span>
                     </span>
-                    <span className="font-semibold text-foreground">{formatUsd(r.total)}</span>
+                    <span className="font-semibold text-foreground">{formatBrl(r.total)}</span>
                   </div>
                 ))}
               </div>
