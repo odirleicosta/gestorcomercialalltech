@@ -27,6 +27,7 @@ interface Representative {
   status: string;
   observacoes: string | null;
   created_at: string;
+  is_gestor?: boolean;
 }
 
 interface MonthlyGoal {
