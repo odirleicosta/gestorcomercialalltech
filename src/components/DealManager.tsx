@@ -144,8 +144,8 @@ const DealManager = ({ userId }: Props) => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [filterYear, setFilterYear] = useState<string>("all");
-  const [filterMonth, setFilterMonth] = useState<string>("all");
+  const [filterYear, setFilterYear] = useState<string>(String(new Date().getFullYear()));
+  const [filterMonth, setFilterMonth] = useState<string>(String(new Date().getMonth() + 1));
   const [filterRepId, setFilterRepId] = useState<string>("all");
   const [sortField, setSortField] = useState<SortField>("created_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -1251,33 +1251,46 @@ const DealManager = ({ userId }: Props) => {
         const totalNetProfit = filtered.reduce((s, d) => s + d.net_profit, 0);
         const totalCommission = filtered.reduce((s, d) => s + ((d.seller_commission_value + d.manager_commission_value) * (d.dollar_rate || 1)), 0);
         const avgMargin = filtered.length > 0 ? filtered.reduce((s, d) => s + d.net_margin_percent, 0) / filtered.length : 0;
+        const formatCompact = (v: number) => {
+          if (Math.abs(v) >= 1_000_000) return (v / 1_000_000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "M";
+          if (Math.abs(v) >= 1_000) return (v / 1_000).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + "K";
+          return v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
         const kpis = [
-          { label: "FOB Total", desc: "Faturamento bruto no período", value: formatUsd(totalFob), icon: <DollarSign className="h-5 w-5" />, accent: "bg-blue-600/15 text-blue-700 border-blue-300/60", iconBg: "bg-blue-600/20" },
-          { label: "Lucro Líquido", desc: "Após comissões descontadas", value: formatUsd(totalNetProfit), icon: <TrendingUp className="h-5 w-5" />, accent: "bg-emerald-600/15 text-emerald-700 border-emerald-300/60", iconBg: "bg-emerald-600/20", negative: totalNetProfit < 0 },
-          { label: "Comissão Total", desc: "Representante + Gestor (BRL)", value: formatBrl(totalCommission), icon: <Receipt className="h-5 w-5" />, accent: "bg-purple-600/15 text-purple-700 border-purple-300/60", iconBg: "bg-purple-600/20" },
-          { label: "Margem Média", desc: "Média líquida do período", value: formatPct(avgMargin), icon: <Percent className="h-5 w-5" />, accent: "bg-orange-600/15 text-orange-700 border-orange-300/60", iconBg: "bg-orange-600/20", badge: true, margin: avgMargin },
+          { label: "FOB TOTAL", desc: "Faturamento bruto no período", value: formatUsd(totalFob), compactValue: `US$ ${formatCompact(totalFob)}`, icon: <DollarSign className="h-5 w-5" />, accent: "bg-blue-600/15 text-blue-700 border-blue-300/60", iconBg: "bg-blue-600/20" },
+          { label: "LUCRO LÍQUIDO", desc: "Após comissões descontadas", value: formatUsd(totalNetProfit), compactValue: `US$ ${formatCompact(totalNetProfit)}`, icon: <TrendingUp className="h-5 w-5" />, accent: "bg-emerald-600/15 text-emerald-700 border-emerald-300/60", iconBg: "bg-emerald-600/20", negative: totalNetProfit < 0 },
+          { label: "COMISSÃO TOTAL", desc: "Representante + Gestor (BRL)", value: formatBrl(totalCommission), compactValue: `R$ ${formatCompact(totalCommission)}`, icon: <Receipt className="h-5 w-5" />, accent: "bg-purple-600/15 text-purple-700 border-purple-300/60", iconBg: "bg-purple-600/20" },
+          { label: "MARGEM MÉDIA", desc: "Média líquida do período", value: formatPct(avgMargin), compactValue: formatPct(avgMargin), icon: <Percent className="h-5 w-5" />, accent: "bg-orange-600/15 text-orange-700 border-orange-300/60", iconBg: "bg-orange-600/20", badge: true, margin: avgMargin },
         ];
         return (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             {kpis.map((k) => (
-              <Card key={k.label} className={cn("px-5 py-5 shadow-md border-2", k.accent)}>
-                <div className="flex items-center gap-2.5 mb-3">
-                  <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center", k.iconBg)}>
+              <Card key={k.label} className={cn("px-3 py-4 sm:px-5 sm:py-5 shadow-md border-2 overflow-hidden", k.accent)}>
+                <div className="flex items-center gap-2 mb-2 sm:mb-3">
+                  <div className={cn("h-7 w-7 sm:h-8 sm:w-8 rounded-lg flex items-center justify-center shrink-0", k.iconBg)}>
                     {k.icon}
                   </div>
-                  <span className="text-[11px] font-black uppercase tracking-widest">{k.label}</span>
+                  <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider leading-tight">{k.label}</span>
                 </div>
                 {k.badge ? (
                   <div className="mb-1.5">{getMarginBadge(k.margin!, true)}</div>
                 ) : (
-                  <p className={cn(
-                    "text-3xl font-black tabular-nums leading-none tracking-tight",
-                    k.negative ? "text-destructive" : ""
-                  )}>
-                    {k.value}
-                  </p>
+                  <>
+                    <p className={cn(
+                      "text-lg sm:text-2xl lg:text-3xl font-black tabular-nums leading-none tracking-tight break-all sm:break-normal hidden sm:block",
+                      k.negative ? "text-destructive" : ""
+                    )}>
+                      {k.value}
+                    </p>
+                    <p className={cn(
+                      "text-xl font-black tabular-nums leading-none tracking-tight sm:hidden",
+                      k.negative ? "text-destructive" : ""
+                    )}>
+                      {k.compactValue}
+                    </p>
+                  </>
                 )}
-                <p className="text-[11px] opacity-50 mt-2 font-semibold">{k.desc}</p>
+                <p className="text-[10px] sm:text-[11px] opacity-50 mt-1.5 sm:mt-2 font-semibold leading-tight">{k.desc}</p>
               </Card>
             ))}
           </div>
