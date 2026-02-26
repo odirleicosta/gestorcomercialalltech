@@ -23,6 +23,7 @@ import DeepAnalysis from "@/components/DeepAnalysis";
 import ExecutiveDashboard from "@/components/ExecutiveDashboard";
 import RepresentativeManager from "@/components/RepresentativeManager";
 import CommissionsTab from "@/components/CommissionsTab";
+import CommissionGate from "@/components/CommissionGate";
 import Auth from "@/components/Auth";
 import BottomNavBar from "@/components/BottomNavBar";
 
@@ -707,7 +708,9 @@ const PriceCalculator = () => {
           </TabsContent>
 
           <TabsContent value="commissions">
-            <CommissionsTab userId={user.id} />
+            <CommissionGate userId={user.id}>
+              <CommissionsTab userId={user.id} />
+            </CommissionGate>
           </TabsContent>
 
           <TabsContent value="reps">

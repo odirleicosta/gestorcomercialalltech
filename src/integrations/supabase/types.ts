@@ -516,6 +516,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          commission_password: string | null
           created_at: string
           default_commission_base: string
           default_manager_commission_pct: number
@@ -527,6 +528,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          commission_password?: string | null
           created_at?: string
           default_commission_base?: string
           default_manager_commission_pct?: number
@@ -538,6 +540,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          commission_password?: string | null
           created_at?: string
           default_commission_base?: string
           default_manager_commission_pct?: number
