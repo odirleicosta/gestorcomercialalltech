@@ -122,6 +122,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   const calcStats = (arr: Deal[]) => ({
     count: arr.length,
     basePrice: arr.reduce((s,d) => s+d.base_price, 0),
+    basePriceBrl: arr.reduce((s,d) => s+d.base_price * (d.dollar_rate || 0), 0),
     netProfit: arr.reduce((s,d) => s+d.net_profit, 0),
     grossProfit: arr.reduce((s,d) => s+d.gross_profit, 0),
     sellerComm: arr.reduce((s,d) => s+d.seller_commission_value, 0),
@@ -199,6 +200,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   const formatUsd = (v: number) => `US$ ${v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
   const formatPct = (v: number) => v.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})+"%";
   const formatCompact = (v: number) => v >= 1000 ? `US$ ${(v/1000).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}k` : formatUsd(v);
+  const formatBrlCompact = (v: number) => v >= 1000 ? `R$ ${(v/1000).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}k` : `R$ ${v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 
   if (loading) return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
 
@@ -515,7 +517,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
           <MetricCard label="FOB Total" value={cur.count > 0 ? formatCompact(cur.basePrice) : "—"} icon={<DollarSign className="h-5 w-5" />} color="#3B82F6" sub={`${cur.count} vendas`} />
           <MetricCard label="Ticket Médio" value={cur.count > 0 ? formatCompact(ticketMedio) : "—"} icon={<BarChart3 className="h-5 w-5" />} color="#8B5CF6" sub="FOB / máquina" />
           <MetricCard label="Margem Média" value={cur.count > 0 ? formatPct(margemMedia) : "—"} icon={<Zap className="h-5 w-5" />} color={margemMedia >= 0 ? "#22C55E" : "#EF4444"} sub="Lucro líq. / preço base" />
-          <MetricCard label="Comissão Total" value={cur.count > 0 ? formatCompact(commTotal) : "—"} icon={<Users className="h-5 w-5" />} color="#F97316" sub="Vendedor + Gestor" />
+          <MetricCard label="FOB Total BRL" value={cur.count > 0 ? formatBrlCompact(cur.basePriceBrl) : "—"} icon={<DollarSign className="h-5 w-5" />} color="#F97316" sub="Convertido em R$" />
         </div>
       </section>
 
