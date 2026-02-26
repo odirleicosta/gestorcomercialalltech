@@ -211,9 +211,18 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     return `R$ ${v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
   };
 
+  // When a specific rep is selected, use their individual meta; otherwise sum all
+  const totalMetaQtd = useMemo(() => {
+    if (filterRep !== "all") {
+      const rep = repRanking.find(r => r.id === filterRep);
+      return rep ? rep.metaQtd : 0;
+    }
+    return repRanking.reduce((s, r) => s + r.metaQtd, 0);
+  }, [repRanking, filterRep]);
+
   if (loading) return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
 
-  const totalMetaQtd = repRanking.reduce((s,r) => s+r.metaQtd, 0);
+
   const totalSold = cur.count;
   const pctAtingido = totalMetaQtd > 0 ? (totalSold/totalMetaQtd)*100 : 0;
   const faltam = Math.max(0, totalMetaQtd - totalSold);
