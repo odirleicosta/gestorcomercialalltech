@@ -24,6 +24,7 @@ import ExecutiveDashboard from "@/components/ExecutiveDashboard";
 import RepresentativeManager from "@/components/RepresentativeManager";
 import CommissionsTab from "@/components/CommissionsTab";
 import Auth from "@/components/Auth";
+import BottomNavBar from "@/components/BottomNavBar";
 
 export interface SavedCalculation {
   id: string;
@@ -325,35 +326,15 @@ const PriceCalculator = () => {
         </div>
       </aside>
 
-      {/* Mobile header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-50 gradient-primary px-3 py-2 flex items-center gap-2 overflow-x-auto shadow-lg">
-        {[
-          { value: "dashboard", icon: BarChart3, label: "Dashboard" },
-          { value: "deals", icon: Users, label: "Vendas" },
-          { value: "commissions", icon: DollarSign, label: "Comissões" },
-          { value: "simulation", icon: Calculator, label: "Simulação" },
-          { value: "reps", icon: UserPlus, label: "Representantes" },
-          { value: "registry", icon: Building2, label: "Cadastros" },
-          { value: "catalog", icon: Package, label: "Catálogo" },
-          { value: "deep-analysis", icon: Zap, label: "Análise" },
-        ].map(({ value, icon: Icon, label }) => (
-          <button
-            key={value}
-            onClick={() => setActiveTab(value)}
-            className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium transition-all shrink-0 ${
-              activeTab === value
-                ? "bg-white/20 text-white shadow-sm"
-                : "text-white/60 hover:text-white hover:bg-white/10"
-            }`}
-          >
-            <Icon className="h-3.5 w-3.5" />
-            {label}
-          </button>
-        ))}
-      </div>
+      {/* Mobile bottom navigation */}
+      <BottomNavBar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onLogout={() => supabase.auth.signOut()}
+      />
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto px-4 py-8 md:py-10 md:px-8 mt-12 md:mt-0">
+      <main className="flex-1 overflow-y-auto px-4 py-6 pb-24 md:py-10 md:px-8 md:pb-10">
         <div className="mx-auto max-w-6xl">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="hidden"><TabsList><TabsTrigger value="simulation" /><TabsTrigger value="deals" /><TabsTrigger value="commissions" /><TabsTrigger value="reps" /><TabsTrigger value="dashboard" /><TabsTrigger value="registry" /><TabsTrigger value="catalog" /><TabsTrigger value="deep-analysis" /></TabsList></div>
