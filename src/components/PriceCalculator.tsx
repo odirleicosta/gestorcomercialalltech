@@ -334,7 +334,7 @@ const PriceCalculator = () => {
       />
 
       {/* Main content */}
-      <main className="flex-1 overflow-y-auto px-4 py-6 pb-24 md:py-10 md:px-8 md:pb-10">
+      <main className="flex-1 overflow-y-auto px-3 py-4 pb-24 md:py-10 md:px-8 md:pb-10">
         <div className="mx-auto max-w-6xl">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="hidden"><TabsList><TabsTrigger value="simulation" /><TabsTrigger value="deals" /><TabsTrigger value="commissions" /><TabsTrigger value="reps" /><TabsTrigger value="dashboard" /><TabsTrigger value="registry" /><TabsTrigger value="catalog" /><TabsTrigger value="deep-analysis" /></TabsList></div>
@@ -543,19 +543,19 @@ const PriceCalculator = () => {
                   </div>
                 </Card>
 
-                <div className="flex gap-3">
-                  <Button className="flex-1" onClick={handleSave} disabled={!simulation}>
-                    <Save className="h-4 w-4 mr-2" /> Salvar Cálculo
+                <div className="flex flex-wrap gap-2 sm:gap-3">
+                  <Button className="flex-1 min-w-0 text-sm" onClick={handleSave} disabled={!simulation}>
+                    <Save className="h-4 w-4 mr-1 sm:mr-2" /> Salvar
                   </Button>
-                  <Button variant="secondary" onClick={handleShareWhatsApp} disabled={!simulation}>
-                    <Copy className="h-4 w-4 mr-2" /> Copiar Resumo
+                  <Button variant="secondary" className="text-sm" onClick={handleShareWhatsApp} disabled={!simulation}>
+                    <Copy className="h-4 w-4 mr-1 sm:mr-2" /> Copiar
                   </Button>
-                  <Button variant="outline" onClick={() => {
+                  <Button variant="outline" className="text-sm" onClick={() => {
                     setMachineName(""); setClientName(""); setFobCost(""); setDollarRate("");
                     setEstimatedTaxPercent(""); setDesiredMargin(""); setMinMargin("");
                     setRealTaxValue(""); setObservation(""); setNotes("");
                   }}>
-                    <RotateCcw className="h-4 w-4 mr-2" /> Resetar
+                    <RotateCcw className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
