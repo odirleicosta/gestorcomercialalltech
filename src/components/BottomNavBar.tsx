@@ -1,6 +1,6 @@
 import {
   BarChart3, Users, DollarSign, Calculator, MoreHorizontal,
-  UserPlus, Building2, Package, Zap, LogOut,
+  UserPlus, Building2, Package, Zap, LogOut, Moon, Sun,
 } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -9,6 +9,8 @@ interface BottomNavBarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   onLogout: () => void;
+  theme?: "light" | "dark";
+  onToggleTheme?: () => void;
 }
 
 const PRIMARY_TABS = [
@@ -25,7 +27,7 @@ const MORE_TABS = [
   { value: "deep-analysis", icon: Zap, label: "Análise Profunda" },
 ];
 
-const BottomNavBar = ({ activeTab, onTabChange, onLogout }: BottomNavBarProps) => {
+const BottomNavBar = ({ activeTab, onTabChange, onLogout, theme, onToggleTheme }: BottomNavBarProps) => {
   const [moreOpen, setMoreOpen] = useState(false);
 
   const isMoreActive = MORE_TABS.some((t) => t.value === activeTab);
@@ -105,6 +107,17 @@ const BottomNavBar = ({ activeTab, onTabChange, onLogout }: BottomNavBarProps) =
               );
             })}
           </div>
+          {onToggleTheme && (
+            <button
+              onClick={() => {
+                onToggleTheme();
+              }}
+              className="flex items-center gap-3 rounded-xl px-4 py-3.5 text-sm font-medium bg-secondary/50 text-foreground hover:bg-secondary border border-transparent transition-all w-full mt-3"
+            >
+              {theme === "dark" ? <Sun className="h-5 w-5 shrink-0" /> : <Moon className="h-5 w-5 shrink-0" />}
+              {theme === "dark" ? "Modo Claro" : "Modo Escuro"}
+            </button>
+          )}
           <button
             onClick={() => {
               onLogout();
