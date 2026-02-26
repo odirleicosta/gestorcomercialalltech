@@ -652,13 +652,13 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 const MetricCard = ({ label, value, icon, color, sub }: {
   label: string; value: string; icon: React.ReactNode; color: string; sub?: string;
 }) => (
-  <div className="bg-white rounded-xl border border-border p-3 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
-    <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-      <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${color}15`, color }}>{icon}</div>
-      <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase">{label}</span>
+  <div className="bg-white rounded-xl border border-border p-2.5 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
+    <div className="flex items-center gap-1.5 sm:gap-3 mb-1.5 sm:mb-3">
+      <div className="h-7 w-7 sm:h-10 sm:w-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}15`, color }}>{icon}</div>
+      <span className="text-[9px] sm:text-xs font-semibold text-muted-foreground uppercase leading-tight">{label}</span>
     </div>
-    <p className="font-heading text-lg sm:text-2xl font-black text-foreground">{value}</p>
-    {sub && <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">{sub}</p>}
+    <p className="font-heading text-sm sm:text-2xl font-black text-foreground truncate">{value}</p>
+    {sub && <p className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">{sub}</p>}
   </div>
 );
 
