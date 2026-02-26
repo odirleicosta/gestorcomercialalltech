@@ -199,8 +199,16 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   // ── formatting ──
   const formatUsd = (v: number) => `US$ ${v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
   const formatPct = (v: number) => v.toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})+"%";
-  const formatCompact = (v: number) => v >= 1000 ? `US$ ${(v/1000).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}k` : formatUsd(v);
-  const formatBrlCompact = (v: number) => v >= 1000 ? `R$ ${(v/1000).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}k` : `R$ ${v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+  const formatCompact = (v: number) => {
+    if (v >= 1_000_000) return `US$ ${(v/1_000_000).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}M`;
+    if (v >= 1_000) return `US$ ${(v/1_000).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}k`;
+    return formatUsd(v);
+  };
+  const formatBrlCompact = (v: number) => {
+    if (v >= 1_000_000) return `R$ ${(v/1_000_000).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}M`;
+    if (v >= 1_000) return `R$ ${(v/1_000).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1})}k`;
+    return `R$ ${v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+  };
 
   if (loading) return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
 
