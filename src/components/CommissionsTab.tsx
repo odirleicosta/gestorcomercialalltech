@@ -96,10 +96,11 @@ const CommissionsTab = ({ userId }: Props) => {
     return { sellerTotal, managerTotal, totalComm, totalVendasBrl, count, commPerMachine, pctFaturamento };
   }, [closedDeals]);
 
-  // Chart data (always show all reps for chart, ignoring filterRep)
+  // Chart data (respects period filter, ignores filterRep)
   const chartData = useMemo(() => {
     const allClosed = deals.filter(d => d.status === "closed" && d.closed_at && new Date(d.closed_at).getFullYear() === filterYear);
     return SHORT_MONTHS.map((month, i) => {
+      if (!activeMonths.includes(i)) return { month, vendedor: 0, gestor: 0 };
       const monthDeals = allClosed.filter(d => new Date(d.closed_at!).getMonth() === i);
       return {
         month,
@@ -107,7 +108,7 @@ const CommissionsTab = ({ userId }: Props) => {
         gestor: monthDeals.reduce((s, d) => s + d.manager_commission_value * (d.dollar_rate || 0), 0),
       };
     });
-  }, [deals, filterYear]);
+  }, [deals, filterYear, activeMonths]);
 
   // Pivot table data
   const { repMonthPivot, monthColumnTotals } = useMemo(() => {
@@ -123,6 +124,7 @@ const CommissionsTab = ({ userId }: Props) => {
 
     allClosed.forEach(d => {
       const m = new Date(d.closed_at!).getMonth();
+      if (!activeMonths.includes(m)) return;
       const rate = d.dollar_rate || 0;
       const key = d.representative_id || "__none__";
       if (!pivot.has(key)) {
@@ -148,7 +150,7 @@ const CommissionsTab = ({ userId }: Props) => {
     finalRows.forEach(r => r.months.forEach((v, i) => totals[i] += v));
 
     return { repMonthPivot: finalRows, monthColumnTotals: totals };
-  }, [deals, filterYear, reps]);
+  }, [deals, filterYear, reps, activeMonths]);
 
   // Insights / ranking
   const insights = useMemo(() => {
