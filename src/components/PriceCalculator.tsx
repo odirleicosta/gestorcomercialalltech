@@ -240,8 +240,10 @@ const PriceCalculator = () => {
     if (!simulation) return;
     const lines: string[] = [];
     lines.push(`📋 *Resumo de Precificação*`);
+    lines.push(`📅 Data: ${new Date().toLocaleDateString("pt-BR")}`);
     if (clientName.trim()) lines.push(`👤 Cliente: ${clientName}`);
-    
+    if (machineName.trim()) lines.push(`⚙️ Máquina: ${machineName}`);
+    if (simulation.hasDollar) lines.push(`💱 Dólar do dia: ${formatCurrency(parseFloat(dollarRate) || 0)}`);
     lines.push("");
     lines.push(`💵 *FOB + Impostos Internacionais*`);
     lines.push(`  USD: ${formatUsd(simulation.finalPrice)}`);
