@@ -8,7 +8,7 @@ import CommissionPivotTable, { type DealCommission, type PivotRow } from "./comm
 import CommissionRanking from "./commissions/CommissionRanking";
 import CommissionDetailModal from "./commissions/CommissionDetailModal";
 
-interface RepOption { id: string; nome: string; }
+interface RepOption { id: string; nome: string; is_gestor?: boolean; }
 interface Props { userId: string; }
 
 const SHORT_MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -52,7 +52,7 @@ const CommissionsTab = ({ userId }: Props) => {
           .order("closed_at", { ascending: false }),
         supabase
           .from("representatives" as any)
-          .select("id, nome")
+          .select("id, nome, is_gestor")
           .order("nome"),
       ]);
       if (dealsRes.data) setDeals(dealsRes.data as unknown as DealCommission[]);
@@ -117,7 +117,9 @@ const CommissionsTab = ({ userId }: Props) => {
     reps.forEach(r => {
       pivot.set(r.id, { repId: r.id, nome: r.nome, months: Array(12).fill(0), monthDeals: Array.from({ length: 12 }, () => []), total: 0, type: 'seller' });
     });
-    pivot.set("__gestor__", { repId: "__gestor__", nome: "🏢 Gestor Comercial", months: Array(12).fill(0), monthDeals: Array.from({ length: 12 }, () => []), total: 0, type: 'manager' });
+    const gestor = reps.find(r => r.is_gestor);
+    const gestorLabel = gestor ? `🏢 ${gestor.nome} (Gestor)` : "🏢 Gestor Comercial";
+    pivot.set("__gestor__", { repId: "__gestor__", nome: gestorLabel, months: Array(12).fill(0), monthDeals: Array.from({ length: 12 }, () => []), total: 0, type: 'manager' });
 
     allClosed.forEach(d => {
       const m = new Date(d.closed_at!).getMonth();
