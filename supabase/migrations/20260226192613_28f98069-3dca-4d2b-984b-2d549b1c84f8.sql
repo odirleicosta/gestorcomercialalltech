@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN commission_password text DEFAULT null;
