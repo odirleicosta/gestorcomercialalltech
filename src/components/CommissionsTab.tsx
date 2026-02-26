@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import { DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import CommissionKPIs from "./commissions/CommissionKPIs";
@@ -13,14 +12,36 @@ interface RepOption { id: string; nome: string; }
 interface Props { userId: string; }
 
 const SHORT_MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+const QUARTER_MONTHS: Record<string, number[]> = {
+  T1: [0, 1, 2], T2: [3, 4, 5], T3: [6, 7, 8], T4: [9, 10, 11],
+};
+
+type PeriodMode = "year" | "quarter" | "month";
+
+const PillButton = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) => (
+  <button
+    onClick={onClick}
+    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+      active
+        ? "bg-primary text-primary-foreground shadow-sm"
+        : "bg-secondary text-muted-foreground hover:bg-secondary/80"
+    }`}
+  >
+    {children}
+  </button>
+);
 
 const CommissionsTab = ({ userId }: Props) => {
   const [deals, setDeals] = useState<DealCommission[]>([]);
   const [reps, setReps] = useState<RepOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalData, setModalData] = useState<{ repName: string; month: string; deals: DealCommission[]; type: 'seller' | 'manager' } | null>(null);
-  const [filterYear, setFilterYear] = useState(new Date().getFullYear());
+  const now = new Date();
+  const [filterYear, setFilterYear] = useState(now.getFullYear());
   const [filterRep, setFilterRep] = useState<string>("all");
+  const [periodMode, setPeriodMode] = useState<PeriodMode>("year");
+  const [filterMonth, setFilterMonth] = useState(now.getMonth()); // 0-indexed
+  const [filterQuarter, setFilterQuarter] = useState<string>(`T${Math.floor(now.getMonth() / 3) + 1}`);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -46,14 +67,22 @@ const CommissionsTab = ({ userId }: Props) => {
     return reps.find(r => r.id === id)?.nome || "Desconhecido";
   };
 
+  const activeMonths = useMemo(() => {
+    if (periodMode === "year") return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+    if (periodMode === "quarter") return QUARTER_MONTHS[filterQuarter];
+    return [filterMonth];
+  }, [periodMode, filterMonth, filterQuarter]);
+
   const closedDeals = useMemo(() => {
     return deals.filter(d => {
       if (d.status !== "closed" || !d.closed_at) return false;
-      if (new Date(d.closed_at).getFullYear() !== filterYear) return false;
+      const dt = new Date(d.closed_at);
+      if (dt.getFullYear() !== filterYear) return false;
+      if (!activeMonths.includes(dt.getMonth())) return false;
       if (filterRep !== "all" && d.representative_id !== filterRep) return false;
       return true;
     });
-  }, [deals, filterYear, filterRep]);
+  }, [deals, filterYear, filterRep, activeMonths]);
 
   // Year totals
   const yearTotals = useMemo(() => {
@@ -153,34 +182,51 @@ const CommissionsTab = ({ userId }: Props) => {
           <DollarSign className="h-5 w-5" /> Comissões
         </h2>
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5">
-            <Label className="text-xs text-muted-foreground">Ano</Label>
-            <Select value={String(filterYear)} onValueChange={v => setFilterYear(parseInt(v))}>
-              <SelectTrigger className="w-[90px] bg-secondary/50 border-border text-xs h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[2024, 2025, 2026, 2027].map(y => (
-                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Label className="text-xs text-muted-foreground">Rep</Label>
-            <Select value={filterRep} onValueChange={setFilterRep}>
-              <SelectTrigger className="w-[130px] bg-secondary/50 border-border text-xs h-8">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {reps.map(r => (
-                  <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Select value={String(filterYear)} onValueChange={v => setFilterYear(parseInt(v))}>
+            <SelectTrigger className="w-[80px] bg-secondary/50 border-border text-xs h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {[2024, 2025, 2026, 2027].map(y => (
+                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterRep} onValueChange={setFilterRep}>
+            <SelectTrigger className="w-[120px] bg-secondary/50 border-border text-xs h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {reps.map(r => (
+                <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
+      </div>
+
+      {/* Period toggle pills */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
+          <PillButton active={periodMode === "year"} onClick={() => setPeriodMode("year")}>Ano</PillButton>
+          <PillButton active={periodMode === "quarter"} onClick={() => setPeriodMode("quarter")}>Trimestre</PillButton>
+          <PillButton active={periodMode === "month"} onClick={() => setPeriodMode("month")}>Mês</PillButton>
+        </div>
+        {periodMode === "quarter" && (
+          <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
+            {["T1", "T2", "T3", "T4"].map(q => (
+              <PillButton key={q} active={filterQuarter === q} onClick={() => setFilterQuarter(q)}>{q}</PillButton>
+            ))}
+          </div>
+        )}
+        {periodMode === "month" && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {SHORT_MONTHS.map((m, i) => (
+              <PillButton key={m} active={filterMonth === i} onClick={() => setFilterMonth(i)}>{m}</PillButton>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* KPIs */}
