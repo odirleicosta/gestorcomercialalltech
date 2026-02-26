@@ -589,6 +589,7 @@ export type Database = {
           comissao_padrao_pct: number
           created_at: string
           id: string
+          is_gestor: boolean
           meta_mensal_padrao: number
           meta_quantidade: number
           nome: string
@@ -603,6 +604,7 @@ export type Database = {
           comissao_padrao_pct?: number
           created_at?: string
           id?: string
+          is_gestor?: boolean
           meta_mensal_padrao?: number
           meta_quantidade?: number
           nome: string
@@ -617,6 +619,7 @@ export type Database = {
           comissao_padrao_pct?: number
           created_at?: string
           id?: string
+          is_gestor?: boolean
           meta_mensal_padrao?: number
           meta_quantidade?: number
           nome?: string
