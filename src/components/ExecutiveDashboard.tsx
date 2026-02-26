@@ -446,10 +446,10 @@ const ExecutiveDashboard = ({ userId }: Props) => {
               const faltaRep = Math.max(0, rep.metaQtd - rep.count);
               const pct = rep.pctQtd;
               const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx+1}º`;
-              const bg = idx === 0 ? "bg-gradient-to-r from-[#3B82F6]/5 to-[#3B82F6]/10 border-[#3B82F6]/30"
-                : idx === 1 ? "bg-gradient-to-r from-gray-50 to-gray-100 border-gray-200"
-                : idx === 2 ? "bg-gradient-to-r from-[#F97316]/5 to-[#F97316]/10 border-[#F97316]/20"
-                : "bg-white border-border";
+              const bg = idx === 0 ? "bg-primary/5 border-primary/30"
+                : idx === 1 ? "bg-muted/50 border-border"
+                : idx === 2 ? "bg-[#F97316]/5 border-[#F97316]/20"
+                : "bg-card border-border";
 
               return (
                 <div key={rep.id} onClick={() => setFilterRep(rep.id)} className={`rounded-xl border p-3 sm:p-4 flex items-center gap-2 sm:gap-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${bg}`}>
@@ -484,7 +484,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
       {/* ═══ 3) RITMO COMERCIAL ═══ */}
       <section className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">
-        <div className="bg-white rounded-xl border border-border p-4 sm:p-6 shadow-sm">
+        <div className="bg-card rounded-xl border border-border p-4 sm:p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-3 sm:mb-4">
             <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-[#3B82F6]/10 flex items-center justify-center">
               <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-[#3B82F6]" />
@@ -505,7 +505,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
             </p>
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-border p-6 shadow-sm">
+        <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-4">
             <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${noRitmo ? "bg-[#22C55E]/10" : "bg-[#EF4444]/10"}`}>
               <Gauge className={`h-5 w-5 ${noRitmo ? "text-[#22C55E]" : "text-[#EF4444]"}`} />
@@ -554,7 +554,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         </div>
         <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-3">
           {/* Trend card */}
-          <div className="bg-white rounded-xl border border-border p-5 shadow-sm">
+           <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
             <div className="flex items-center gap-3 mb-3">
               <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${trend3m.icon === "up" ? "bg-[#22C55E]/10" : trend3m.icon === "down" ? "bg-[#EF4444]/10" : "bg-[#F97316]/10"}`}>
                 {trend3m.icon === "up" ? <TrendingUp className="h-5 w-5 text-[#22C55E]" /> : trend3m.icon === "down" ? <TrendingDown className="h-5 w-5 text-[#EF4444]" /> : <Minus className="h-5 w-5 text-[#F97316]" />}
@@ -565,7 +565,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
             <p className="text-xs text-muted-foreground mt-1">vs média últimos 3 meses</p>
           </div>
           {/* Comparison */}
-          <div className="bg-white rounded-xl border border-border p-5 shadow-sm">
+          <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
             <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">Comparativos</h4>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
@@ -586,7 +586,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
             </div>
           </div>
           {/* Evolution mini-chart */}
-          <div className="bg-white rounded-xl border border-border p-5 shadow-sm">
+          <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
             <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">Evolução 6 Meses</h4>
             <ResponsiveContainer width="100%" height={120}>
               <AreaChart data={evolutionData}>
@@ -606,7 +606,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
       {/* ═══ EVOLUÇÃO COMPLETA ═══ */}
       <section>
-        <div className="bg-white rounded-xl border border-border p-6 shadow-sm">
+        <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
           <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-4 flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-[#3B82F6]" /> Evolução Detalhada (6 meses)
           </h4>
@@ -669,7 +669,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 const MetricCard = ({ label, value, icon, color, sub }: {
   label: string; value: string; icon: React.ReactNode; color: string; sub?: string;
 }) => (
-  <div className="bg-white rounded-xl border border-border p-2.5 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
+  <div className="bg-card rounded-xl border border-border p-2.5 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
     <div className="flex items-center gap-1.5 sm:gap-3 mb-1.5 sm:mb-3">
       <div className="h-7 w-7 sm:h-10 sm:w-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}15`, color }}>{icon}</div>
       <span className="text-[9px] sm:text-xs font-semibold text-muted-foreground uppercase leading-tight">{label}</span>

@@ -11,6 +11,7 @@ import {
   DollarSign, Percent, TrendingUp, Package, Receipt,
   Save, AlertTriangle, History, Calculator, RotateCcw, User, StickyNote,
   Building2, Plus, Wrench, Copy, Users, BarChart3, LogOut, UserPlus, Zap,
+  Moon, Sun,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +27,7 @@ import CommissionsTab from "@/components/CommissionsTab";
 import CommissionGate from "@/components/CommissionGate";
 import Auth from "@/components/Auth";
 import BottomNavBar from "@/components/BottomNavBar";
+import { useTheme } from "@/hooks/use-theme";
 
 export interface SavedCalculation {
   id: string;
@@ -73,6 +75,7 @@ const PriceCalculator = () => {
   const [notes, setNotes] = useState("");
 
   const [activeTab, setActiveTab] = useState("dashboard");
+  const { theme, toggle: toggleTheme } = useTheme();
   const [history, setHistory] = useState<SavedCalculation[]>(loadHistory);
   const [clients, setClients] = useState<Client[]>([]);
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
@@ -322,7 +325,11 @@ const PriceCalculator = () => {
             </button>
           ))}
         </nav>
-        <div className="border-t border-sidebar-border pt-3 mt-2">
+        <div className="border-t border-sidebar-border pt-3 mt-2 space-y-1">
+          <Button variant="ghost" size="sm" onClick={toggleTheme} className="text-sidebar-muted hover:text-sidebar-foreground justify-start w-full">
+            {theme === "dark" ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
+            {theme === "dark" ? "Modo Claro" : "Modo Escuro"}
+          </Button>
           <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()} className="text-sidebar-muted hover:text-sidebar-foreground justify-start w-full">
             <LogOut className="h-4 w-4 mr-2" /> Sair
           </Button>
@@ -334,6 +341,8 @@ const PriceCalculator = () => {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onLogout={() => supabase.auth.signOut()}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       {/* Main content */}
