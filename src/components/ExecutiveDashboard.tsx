@@ -287,42 +287,51 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       </div>
 
       {/* ═══ FILTROS ═══ */}
-      <div className="space-y-2">
+      <div className="space-y-2.5">
+        {/* Linha 1: Ano */}
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-10 shrink-0">Ano</span>
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-14 shrink-0">Ano</span>
           <div className="flex gap-1">
             {[2025,2026,2027].map(y => (
-              <button key={y} onClick={() => setFilterYear(y)} className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterYear === y ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"}`}>{y}</button>
+              <button key={y} onClick={() => setFilterYear(y)} className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterYear === y ? "bg-primary text-primary-foreground shadow-md shadow-primary/30" : "bg-secondary text-muted-foreground hover:bg-secondary/80 border border-border"}`}>{y}</button>
             ))}
           </div>
         </div>
-        <div className="flex items-start gap-2">
-          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-10 shrink-0 mt-1">Mês</span>
-          <div className="flex flex-wrap gap-1">
-            {SHORT_MONTHS.map((m, i) => {
-              const mn = i+1;
-              const isActive = filterMode === "month" && filterMonth === mn;
-              const inRange = filterMode !== "month" && activeMonths.includes(mn);
-              return <button key={i} onClick={() => handleMonthClick(mn)} className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all ${isActive ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : inRange ? "bg-[#3B82F6]/10 text-[#3B82F6] border border-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"}`}>{m}</button>;
-            })}
-          </div>
-        </div>
+
+        {/* Linha 2: Visão (modo de período) */}
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-10 shrink-0">Período</span>
-          <div className="flex flex-wrap gap-1">
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-14 shrink-0">Visão</span>
+          <div className="flex gap-1">
+            <button onClick={() => handleMonthClick(filterMonth)} className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterMode === "month" ? "bg-primary text-primary-foreground shadow-md shadow-primary/30" : "bg-secondary text-muted-foreground hover:bg-secondary/80 border border-border"}`}>Mês</button>
             {QUARTERS.map((q,i) => (
-              <button key={i} onClick={() => handleQuarterClick(i)} className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterMode === "quarter" && filterQuarter === i ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"}`}>{q.label}</button>
+              <button key={i} onClick={() => handleQuarterClick(i)} className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterMode === "quarter" && filterQuarter === i ? "bg-primary text-primary-foreground shadow-md shadow-primary/30" : "bg-secondary text-muted-foreground hover:bg-secondary/80 border border-border"}`}>{q.label}</button>
             ))}
-            <button onClick={handleYearClick} className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterMode === "year" ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"}`}>Ano</button>
+            <button onClick={handleYearClick} className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterMode === "year" ? "bg-primary text-primary-foreground shadow-md shadow-primary/30" : "bg-secondary text-muted-foreground hover:bg-secondary/80 border border-border"}`}>Ano</button>
           </div>
         </div>
+
+        {/* Linha 3: Sub-filtro de mês (só aparece no modo "month") */}
+        {filterMode === "month" && (
+          <div className="flex items-start gap-2">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-14 shrink-0 mt-1">Mês</span>
+            <div className="flex flex-wrap gap-1">
+              {SHORT_MONTHS.map((m, i) => {
+                const mn = i+1;
+                const isActive = filterMonth === mn;
+                return <button key={i} onClick={() => handleMonthClick(mn)} className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all ${isActive ? "bg-primary text-primary-foreground shadow-md shadow-primary/30" : "bg-secondary text-muted-foreground hover:bg-secondary/80 border border-border"}`}>{m}</button>;
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Linha 4: Representante */}
         {reps.length > 0 && (
           <div className="flex items-start gap-2">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-10 shrink-0 mt-1">Rep.</span>
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-14 shrink-0 mt-1">Rep.</span>
             <div className="flex flex-wrap gap-1">
               <button
                 onClick={() => setFilterRep("all")}
-                className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterRep === "all" ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"}`}
+                className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterRep === "all" ? "bg-primary text-primary-foreground shadow-md shadow-primary/30" : "bg-secondary text-muted-foreground hover:bg-secondary/80 border border-border"}`}
               >
                 Todos
               </button>
@@ -330,7 +339,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                 <button
                   key={r.id}
                   onClick={() => setFilterRep(r.id)}
-                  className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterRep === r.id ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"}`}
+                  className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterRep === r.id ? "bg-primary text-primary-foreground shadow-md shadow-primary/30" : "bg-secondary text-muted-foreground hover:bg-secondary/80 border border-border"}`}
                 >
                   {r.nome.split(" ").slice(0, 2).join(" ")}
                 </button>
@@ -338,6 +347,14 @@ const ExecutiveDashboard = ({ userId }: Props) => {
             </div>
           </div>
         )}
+
+        {/* Badge de contexto ativo */}
+        <div className="flex items-center gap-2 pt-1">
+          <div className="inline-flex items-center gap-1.5 bg-primary/10 text-primary border border-primary/20 rounded-full px-3 py-1">
+            <Activity className="h-3 w-3" />
+            <span className="text-[10px] sm:text-xs font-semibold">{periodLabel}{filterRep !== "all" ? ` · ${reps.find(r => r.id === filterRep)?.nome?.split(" ").slice(0,2).join(" ")}` : ""}</span>
+          </div>
+        </div>
       </div>
 
       {/* ═══ 1) STATUS DO MÊS ═══ */}
