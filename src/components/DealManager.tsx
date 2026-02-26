@@ -865,18 +865,18 @@ const DealManager = ({ userId }: Props) => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-end justify-between flex-wrap gap-3 bg-foreground/[0.03] rounded-xl px-6 py-5 border border-border/40">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 bg-foreground/[0.03] rounded-xl px-4 sm:px-6 py-4 sm:py-5 border border-border/40">
         <div>
-          <h2 className="font-heading text-3xl font-black text-foreground tracking-tight flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/15 flex items-center justify-center">
-              <TrendingUp className="h-5 w-5 text-primary" />
+          <h2 className="font-heading text-xl sm:text-3xl font-black text-foreground tracking-tight flex items-center gap-2 sm:gap-3">
+            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-primary/15 flex items-center justify-center">
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             </div>
             VENDAS REALIZADAS
           </h2>
-          <p className="text-sm text-muted-foreground mt-1 ml-[52px]">Performance comercial do período</p>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1 ml-10 sm:ml-[52px]">Performance comercial do período</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => showForm ? resetForm() : openForm()} variant={showForm ? "secondary" : "default"} className="font-semibold">
+          <Button onClick={() => showForm ? resetForm() : openForm()} variant={showForm ? "secondary" : "default"} className="font-semibold text-sm w-full sm:w-auto">
             {showForm ? "Fechar Formulário" : "Nova Negociação"}
           </Button>
         </div>
@@ -1204,44 +1204,46 @@ const DealManager = ({ userId }: Props) => {
         </DialogContent>
       </Dialog>
 
-      <Card className="border-border bg-card p-4 shadow-sm">
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="relative flex-1 min-w-[200px]">
+      <Card className="border-border bg-card p-3 sm:p-4 shadow-sm">
+        <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3 items-stretch sm:items-center">
+          <div className="relative flex-1 min-w-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar empresa, máquina ou tipo..." className="pl-9 bg-secondary/50 border-border text-sm" />
           </div>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-[130px] bg-secondary/50 border-border text-sm"><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent className="bg-popover border-border z-50">
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="open">Abertas</SelectItem>
-              <SelectItem value="closed">Fechadas</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={filterYear} onValueChange={setFilterYear}>
-            <SelectTrigger className="w-[110px] bg-secondary/50 border-border text-sm"><SelectValue placeholder="Ano" /></SelectTrigger>
-            <SelectContent className="bg-popover border-border z-50">
-              <SelectItem value="all">Todo Ano</SelectItem>
-              {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={filterMonth} onValueChange={setFilterMonth}>
-            <SelectTrigger className="w-[130px] bg-secondary/50 border-border text-sm"><SelectValue placeholder="Mês" /></SelectTrigger>
-            <SelectContent className="bg-popover border-border z-50">
-              <SelectItem value="all">Todo Mês</SelectItem>
-              {Array.from({ length: 12 }, (_, i) => (
-                <SelectItem key={i + 1} value={String(i + 1)}>{MONTHS_PT[i + 1]}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={filterRepId} onValueChange={setFilterRepId}>
-            <SelectTrigger className="w-[160px] bg-secondary/50 border-border text-sm"><SelectValue placeholder="Representante" /></SelectTrigger>
-            <SelectContent className="bg-popover border-border z-50">
-              <SelectItem value="all">Todos Reps</SelectItem>
-              {repOptions.map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Badge variant="outline" className="text-xs">{filtered.length} registros</Badge>
+          <div className="grid grid-cols-2 sm:flex gap-2">
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-full sm:w-[130px] bg-secondary/50 border-border text-xs sm:text-sm h-9"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent className="bg-popover border-border z-50">
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="open">Abertas</SelectItem>
+                <SelectItem value="closed">Fechadas</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterYear} onValueChange={setFilterYear}>
+              <SelectTrigger className="w-full sm:w-[110px] bg-secondary/50 border-border text-xs sm:text-sm h-9"><SelectValue placeholder="Ano" /></SelectTrigger>
+              <SelectContent className="bg-popover border-border z-50">
+                <SelectItem value="all">Todo Ano</SelectItem>
+                {years.map(y => <SelectItem key={y} value={String(y)}>{y}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={filterMonth} onValueChange={setFilterMonth}>
+              <SelectTrigger className="w-full sm:w-[130px] bg-secondary/50 border-border text-xs sm:text-sm h-9"><SelectValue placeholder="Mês" /></SelectTrigger>
+              <SelectContent className="bg-popover border-border z-50">
+                <SelectItem value="all">Todo Mês</SelectItem>
+                {Array.from({ length: 12 }, (_, i) => (
+                  <SelectItem key={i + 1} value={String(i + 1)}>{MONTHS_PT[i + 1]}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterRepId} onValueChange={setFilterRepId}>
+              <SelectTrigger className="w-full sm:w-[160px] bg-secondary/50 border-border text-xs sm:text-sm h-9"><SelectValue placeholder="Representante" /></SelectTrigger>
+              <SelectContent className="bg-popover border-border z-50">
+                <SelectItem value="all">Todos Reps</SelectItem>
+                {repOptions.map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <Badge variant="outline" className="text-xs self-start sm:self-center">{filtered.length} registros</Badge>
         </div>
       </Card>
 
@@ -1322,7 +1324,7 @@ const DealManager = ({ userId }: Props) => {
             </div>
 
             {/* Top deal card */}
-            <Card className="border-2 border-blue-400/40 bg-blue-500/[0.04] shadow-md rounded-xl px-6 py-5">
+            <Card className="border-2 border-blue-400/40 bg-blue-500/[0.04] shadow-md rounded-xl px-4 sm:px-6 py-4 sm:py-5">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-lg">🔥</span>
                 <h3 className="font-heading text-sm font-black uppercase tracking-widest text-blue-700">Venda Destaque do Período</h3>

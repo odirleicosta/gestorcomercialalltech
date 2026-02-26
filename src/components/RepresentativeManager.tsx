@@ -399,15 +399,15 @@ const RepresentativeManager = ({ userId }: Props) => {
                     )}
 
                     {/* KPIs grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-1 text-xs">
-                      <div><span className="text-muted-foreground">Faturamento:</span> <span className="font-medium">{formatUsd(vendido)}</span></div>
-                      <div><span className="text-muted-foreground">Lucro Bruto:</span> <span className="font-medium text-accent">{formatUsd(lucroBruto)}</span></div>
-                      <div className="bg-accent/10 rounded px-1"><span className="text-muted-foreground">Lucro Líquido:</span> <span className={`font-bold ${lucroLiquido < 0 ? "text-destructive" : "text-accent"}`}>{formatUsd(lucroLiquido)}</span></div>
-                      <div><span className="text-muted-foreground">Comissão Total:</span> <span className="font-medium">{formatUsd(comissaoTotal)}</span></div>
-                      <div><span className="text-muted-foreground">Taxa Fechamento:</span> <span className="font-medium">{formatPct(closingRate)}</span></div>
-                      <div><span className="text-muted-foreground">M. Bruta Média:</span> <span className="font-medium">{formatPct(avgGrossMargin)}</span></div>
-                      <div className="bg-accent/10 rounded px-1"><span className="text-muted-foreground">M. Líquida Média:</span> <span className={`font-bold ${avgNetMargin < 0 ? "text-destructive" : "text-accent"}`}>{formatPct(avgNetMargin)}</span></div>
-                      <div><span className="text-muted-foreground">Vendas:</span> <span className="font-medium">{closedCount}</span></div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-1.5 text-[10px] sm:text-xs">
+                      <div className="truncate"><span className="text-muted-foreground">Fatur.:</span> <span className="font-medium">{formatUsd(vendido)}</span></div>
+                      <div className="truncate"><span className="text-muted-foreground">L. Bruto:</span> <span className="font-medium text-accent">{formatUsd(lucroBruto)}</span></div>
+                      <div className="bg-accent/10 rounded px-1 truncate"><span className="text-muted-foreground">L. Líq.:</span> <span className={`font-bold ${lucroLiquido < 0 ? "text-destructive" : "text-accent"}`}>{formatUsd(lucroLiquido)}</span></div>
+                      <div className="truncate"><span className="text-muted-foreground">Comissão:</span> <span className="font-medium">{formatUsd(comissaoTotal)}</span></div>
+                      <div className="truncate"><span className="text-muted-foreground">Fechamento:</span> <span className="font-medium">{formatPct(closingRate)}</span></div>
+                      <div className="truncate"><span className="text-muted-foreground">M. Bruta:</span> <span className="font-medium">{formatPct(avgGrossMargin)}</span></div>
+                      <div className="bg-accent/10 rounded px-1 truncate"><span className="text-muted-foreground">M. Líq.:</span> <span className={`font-bold ${avgNetMargin < 0 ? "text-destructive" : "text-accent"}`}>{formatPct(avgNetMargin)}</span></div>
+                      <div className="truncate"><span className="text-muted-foreground">Vendas:</span> <span className="font-medium">{closedCount}</span></div>
                     </div>
                   </div>
 

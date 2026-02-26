@@ -268,51 +268,51 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       {/* ═══ HEADER ═══ */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-heading text-2xl font-bold text-foreground flex items-center gap-2">
-            <Flame className="h-6 w-6 text-[#F97316]" />
+          <h2 className="font-heading text-lg sm:text-2xl font-bold text-foreground flex items-center gap-2">
+            <Flame className="h-5 w-5 sm:h-6 sm:w-6 text-[#F97316]" />
             Reunião Comercial
           </h2>
-          <p className="text-sm text-muted-foreground mt-0.5">{periodLabel}</p>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{periodLabel}</p>
         </div>
       </div>
 
       {/* ═══ FILTROS ═══ */}
-      <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide w-10">Ano</span>
-          <div className="flex gap-1.5">
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-10 shrink-0">Ano</span>
+          <div className="flex gap-1">
             {[2025,2026,2027].map(y => (
-              <button key={y} onClick={() => setFilterYear(y)} className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${filterYear === y ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"}`}>{y}</button>
+              <button key={y} onClick={() => setFilterYear(y)} className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterYear === y ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"}`}>{y}</button>
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide w-10">Mês</span>
-          <div className="flex flex-wrap gap-1.5">
+        <div className="flex items-start gap-2">
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-10 shrink-0 mt-1">Mês</span>
+          <div className="flex flex-wrap gap-1">
             {SHORT_MONTHS.map((m, i) => {
               const mn = i+1;
               const isActive = filterMode === "month" && filterMonth === mn;
               const inRange = filterMode !== "month" && activeMonths.includes(mn);
-              return <button key={i} onClick={() => handleMonthClick(mn)} className={`px-2.5 py-1.5 rounded-full text-xs font-medium transition-all ${isActive ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : inRange ? "bg-[#3B82F6]/10 text-[#3B82F6] border border-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"}`}>{m}</button>;
+              return <button key={i} onClick={() => handleMonthClick(mn)} className={`px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all ${isActive ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : inRange ? "bg-[#3B82F6]/10 text-[#3B82F6] border border-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"}`}>{m}</button>;
             })}
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide w-10">Período</span>
-          <div className="flex gap-1.5">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-10 shrink-0">Período</span>
+          <div className="flex flex-wrap gap-1">
             {QUARTERS.map((q,i) => (
-              <button key={i} onClick={() => handleQuarterClick(i)} className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${filterMode === "quarter" && filterQuarter === i ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"}`}>{q.label}</button>
+              <button key={i} onClick={() => handleQuarterClick(i)} className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterMode === "quarter" && filterQuarter === i ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"}`}>{q.label}</button>
             ))}
-            <button onClick={handleYearClick} className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${filterMode === "year" ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"}`}>Ano</button>
+            <button onClick={handleYearClick} className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterMode === "year" ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"}`}>Ano</button>
           </div>
         </div>
         {reps.length > 0 && (
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide w-10">Rep.</span>
-            <div className="flex flex-wrap gap-1.5">
+          <div className="flex items-start gap-2">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-10 shrink-0 mt-1">Rep.</span>
+            <div className="flex flex-wrap gap-1">
               <button
                 onClick={() => setFilterRep("all")}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${filterRep === "all" ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"}`}
+                className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterRep === "all" ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"}`}
               >
                 Todos
               </button>
@@ -320,9 +320,9 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                 <button
                   key={r.id}
                   onClick={() => setFilterRep(r.id)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${filterRep === r.id ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"}`}
+                  className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterRep === r.id ? "bg-[#3B82F6] text-white shadow-md shadow-[#3B82F6]/30" : "bg-white text-muted-foreground hover:bg-gray-100 border border-border"}`}
                 >
-                  {r.nome}
+                  {r.nome.split(" ").slice(0, 2).join(" ")}
                 </button>
               ))}
             </div>
@@ -331,42 +331,42 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       </div>
 
       {/* ═══ 1) STATUS DO MÊS ═══ */}
-      <section className="bg-gradient-to-br from-[#1E293B] to-[#0F172A] rounded-2xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
+      <section className="bg-gradient-to-br from-[#1E293B] to-[#0F172A] rounded-2xl p-4 sm:p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/[0.02] rounded-full -translate-y-32 translate-x-32" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/[0.02] rounded-full translate-y-24 -translate-x-24" />
         <div className="relative">
-          <div className="flex items-center gap-2 mb-6">
-            <Target className="h-5 w-5 text-[#3B82F6]" />
-            <h3 className="font-heading text-lg font-bold uppercase tracking-wider">Status do Período</h3>
+          <div className="flex items-center gap-2 mb-4 sm:mb-6">
+            <Target className="h-4 w-4 sm:h-5 sm:w-5 text-[#3B82F6]" />
+            <h3 className="font-heading text-sm sm:text-lg font-bold uppercase tracking-wider">Status do Período</h3>
           </div>
 
-          <div className={`grid grid-cols-2 ${activePlan ? "md:grid-cols-6" : "md:grid-cols-5"} gap-4 md:gap-6 mb-6`}>
+          <div className={`grid grid-cols-3 ${activePlan ? "md:grid-cols-6" : "md:grid-cols-5"} gap-3 sm:gap-4 md:gap-6 mb-4 sm:mb-6`}>
             <div>
-              <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Meta Oficial</p>
-              <p className="font-heading text-4xl font-black">{totalMetaQtd}</p>
+              <p className="text-white/50 text-[10px] sm:text-xs uppercase tracking-wider mb-1">Meta Oficial</p>
+              <p className="font-heading text-2xl sm:text-4xl font-black">{totalMetaQtd}</p>
             </div>
             {activePlan && (
               <div>
-                <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Meta Planejada</p>
-                <p className="font-heading text-4xl font-black text-[#3B82F6]">{totalMetaQtd + activePlan.qty_machines}</p>
-                <p className="text-[10px] text-white/40 mt-0.5">+{activePlan.qty_machines} máq. ({new Date(activePlan.created_at).toLocaleDateString("pt-BR")})</p>
+                <p className="text-white/50 text-[10px] sm:text-xs uppercase tracking-wider mb-1">Meta Planejada</p>
+                <p className="font-heading text-2xl sm:text-4xl font-black text-[#3B82F6]">{totalMetaQtd + activePlan.qty_machines}</p>
+                <p className="text-[10px] text-white/40 mt-0.5 hidden sm:block">+{activePlan.qty_machines} máq.</p>
               </div>
             )}
             <div>
-              <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Vendidas</p>
-              <p className="font-heading text-4xl font-black text-[#22C55E]">{totalSold}</p>
+              <p className="text-white/50 text-[10px] sm:text-xs uppercase tracking-wider mb-1">Vendidas</p>
+              <p className="font-heading text-2xl sm:text-4xl font-black text-[#22C55E]">{totalSold}</p>
             </div>
             <div>
-              <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Projeção</p>
-              <p className={`font-heading text-4xl font-black ${projPct >= 100 ? "text-[#22C55E]" : projPct >= 70 ? "text-[#F97316]" : "text-[#EF4444]"}`}>{projQtd}</p>
+              <p className="text-white/50 text-[10px] sm:text-xs uppercase tracking-wider mb-1">Projeção</p>
+              <p className={`font-heading text-2xl sm:text-4xl font-black ${projPct >= 100 ? "text-[#22C55E]" : projPct >= 70 ? "text-[#F97316]" : "text-[#EF4444]"}`}>{projQtd}</p>
             </div>
             <div>
-              <p className="text-white/50 text-xs uppercase tracking-wider mb-1">% Atingido</p>
-              <p className={`font-heading text-4xl font-black ${statusColor(pctAtingido)}`}>{formatPct(pctAtingido)}</p>
+              <p className="text-white/50 text-[10px] sm:text-xs uppercase tracking-wider mb-1">% Atingido</p>
+              <p className={`font-heading text-2xl sm:text-4xl font-black ${statusColor(pctAtingido)}`}>{formatPct(pctAtingido)}</p>
             </div>
             <div>
-              <p className="text-white/50 text-xs uppercase tracking-wider mb-1">Faltam</p>
-              <p className={`font-heading text-4xl font-black ${faltam === 0 ? "text-[#22C55E]" : "text-white"}`}>{faltam}</p>
+              <p className="text-white/50 text-[10px] sm:text-xs uppercase tracking-wider mb-1">Faltam</p>
+              <p className={`font-heading text-2xl sm:text-4xl font-black ${faltam === 0 ? "text-[#22C55E]" : "text-white"}`}>{faltam}</p>
             </div>
           </div>
 
@@ -425,25 +425,25 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                 : "bg-white border-border";
 
               return (
-                <div key={rep.id} onClick={() => setFilterRep(rep.id)} className={`rounded-xl border p-4 flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${bg}`}>
-                  <span className="text-2xl w-10 text-center flex-shrink-0">{medal}</span>
-                  <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-sm font-bold text-foreground flex-shrink-0">
+                <div key={rep.id} onClick={() => setFilterRep(rep.id)} className={`rounded-xl border p-3 sm:p-4 flex items-center gap-2 sm:gap-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${bg}`}>
+                  <span className="text-lg sm:text-2xl w-7 sm:w-10 text-center flex-shrink-0">{medal}</span>
+                  <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-muted flex items-center justify-center text-xs sm:text-sm font-bold text-foreground flex-shrink-0">
                     {rep.nome.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-heading font-bold text-foreground truncate">{rep.nome}</p>
-                    <div className="flex items-center gap-3 mt-1 flex-wrap">
-                      <span className="text-xs text-muted-foreground">Meta: <b>{rep.metaQtd}</b></span>
-                      <span className="text-xs font-semibold text-foreground">Vendido: <b>{rep.count}</b></span>
-                      <span className={`text-xs font-bold ${statusColor(pct)}`}>{formatPct(pct)}</span>
-                      {faltaRep > 0 && <span className="text-xs text-muted-foreground">Faltam: <b>{faltaRep}</b></span>}
+                    <p className="font-heading text-sm sm:text-base font-bold text-foreground truncate">{rep.nome}</p>
+                    <div className="flex items-center gap-2 sm:gap-3 mt-0.5 sm:mt-1 flex-wrap">
+                      <span className="text-[10px] sm:text-xs text-muted-foreground">Meta: <b>{rep.metaQtd}</b></span>
+                      <span className="text-[10px] sm:text-xs font-semibold text-foreground">Vendido: <b>{rep.count}</b></span>
+                      <span className={`text-[10px] sm:text-xs font-bold ${statusColor(pct)}`}>{formatPct(pct)}</span>
+                      {faltaRep > 0 && <span className="text-[10px] sm:text-xs text-muted-foreground hidden sm:inline">Faltam: <b>{faltaRep}</b></span>}
                     </div>
                     {/* Mini progress */}
-                    <div className="w-full max-w-[200px] h-1.5 bg-muted rounded-full mt-2 overflow-hidden">
+                    <div className="w-full max-w-[200px] h-1.5 bg-muted rounded-full mt-1.5 sm:mt-2 overflow-hidden">
                       <div className={`h-full rounded-full transition-all duration-700 ${statusBg(pct)}`} style={{ width: `${Math.min(pct, 100)}%` }} />
                     </div>
                   </div>
-                  <div className="flex-shrink-0 text-right">
+                  <div className="flex-shrink-0 text-right hidden sm:block">
                     <span className={`inline-flex items-center text-xs font-bold uppercase px-2.5 py-1 rounded-full ${statusBgLight(pct)} ${statusColor(pct)}`}>
                       {statusLabel(pct)}
                     </span>
@@ -456,15 +456,15 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       )}
 
       {/* ═══ 3) RITMO COMERCIAL ═══ */}
-      <section className="grid gap-4 grid-cols-1 md:grid-cols-2">
-        <div className="bg-white rounded-xl border border-border p-6 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="h-10 w-10 rounded-lg bg-[#3B82F6]/10 flex items-center justify-center">
-              <Activity className="h-5 w-5 text-[#3B82F6]" />
+      <section className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">
+        <div className="bg-white rounded-xl border border-border p-4 sm:p-6 shadow-sm">
+          <div className="flex items-center gap-2 mb-3 sm:mb-4">
+            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-[#3B82F6]/10 flex items-center justify-center">
+              <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-[#3B82F6]" />
             </div>
             <div>
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase">Ritmo Atual</h4>
-              <p className="font-heading text-3xl font-black text-foreground">{ritmoAtual.toFixed(1)} <span className="text-lg text-muted-foreground">/ semana</span></p>
+              <h4 className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase">Ritmo Atual</h4>
+              <p className="font-heading text-xl sm:text-3xl font-black text-foreground">{ritmoAtual.toFixed(1)} <span className="text-sm sm:text-lg text-muted-foreground">/ semana</span></p>
             </div>
           </div>
           <div className={`rounded-lg px-4 py-3 ${noRitmo ? "bg-[#22C55E]/10" : "bg-[#EF4444]/10"}`}>
@@ -511,7 +511,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
           <DollarSign className="h-5 w-5 text-[#22C55E]" />
           <h3 className="font-heading text-lg font-bold text-foreground">Resultado Financeiro</h3>
         </div>
-        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+        <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
           <MetricCard label="FOB Total" value={cur.count > 0 ? formatCompact(cur.basePrice) : "—"} icon={<DollarSign className="h-5 w-5" />} color="#3B82F6" sub={`${cur.count} vendas`} />
           <MetricCard label="Ticket Médio" value={cur.count > 0 ? formatCompact(ticketMedio) : "—"} icon={<BarChart3 className="h-5 w-5" />} color="#8B5CF6" sub="FOB / máquina" />
           <MetricCard label="Margem Média" value={cur.count > 0 ? formatPct(margemMedia) : "—"} icon={<Zap className="h-5 w-5" />} color={margemMedia >= 0 ? "#22C55E" : "#EF4444"} sub="Lucro líq. / preço base" />
@@ -525,7 +525,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
           <TrendingUp className="h-5 w-5 text-[#3B82F6]" />
           <h3 className="font-heading text-lg font-bold text-foreground">Tendência</h3>
         </div>
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-3">
           {/* Trend card */}
           <div className="bg-white rounded-xl border border-border p-5 shadow-sm">
             <div className="flex items-center gap-3 mb-3">
@@ -642,13 +642,13 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 const MetricCard = ({ label, value, icon, color, sub }: {
   label: string; value: string; icon: React.ReactNode; color: string; sub?: string;
 }) => (
-  <div className="bg-white rounded-xl border border-border p-5 shadow-sm hover:shadow-md transition-shadow">
-    <div className="flex items-center gap-3 mb-3">
-      <div className="h-10 w-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${color}15`, color }}>{icon}</div>
-      <span className="text-xs font-semibold text-muted-foreground uppercase">{label}</span>
+  <div className="bg-white rounded-xl border border-border p-3 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
+    <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+      <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${color}15`, color }}>{icon}</div>
+      <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase">{label}</span>
     </div>
-    <p className="font-heading text-2xl font-black text-foreground">{value}</p>
-    {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
+    <p className="font-heading text-lg sm:text-2xl font-black text-foreground">{value}</p>
+    {sub && <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">{sub}</p>}
   </div>
 );
 

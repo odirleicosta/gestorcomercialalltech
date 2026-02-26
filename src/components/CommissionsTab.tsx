@@ -181,9 +181,9 @@ const CommissionsTab = ({ userId }: Props) => {
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Header + Filters */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <h2 className="font-heading text-lg sm:text-xl font-bold text-foreground flex items-center gap-2">
-          <DollarSign className="h-5 w-5" /> Comissões
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <h2 className="font-heading text-base sm:text-lg md:text-xl font-bold text-foreground flex items-center gap-2">
+          <DollarSign className="h-4 w-4 sm:h-5 sm:w-5" /> Comissões
         </h2>
         <div className="flex items-center gap-2 flex-wrap">
           <Select value={String(filterYear)} onValueChange={v => setFilterYear(parseInt(v))}>
@@ -197,7 +197,7 @@ const CommissionsTab = ({ userId }: Props) => {
             </SelectContent>
           </Select>
           <Select value={filterRep} onValueChange={setFilterRep}>
-            <SelectTrigger className="w-[120px] bg-secondary/50 border-border text-xs h-8">
+            <SelectTrigger className="w-[110px] sm:w-[120px] bg-secondary/50 border-border text-xs h-8">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -240,7 +240,7 @@ const CommissionsTab = ({ userId }: Props) => {
       <CommissionChart data={chartData} filterYear={filterYear} />
 
       {/* Main content: Pivot + Ranking sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4 sm:gap-5">
         <CommissionPivotTable
           rows={repMonthPivot}
           monthColumnTotals={monthColumnTotals}
