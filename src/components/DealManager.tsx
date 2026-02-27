@@ -250,7 +250,10 @@ const DealManager = ({ userId }: Props) => {
     if (data) setCommissionLogs(data as unknown as CommissionLog[]);
   };
 
+  const [drawerItemsLoaded, setDrawerItemsLoaded] = useState(false);
+
   const fetchDealItems = async (dealId: string) => {
+    setDrawerItemsLoaded(false);
     const { data } = await supabase
       .from("deal_items" as any)
       .select("*")
@@ -258,6 +261,7 @@ const DealManager = ({ userId }: Props) => {
       .order("created_at", { ascending: true });
     if (data) setDrawerItems(data as unknown as DealItemDb[]);
     else setDrawerItems([]);
+    setDrawerItemsLoaded(true);
   };
 
   // Pre-fill defaults when opening form
@@ -913,11 +917,11 @@ const DealManager = ({ userId }: Props) => {
 
   // Trigger edit mode after drawer items are loaded
   useEffect(() => {
-    if (pendingEditDeal && drawerItems !== undefined) {
+    if (pendingEditDeal && drawerItemsLoaded) {
       startEditing(pendingEditDeal);
       setPendingEditDeal(null);
     }
-  }, [pendingEditDeal, drawerItems]);
+  }, [pendingEditDeal, drawerItemsLoaded]);
 
   const MONTHS_PT = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
