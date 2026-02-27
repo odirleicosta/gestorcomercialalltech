@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,13 +29,14 @@ import {
   DollarSign, Percent, TrendingUp, TrendingDown, Package, Receipt,
   Save, Lock, Unlock, Trash2, Search, Eye, EyeOff, Users, History, Clock,
   ChevronsUpDown, Check, Plus, Pencil, X, ArrowUpDown, ArrowUp, ArrowDown,
-  Building2, Wrench, ChevronDown, CalendarIcon,
+  Building2, Wrench, ChevronDown, CalendarIcon, FileUp,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import PdfOrderImport, { type ExtractedOrder } from "@/components/PdfOrderImport";
 
 
 export const MACHINE_TYPES = ["Centro de Usinagem", "Torno CNC", "Plu.go"] as const;
@@ -177,6 +178,7 @@ const DealManager = ({ userId }: Props) => {
   const [saleDate, setSaleDate] = useState<Date | undefined>(undefined);
   const [saleDateOpen, setSaleDateOpen] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [showPdfImport, setShowPdfImport] = useState(false);
 
   // Combobox open states
   const [empresaOpen, setEmpresaOpen] = useState(false);
@@ -517,6 +519,57 @@ const DealManager = ({ userId }: Props) => {
     setEmpresaId(""); setItems([emptyItem()]); setDollarRate("");
     setSellerPct(""); setManagerPct(""); setObservation(""); setRepresentativeId(""); setSaleDate(undefined); setShowForm(false);
   };
+
+  // ── PDF Import Handler ──
+  const handlePdfImportComplete = useCallback((order: ExtractedOrder) => {
+    // Pre-fill empresa
+    if (order.matchedEmpresaId) setEmpresaId(order.matchedEmpresaId);
+
+    // Pre-fill representative
+    if (order.matchedRepId) {
+      const rep = repOptions.find(r => r.id === order.matchedRepId);
+      if (rep) {
+        setRepresentativeId(rep.id);
+        setSellerPct(String(rep.comissao_padrao_pct));
+        const isOdirlei = rep.nome.trim().toLowerCase() === "odirlei costa";
+        setManagerPct(isOdirlei ? "0" : String(rep.comissao_gestor_pct));
+      }
+    } else {
+      setSellerPct(String(defaultSellerPct));
+      setManagerPct(String(defaultManagerPct));
+    }
+
+    // Pre-fill items
+    if (order.itens.length > 0) {
+      const importedItems: DealItem[] = order.itens.map(item => ({
+        modeloId: item.matchedModeloId || "",
+        machineName: item.matchedMachineName || item.descricao || "",
+        machineType: item.matchedMachineType || item.tipo_maquina || "",
+        fobCost: item.matchedFobCost != null ? String(item.matchedFobCost) : "",
+        precoVendaFob: String(item.valor_fob_usd),
+        quantity: String(item.quantidade || 1),
+        modeloOpen: false,
+      }));
+      setItems(importedItems);
+    }
+
+    // Pre-fill date
+    if (order.data_pedido) {
+      const parsed = new Date(order.data_pedido);
+      if (!isNaN(parsed.getTime())) setSaleDate(parsed);
+    }
+
+    // Pre-fill observation with notes
+    const notes: string[] = [];
+    if (order.numero_proposta) notes.push(`Proposta: ${order.numero_proposta}`);
+    if (order.tipo_venda) notes.push(`Tipo: ${order.tipo_venda}`);
+    if (order.notas_comerciais) notes.push(order.notas_comerciais);
+    if (order.comando) notes.push(`Comando: ${order.comando}`);
+    if (notes.length > 0) setObservation(notes.join(" | "));
+
+    setShowForm(true);
+    toast({ title: "Formulário preenchido!", description: "Revise os dados e ajuste o que for necessário antes de salvar." });
+  }, [repOptions, defaultSellerPct, defaultManagerPct, toast]);
 
   const handleClose = async (deal: Deal) => {
     if (deal.status === "closed") return;
@@ -876,6 +929,10 @@ const DealManager = ({ userId }: Props) => {
           <p className="text-xs sm:text-sm text-muted-foreground mt-1 ml-10 sm:ml-[52px]">Performance comercial do período</p>
         </div>
         <div className="flex gap-2">
+          <Button onClick={() => setShowPdfImport(true)} variant="outline" className="font-semibold text-sm w-full sm:w-auto">
+            <FileUp className="h-4 w-4 mr-1" />
+            Importar PDF
+          </Button>
           <Button onClick={() => showForm ? resetForm() : openForm()} variant={showForm ? "secondary" : "default"} className="font-semibold text-sm w-full sm:w-auto">
             {showForm ? "Fechar Formulário" : "Nova Negociação"}
           </Button>
@@ -1910,6 +1967,17 @@ const DealManager = ({ userId }: Props) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* PDF Import Dialog */}
+      <PdfOrderImport
+        open={showPdfImport}
+        onClose={() => setShowPdfImport(false)}
+        userId={userId}
+        empresas={empresas}
+        repOptions={repOptions}
+        modelos={modelos}
+        onImportComplete={handlePdfImportComplete}
+      />
     </div>
   );
 };
