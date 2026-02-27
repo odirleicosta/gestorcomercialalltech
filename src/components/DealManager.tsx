@@ -155,6 +155,7 @@ const DealManager = ({ userId }: Props) => {
   const [drawerDeal, setDrawerDeal] = useState<Deal | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [pendingEditDeal, setPendingEditDeal] = useState<Deal | null>(null);
   const [editForm, setEditForm] = useState<Record<string, any>>({});
   const [drawerItems, setDrawerItems] = useState<DealItemDb[]>([]);
 
@@ -896,14 +897,27 @@ const DealManager = ({ userId }: Props) => {
     return <Badge className={cn("bg-red-500 text-white border-0 font-black shadow-sm", sz)}>{formatPct(margin)}</Badge>;
   };
 
-  const openDrawer = (deal: Deal) => {
+  const openDrawer = (deal: Deal, editMode = false) => {
     setDrawerDeal(deal);
     setDrawerOpen(true);
-    setEditing(false);
     setShowLogsInDrawer(false);
+    setEditing(false);
+    if (editMode) {
+      setPendingEditDeal(deal);
+    } else {
+      setPendingEditDeal(null);
+    }
     fetchCommissionLogs(deal.id);
     fetchDealItems(deal.id);
   };
+
+  // Trigger edit mode after drawer items are loaded
+  useEffect(() => {
+    if (pendingEditDeal && drawerItems !== undefined) {
+      startEditing(pendingEditDeal);
+      setPendingEditDeal(null);
+    }
+  }, [pendingEditDeal, drawerItems]);
 
   const MONTHS_PT = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
 
@@ -1461,7 +1475,7 @@ const DealManager = ({ userId }: Props) => {
                           "hover:bg-primary/10 hover:shadow-sm",
                           isBiggest && "bg-blue-500/[0.06] hover:bg-blue-500/[0.1] ring-1 ring-inset ring-blue-400/20"
                         )}
-                        onClick={() => openDrawer(deal)}
+                        onClick={() => openDrawer(deal, true)}
                       >
                         <TableCell className="text-[13px] whitespace-nowrap py-3.5">
                           {new Date(deal.created_at).toLocaleDateString("pt-BR")}
@@ -1493,7 +1507,7 @@ const DealManager = ({ userId }: Props) => {
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openDrawer(deal)} title="Ver detalhes">
                               <Eye className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { startEditing(deal); openDrawer(deal); }} title="Editar">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openDrawer(deal, true)} title="Editar">
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
                           </div>
