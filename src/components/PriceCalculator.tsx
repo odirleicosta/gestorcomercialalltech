@@ -75,6 +75,7 @@ const PriceCalculator = () => {
   const [notes, setNotes] = useState("");
 
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { theme, toggle: toggleTheme } = useTheme();
   const [history, setHistory] = useState<SavedCalculation[]>(loadHistory);
   const [clients, setClients] = useState<Client[]>([]);
