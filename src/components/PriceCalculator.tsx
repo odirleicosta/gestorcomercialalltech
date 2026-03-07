@@ -285,19 +285,25 @@ const PriceCalculator = () => {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Sidebar vertical premium */}
-      <aside className={`hidden md:flex shrink-0 flex-col sidebar-premium p-5 gap-2 transition-all duration-300 ${sidebarCollapsed ? "w-[72px] items-center" : "w-60"}`}>
-        <div className={`flex items-center mb-8 ${sidebarCollapsed ? "justify-center" : "gap-3"}`}>
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl gradient-accent shadow-lg shadow-accent/20 shrink-0">
-            <TrendingUp className="h-5 w-5 text-accent-foreground" />
-          </div>
-          {!sidebarCollapsed && (
-            <div>
-              <h1 className="font-heading text-base font-bold tracking-tight text-sidebar-primary">Gestão Comercial</h1>
-              <p className="text-[11px] text-sidebar-muted font-medium tracking-wide uppercase">Máquinas Industriais</p>
+      <aside className={`hidden md:flex shrink-0 flex-col sidebar-premium p-5 gap-2 transition-all duration-300 sticky top-0 h-screen ${sidebarCollapsed ? "w-[72px] items-center" : "w-60"}`}>
+        <div className={`flex items-center ${sidebarCollapsed ? "justify-center" : "justify-between"}`}>
+          <div className={`flex items-center ${sidebarCollapsed ? "justify-center" : "gap-3"}`}>
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl gradient-accent shadow-lg shadow-accent/20 shrink-0">
+              <TrendingUp className="h-5 w-5 text-accent-foreground" />
             </div>
-          )}
+            {!sidebarCollapsed && (
+              <div>
+                <h1 className="font-heading text-base font-bold tracking-tight text-sidebar-primary">Gestão Comercial</h1>
+                <p className="text-[11px] text-sidebar-muted font-medium tracking-wide uppercase">Máquinas Industriais</p>
+              </div>
+            )}
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} className="text-sidebar-muted hover:text-sidebar-foreground h-8 w-8 shrink-0" title={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}>
+            {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          </Button>
         </div>
-        <nav className="flex flex-col gap-1 flex-1">
+        <div className="mb-4" />
+        <nav className="flex flex-col gap-1 flex-1 overflow-y-auto">
           {[
             { value: "dashboard", icon: BarChart3, label: "Dashboard" },
             { value: "deals", icon: Users, label: "Vendas" },
@@ -331,10 +337,7 @@ const PriceCalculator = () => {
             </button>
           ))}
         </nav>
-        <div className="border-t border-sidebar-border pt-3 mt-2 space-y-1">
-          <Button variant="ghost" size="sm" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} className="text-sidebar-muted hover:text-sidebar-foreground justify-start w-full" title={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}>
-            {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <><PanelLeftClose className="h-4 w-4 mr-2" />Recolher</>}
-          </Button>
+        <div className="border-t border-sidebar-border pt-3 mt-2 space-y-1 shrink-0">
           <Button variant="ghost" size="sm" onClick={toggleTheme} className={`text-sidebar-muted hover:text-sidebar-foreground w-full ${sidebarCollapsed ? "justify-center" : "justify-start"}`} title={sidebarCollapsed ? (theme === "dark" ? "Modo Claro" : "Modo Escuro") : undefined}>
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             {!sidebarCollapsed && <span className="ml-2">{theme === "dark" ? "Modo Claro" : "Modo Escuro"}</span>}
