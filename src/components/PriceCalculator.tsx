@@ -11,7 +11,7 @@ import {
   DollarSign, Percent, TrendingUp, Package, Receipt,
   Save, AlertTriangle, History, Calculator, RotateCcw, User, StickyNote,
   Building2, Plus, Wrench, Copy, Users, BarChart3, LogOut, UserPlus, Zap,
-  Moon, Sun,
+  Moon, Sun, PanelLeftClose, PanelLeft,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -75,6 +75,7 @@ const PriceCalculator = () => {
   const [notes, setNotes] = useState("");
 
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { theme, toggle: toggleTheme } = useTheme();
   const [history, setHistory] = useState<SavedCalculation[]>(loadHistory);
   const [clients, setClients] = useState<Client[]>([]);
@@ -284,15 +285,17 @@ const PriceCalculator = () => {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Sidebar vertical premium */}
-      <aside className="hidden md:flex w-60 shrink-0 flex-col sidebar-premium p-5 gap-2">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl gradient-accent shadow-lg shadow-accent/20">
+      <aside className={`hidden md:flex shrink-0 flex-col sidebar-premium p-5 gap-2 transition-all duration-300 ${sidebarCollapsed ? "w-[72px] items-center" : "w-60"}`}>
+        <div className={`flex items-center mb-8 ${sidebarCollapsed ? "justify-center" : "gap-3"}`}>
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl gradient-accent shadow-lg shadow-accent/20 shrink-0">
             <TrendingUp className="h-5 w-5 text-accent-foreground" />
           </div>
-          <div>
-            <h1 className="font-heading text-base font-bold tracking-tight text-sidebar-primary">Gestão Comercial</h1>
-            <p className="text-[11px] text-sidebar-muted font-medium tracking-wide uppercase">Máquinas Industriais</p>
-          </div>
+          {!sidebarCollapsed && (
+            <div>
+              <h1 className="font-heading text-base font-bold tracking-tight text-sidebar-primary">Gestão Comercial</h1>
+              <p className="text-[11px] text-sidebar-muted font-medium tracking-wide uppercase">Máquinas Industriais</p>
+            </div>
+          )}
         </div>
         <nav className="flex flex-col gap-1 flex-1">
           {[
@@ -308,30 +311,37 @@ const PriceCalculator = () => {
             <button
               key={value}
               onClick={() => setActiveTab(value)}
+              title={sidebarCollapsed ? label : undefined}
               className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                sidebarCollapsed ? "justify-center px-2" : ""
+              } ${
                 activeTab === value
                   ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
                   : "text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
               }`}
             >
-              <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200 ${
+              <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200 shrink-0 ${
                 activeTab === value
                   ? "gradient-accent shadow-sm text-accent-foreground"
                   : "bg-sidebar-accent/30 text-sidebar-muted group-hover:text-sidebar-foreground"
               }`}>
                 <Icon className="h-4 w-4" />
               </div>
-              {label}
+              {!sidebarCollapsed && label}
             </button>
           ))}
         </nav>
         <div className="border-t border-sidebar-border pt-3 mt-2 space-y-1">
-          <Button variant="ghost" size="sm" onClick={toggleTheme} className="text-sidebar-muted hover:text-sidebar-foreground justify-start w-full">
-            {theme === "dark" ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
-            {theme === "dark" ? "Modo Claro" : "Modo Escuro"}
+          <Button variant="ghost" size="sm" onClick={() => setSidebarCollapsed(!sidebarCollapsed)} className="text-sidebar-muted hover:text-sidebar-foreground justify-start w-full" title={sidebarCollapsed ? "Expandir menu" : "Recolher menu"}>
+            {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <><PanelLeftClose className="h-4 w-4 mr-2" />Recolher</>}
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()} className="text-sidebar-muted hover:text-sidebar-foreground justify-start w-full">
-            <LogOut className="h-4 w-4 mr-2" /> Sair
+          <Button variant="ghost" size="sm" onClick={toggleTheme} className={`text-sidebar-muted hover:text-sidebar-foreground w-full ${sidebarCollapsed ? "justify-center" : "justify-start"}`} title={sidebarCollapsed ? (theme === "dark" ? "Modo Claro" : "Modo Escuro") : undefined}>
+            {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            {!sidebarCollapsed && <span className="ml-2">{theme === "dark" ? "Modo Claro" : "Modo Escuro"}</span>}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => supabase.auth.signOut()} className={`text-sidebar-muted hover:text-sidebar-foreground w-full ${sidebarCollapsed ? "justify-center" : "justify-start"}`} title={sidebarCollapsed ? "Sair" : undefined}>
+            <LogOut className="h-4 w-4" />
+            {!sidebarCollapsed && <span className="ml-2">Sair</span>}
           </Button>
         </div>
       </aside>
