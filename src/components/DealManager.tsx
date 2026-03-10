@@ -13,15 +13,12 @@ import {
   Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from "@/components/ui/command";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "@/components/ui/dialog";
-import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Sheet, SheetContent, SheetHeader, SheetTitle,
-} from "@/components/ui/sheet";
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -1526,9 +1523,9 @@ const DealManager = ({ userId }: Props) => {
         </Card>
       )}
 
-      {/* ── DETAIL DRAWER ── */}
-      <Sheet open={drawerOpen} onOpenChange={(open) => { setDrawerOpen(open); if (!open) { setEditing(false); setDrawerDeal(null); } }}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto bg-card border-border p-0">
+      {/* ── DETAIL POPUP ── */}
+      <Dialog open={drawerOpen} onOpenChange={(open) => { setDrawerOpen(open); if (!open) { setEditing(false); setDrawerDeal(null); } }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border p-0 sm:rounded-xl">
           {drawerDeal && (() => {
             const deal = drawerDeal;
             const emp = empresas.find(e => e.id === deal.empresa_id);
@@ -1540,10 +1537,10 @@ const DealManager = ({ userId }: Props) => {
               <div className="flex flex-col h-full">
                 {/* Drawer Header */}
                 <div className="p-5 border-b border-border bg-muted/20">
-                  <SheetTitle className="text-lg font-heading font-bold text-foreground flex items-center gap-2">
+                  <DialogTitle className="text-lg font-heading font-bold text-foreground flex items-center gap-2">
                     <Building2 className="h-5 w-5 text-primary" />
                     {deal.client_name}
-                  </SheetTitle>
+                  </DialogTitle>
                   <div className="flex items-center gap-2 mt-1.5">
                     <Badge variant={deal.status === "closed" ? "secondary" : "default"} className="text-xs">
                       {deal.status === "closed" ? "Fechada" : "Aberta"}
@@ -1954,8 +1951,8 @@ const DealManager = ({ userId }: Props) => {
               </div>
             );
           })()}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* Prompt to save sale price to catalog */}
       <AlertDialog open={showSavePricePrompt} onOpenChange={setShowSavePricePrompt}>
