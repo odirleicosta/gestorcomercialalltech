@@ -1526,9 +1526,9 @@ const DealManager = ({ userId }: Props) => {
         </Card>
       )}
 
-      {/* ── DETAIL DRAWER ── */}
-      <Sheet open={drawerOpen} onOpenChange={(open) => { setDrawerOpen(open); if (!open) { setEditing(false); setDrawerDeal(null); } }}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto bg-card border-border p-0">
+      {/* ── DETAIL POPUP ── */}
+      <Dialog open={drawerOpen} onOpenChange={(open) => { setDrawerOpen(open); if (!open) { setEditing(false); setDrawerDeal(null); } }}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border p-0 sm:rounded-xl">
           {drawerDeal && (() => {
             const deal = drawerDeal;
             const emp = empresas.find(e => e.id === deal.empresa_id);
