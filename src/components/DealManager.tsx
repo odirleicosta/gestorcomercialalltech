@@ -1543,7 +1543,7 @@ const DealManager = ({ userId }: Props) => {
                   <DialogTitle className="text-lg font-heading font-bold text-foreground flex items-center gap-2">
                     <Building2 className="h-5 w-5 text-primary" />
                     {deal.client_name}
-                  </SheetTitle>
+                  </DialogTitle>
                   <div className="flex items-center gap-2 mt-1.5">
                     <Badge variant={deal.status === "closed" ? "secondary" : "default"} className="text-xs">
                       {deal.status === "closed" ? "Fechada" : "Aberta"}
