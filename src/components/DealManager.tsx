@@ -1540,7 +1540,7 @@ const DealManager = ({ userId }: Props) => {
               <div className="flex flex-col h-full">
                 {/* Drawer Header */}
                 <div className="p-5 border-b border-border bg-muted/20">
-                  <SheetTitle className="text-lg font-heading font-bold text-foreground flex items-center gap-2">
+                  <DialogTitle className="text-lg font-heading font-bold text-foreground flex items-center gap-2">
                     <Building2 className="h-5 w-5 text-primary" />
                     {deal.client_name}
                   </SheetTitle>
