@@ -360,7 +360,7 @@ const PriceCalculator = () => {
 
       {/* Main content */}
       <main className="flex-1 overflow-y-auto px-3 py-4 pb-24 md:py-10 md:px-8 md:pb-10">
-        <div className="mx-auto max-w-6xl">
+        <div className="w-full">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="hidden"><TabsList><TabsTrigger value="simulation" /><TabsTrigger value="deals" /><TabsTrigger value="commissions" /><TabsTrigger value="reps" /><TabsTrigger value="dashboard" /><TabsTrigger value="registry" /><TabsTrigger value="catalog" /><TabsTrigger value="deep-analysis" /></TabsList></div>
 
