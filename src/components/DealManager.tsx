@@ -1433,7 +1433,7 @@ const DealManager = ({ userId }: Props) => {
         <p className="text-muted-foreground text-center py-8">Nenhuma negociação encontrada.</p>
       ) : (
         <Card className="border-border/60 bg-card shadow-md overflow-hidden rounded-xl">
-          <div className="overflow-x-auto max-h-[calc(100vh-400px)] scrollbar-thin scrollbar-thumb-muted-foreground/15 scrollbar-track-transparent">
+          <div className="overflow-x-auto max-h-[calc(100vh-400px)] scrollbar-hidden">
             <Table>
               <TableHeader className="sticky top-0 z-10">
                 <TableRow className="bg-foreground/[0.08] hover:bg-foreground/[0.08] border-b-2 border-border/60">
