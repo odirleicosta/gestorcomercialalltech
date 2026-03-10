@@ -1954,8 +1954,8 @@ const DealManager = ({ userId }: Props) => {
               </div>
             );
           })()}
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       {/* Prompt to save sale price to catalog */}
       <AlertDialog open={showSavePricePrompt} onOpenChange={setShowSavePricePrompt}>
