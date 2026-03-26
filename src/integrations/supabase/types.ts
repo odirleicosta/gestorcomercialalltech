@@ -126,6 +126,102 @@ export type Database = {
           },
         ]
       }
+      closing_deals: {
+        Row: {
+          city: string | null
+          client_name: string
+          competitor: string | null
+          created_at: string
+          deal_value: number
+          empresa_id: string | null
+          expected_close_date: string | null
+          id: string
+          machine_name: string
+          machine_type: string
+          main_objection: string | null
+          next_step: string | null
+          notes: string | null
+          probability: Database["public"]["Enums"]["closing_deal_probability"]
+          quantity: number
+          representative_id: string | null
+          risk_reason: string | null
+          sale_type: Database["public"]["Enums"]["closing_deal_sale_type"]
+          stage: Database["public"]["Enums"]["closing_deal_stage"]
+          start_date: string
+          status: Database["public"]["Enums"]["closing_deal_status"]
+          trade_in: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          city?: string | null
+          client_name: string
+          competitor?: string | null
+          created_at?: string
+          deal_value?: number
+          empresa_id?: string | null
+          expected_close_date?: string | null
+          id?: string
+          machine_name?: string
+          machine_type?: string
+          main_objection?: string | null
+          next_step?: string | null
+          notes?: string | null
+          probability?: Database["public"]["Enums"]["closing_deal_probability"]
+          quantity?: number
+          representative_id?: string | null
+          risk_reason?: string | null
+          sale_type?: Database["public"]["Enums"]["closing_deal_sale_type"]
+          stage?: Database["public"]["Enums"]["closing_deal_stage"]
+          start_date?: string
+          status?: Database["public"]["Enums"]["closing_deal_status"]
+          trade_in?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          city?: string | null
+          client_name?: string
+          competitor?: string | null
+          created_at?: string
+          deal_value?: number
+          empresa_id?: string | null
+          expected_close_date?: string | null
+          id?: string
+          machine_name?: string
+          machine_type?: string
+          main_objection?: string | null
+          next_step?: string | null
+          notes?: string | null
+          probability?: Database["public"]["Enums"]["closing_deal_probability"]
+          quantity?: number
+          representative_id?: string | null
+          risk_reason?: string | null
+          sale_type?: Database["public"]["Enums"]["closing_deal_sale_type"]
+          stage?: Database["public"]["Enums"]["closing_deal_stage"]
+          start_date?: string
+          status?: Database["public"]["Enums"]["closing_deal_status"]
+          trade_in?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "closing_deals_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "closing_deals_representative_id_fkey"
+            columns: ["representative_id"]
+            isOneToOne: false
+            referencedRelation: "representatives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comissoes_linhas: {
         Row: {
           cliente: string
@@ -755,6 +851,13 @@ export type Database = {
     }
     Enums: {
       auditoria_status_enum: "OK" | "ALERTA" | "ERRO"
+      closing_deal_probability: "Baixa" | "Média" | "Alta"
+      closing_deal_sale_type: "Rentall" | "Venda Direta"
+      closing_deal_stage:
+        | "Proposta Enviada"
+        | "Negociação Ativa"
+        | "Decisão Próxima"
+      closing_deal_status: "ativa" | "ganha" | "perdida"
       empresa_origem_enum: "ALLTECH" | "ALLSERVICE"
     }
     CompositeTypes: {
@@ -884,6 +987,14 @@ export const Constants = {
   public: {
     Enums: {
       auditoria_status_enum: ["OK", "ALERTA", "ERRO"],
+      closing_deal_probability: ["Baixa", "Média", "Alta"],
+      closing_deal_sale_type: ["Rentall", "Venda Direta"],
+      closing_deal_stage: [
+        "Proposta Enviada",
+        "Negociação Ativa",
+        "Decisão Próxima",
+      ],
+      closing_deal_status: ["ativa", "ganha", "perdida"],
       empresa_origem_enum: ["ALLTECH", "ALLSERVICE"],
     },
   },
