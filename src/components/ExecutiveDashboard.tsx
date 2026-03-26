@@ -5,6 +5,7 @@ import {
   TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Users,
   AlertTriangle, ArrowUpRight, ArrowDownRight, Gauge,
   Flame, Trophy, Zap, Minus, FileText, Activity, SlidersHorizontal, ChevronDown,
+  Crosshair, Clock, ArrowRight,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -34,6 +35,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   const [repsWithGoals, setRepsWithGoals] = useState<RepWithGoals[]>([]);
   const [monthlyGoals, setMonthlyGoals] = useState<MonthlyGoal[]>([]);
   const [activePlan, setActivePlan] = useState<any>(null);
+  const [closingDeals, setClosingDeals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const now = new Date();
   const [filterMonth, setFilterMonth] = useState(now.getMonth() + 1);
@@ -58,11 +60,12 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [dealsRes, repsRes, goalsRes, planRes] = await Promise.all([
+      const [dealsRes, repsRes, goalsRes, planRes, closingRes] = await Promise.all([
         supabase.from("deals" as any).select("*").order("created_at", { ascending: false }),
         supabase.from("representatives" as any).select("id, nome, meta_mensal_padrao, meta_quantidade").eq("status", "ATIVO").order("nome"),
         supabase.from("monthly_goals" as any).select("representative_id, meta_quantidade, meta_valor, machine_type, mes").eq("ano", filterYear),
         supabase.from("strategic_plans" as any).select("*").eq("is_active", true).eq("mes", now.getMonth() + 1).eq("ano", now.getFullYear()).limit(1),
+        supabase.from("closing_deals" as any).select("*").eq("status", "ativa"),
       ]);
       if (dealsRes.data) setDeals(dealsRes.data as unknown as Deal[]);
       if (repsRes.data) {
@@ -72,6 +75,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       }
       if (goalsRes.data) setMonthlyGoals(goalsRes.data as unknown as MonthlyGoal[]);
       if (planRes.data && (planRes.data as any[]).length > 0) setActivePlan((planRes.data as any[])[0]);
+      if (closingRes.data) setClosingDeals(closingRes.data as any[]);
       setLoading(false);
     };
     fetchData();
@@ -646,6 +650,129 @@ const ExecutiveDashboard = ({ userId }: Props) => {
           </div>
         </div>
       </section>
+
+      {/* ═══ 7) RADAR DE FECHAMENTO ═══ */}
+      {closingDeals.length > 0 && (() => {
+        const fmtUsd = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "USD" }).replace("US$", "US$ ");
+        const totalVal = closingDeals.reduce((s: number, d: any) => s + (d.deal_value || 0), 0);
+        const totalMach = closingDeals.reduce((s: number, d: any) => s + (d.quantity || 0), 0);
+        const ticket = closingDeals.length > 0 ? totalVal / closingDeals.length : 0;
+        const alta = closingDeals.filter((d: any) => d.probability === "Alta");
+        const media = closingDeals.filter((d: any) => d.probability === "Média");
+        const baixa = closingDeals.filter((d: any) => d.probability === "Baixa");
+        const daysSince = (s: string) => Math.floor((Date.now() - new Date(s).getTime()) / 86400000);
+        const alertOver30 = closingDeals.filter((d: any) => daysSince(d.start_date) > 30);
+        const alertNoNext = closingDeals.filter((d: any) => !d.next_step);
+        const alertNearDate = closingDeals.filter((d: any) => {
+          if (!d.expected_close_date) return false;
+          const diff = Math.floor((new Date(d.expected_close_date).getTime() - Date.now()) / 86400000);
+          return diff >= 0 && diff <= 7;
+        });
+        const alertRisk = closingDeals.filter((d: any) => d.risk_reason);
+        const top5 = [...closingDeals].sort((a: any, b: any) => {
+          const probW: Record<string, number> = { Alta: 3, Média: 2, Baixa: 1 };
+          return (b.deal_value || 0) * (probW[b.probability] || 1) - (a.deal_value || 0) * (probW[a.probability] || 1);
+        }).slice(0, 5);
+        const repNm = (id: string | null) => reps.find(r => r.id === id)?.nome || "—";
+
+        return (
+          <>
+            <section>
+              <div className="flex items-center gap-2 mb-4">
+                <Crosshair className="h-5 w-5 text-primary" />
+                <h3 className="font-heading text-base font-bold text-foreground uppercase tracking-wider">Pipeline em Fechamento</h3>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <MetricCard label="Negociações Ativas" value={String(closingDeals.length)} icon={<Crosshair className="h-4 w-4" />} color="#3B82F6" />
+                <MetricCard label="Valor Total" value={fmtUsd(totalVal)} icon={<DollarSign className="h-4 w-4" />} color="#22C55E" />
+                <MetricCard label="Máquinas" value={String(totalMach)} icon={<Target className="h-4 w-4" />} color="#8B5CF6" />
+                <MetricCard label="Ticket Médio" value={fmtUsd(ticket)} icon={<TrendingUp className="h-4 w-4" />} color="#F59E0B" />
+              </div>
+            </section>
+
+            <section>
+              <div className="flex items-center gap-2 mb-4">
+                <Gauge className="h-5 w-5 text-primary" />
+                <h3 className="font-heading text-base font-bold text-foreground uppercase tracking-wider">Previsão de Fechamento</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {[
+                  { label: "Alta Probabilidade", items: alta, color: "#22C55E", bg: "bg-green-500/10 border-green-500/20" },
+                  { label: "Média Probabilidade", items: media, color: "#F59E0B", bg: "bg-yellow-500/10 border-yellow-500/20" },
+                  { label: "Baixa Probabilidade", items: baixa, color: "#EF4444", bg: "bg-red-500/10 border-red-500/20" },
+                ].map(({ label, items, color, bg }) => (
+                  <div key={label} className={`rounded-xl border p-4 ${bg}`}>
+                    <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color }}>{label}</p>
+                    <div className="flex justify-between">
+                      <div>
+                        <p className="font-heading text-2xl font-black text-foreground">{items.reduce((s: number, d: any) => s + (d.quantity || 0), 0)}</p>
+                        <p className="text-xs text-muted-foreground">máquinas</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-heading text-lg font-bold text-foreground">{fmtUsd(items.reduce((s: number, d: any) => s + (d.deal_value || 0), 0))}</p>
+                        <p className="text-xs text-muted-foreground">{items.length} negociações</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {(alertOver30.length > 0 || alertNoNext.length > 0 || baixa.length > 0 || alertNearDate.length > 0 || alertRisk.length > 0) && (
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                  <h3 className="font-heading text-base font-bold text-foreground uppercase tracking-wider">Alertas do Gestor</h3>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {[
+                    { label: "> 30 dias", count: alertOver30.length, icon: <Clock className="h-4 w-4" />, color: "#F59E0B" },
+                    { label: "Sem próximo passo", count: alertNoNext.length, icon: <ArrowRight className="h-4 w-4" />, color: "#EF4444" },
+                    { label: "Baixa prob.", count: baixa.length, icon: <TrendingDown className="h-4 w-4" />, color: "#EF4444" },
+                    { label: "Fecham em 7d", count: alertNearDate.length, icon: <Flame className="h-4 w-4" />, color: "#F97316" },
+                    { label: "Com risco", count: alertRisk.length, icon: <AlertTriangle className="h-4 w-4" />, color: "#EF4444" },
+                  ].map(({ label, count, icon, color }) => count > 0 ? (
+                    <div key={label} className="bg-card rounded-xl border border-border p-3 text-center">
+                      <div className="h-8 w-8 mx-auto rounded-lg flex items-center justify-center mb-1" style={{ backgroundColor: `${color}15`, color }}>{icon}</div>
+                      <p className="font-heading text-xl font-black text-foreground">{count}</p>
+                      <p className="text-[10px] text-muted-foreground">{label}</p>
+                    </div>
+                  ) : null)}
+                </div>
+              </section>
+            )}
+
+            <section>
+              <div className="flex items-center gap-2 mb-4">
+                <Trophy className="h-5 w-5 text-yellow-500" />
+                <h3 className="font-heading text-base font-bold text-foreground uppercase tracking-wider">Top 5 Prioridades</h3>
+              </div>
+              <div className="space-y-2">
+                {top5.map((d: any, i: number) => (
+                  <div key={d.id} className="flex items-center gap-3 bg-card rounded-xl border border-border p-3">
+                    <div className="h-8 w-8 rounded-lg flex items-center justify-center font-heading font-black text-sm shrink-0"
+                      style={{ backgroundColor: i === 0 ? '#F59E0B15' : '#3B82F615', color: i === 0 ? '#F59E0B' : '#3B82F6' }}>
+                      {i + 1}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-foreground truncate">{d.client_name}</p>
+                      <p className="text-xs text-muted-foreground">{repNm(d.representative_id)} · {d.machine_name || d.machine_type}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-foreground">{fmtUsd(d.deal_value)}</p>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                        d.probability === "Alta" ? "bg-green-500/15 text-green-400" :
+                        d.probability === "Média" ? "bg-yellow-500/15 text-yellow-400" :
+                        "bg-red-500/15 text-red-400"
+                      }`}>{d.probability}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </>
+        );
+      })()}
 
       {/* ═══ HISTÓRICO INDIVIDUAL ═══ */}
       {filterRep !== "all" && (
