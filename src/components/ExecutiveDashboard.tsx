@@ -5,6 +5,7 @@ import {
   TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Users,
   AlertTriangle, ArrowUpRight, ArrowDownRight, Gauge,
   Flame, Trophy, Zap, Minus, FileText, Activity, SlidersHorizontal, ChevronDown,
+  Crosshair, Clock, ArrowRight,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -34,6 +35,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   const [repsWithGoals, setRepsWithGoals] = useState<RepWithGoals[]>([]);
   const [monthlyGoals, setMonthlyGoals] = useState<MonthlyGoal[]>([]);
   const [activePlan, setActivePlan] = useState<any>(null);
+  const [closingDeals, setClosingDeals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const now = new Date();
   const [filterMonth, setFilterMonth] = useState(now.getMonth() + 1);
@@ -58,11 +60,12 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [dealsRes, repsRes, goalsRes, planRes] = await Promise.all([
+      const [dealsRes, repsRes, goalsRes, planRes, closingRes] = await Promise.all([
         supabase.from("deals" as any).select("*").order("created_at", { ascending: false }),
         supabase.from("representatives" as any).select("id, nome, meta_mensal_padrao, meta_quantidade").eq("status", "ATIVO").order("nome"),
         supabase.from("monthly_goals" as any).select("representative_id, meta_quantidade, meta_valor, machine_type, mes").eq("ano", filterYear),
         supabase.from("strategic_plans" as any).select("*").eq("is_active", true).eq("mes", now.getMonth() + 1).eq("ano", now.getFullYear()).limit(1),
+        supabase.from("closing_deals" as any).select("*").eq("status", "ativa"),
       ]);
       if (dealsRes.data) setDeals(dealsRes.data as unknown as Deal[]);
       if (repsRes.data) {
@@ -72,6 +75,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       }
       if (goalsRes.data) setMonthlyGoals(goalsRes.data as unknown as MonthlyGoal[]);
       if (planRes.data && (planRes.data as any[]).length > 0) setActivePlan((planRes.data as any[])[0]);
+      if (closingRes.data) setClosingDeals(closingRes.data as any[]);
       setLoading(false);
     };
     fetchData();
