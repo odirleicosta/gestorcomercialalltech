@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Plus, Crosshair, Search, Filter, Edit2, Trash2, Trophy, XCircle,
   Calendar, MapPin, User, Package, DollarSign, TrendingUp, AlertTriangle,
-  ArrowRight, Repeat2, Clock,
+  ArrowRight, Repeat2, Clock, ImagePlus, Loader2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
