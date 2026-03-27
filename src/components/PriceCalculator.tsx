@@ -11,7 +11,7 @@ import {
   DollarSign, Percent, TrendingUp, Package, Receipt,
   Save, AlertTriangle, History, Calculator, RotateCcw, User, StickyNote,
   Building2, Plus, Wrench, Copy, Users, BarChart3, LogOut, UserPlus, Zap,
-  Moon, Sun, PanelLeftClose, PanelLeft, Crosshair,
+  Moon, Sun, PanelLeftClose, PanelLeft, Crosshair, Target,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +28,7 @@ import CommissionGate from "@/components/CommissionGate";
 import Auth from "@/components/Auth";
 import BottomNavBar from "@/components/BottomNavBar";
 import ClosingRadar from "@/components/ClosingRadar";
+import RepKPIs from "@/components/RepKPIs";
 import { useTheme } from "@/hooks/use-theme";
 
 export interface SavedCalculation {
@@ -310,6 +311,7 @@ const PriceCalculator = () => {
             { value: "deals", icon: Users, label: "Vendas" },
             { value: "closing-radar", icon: Crosshair, label: "Radar" },
             { value: "commissions", icon: DollarSign, label: "Comissões" },
+            { value: "rep-kpis", icon: Target, label: "KPIs" },
             { value: "simulation", icon: Calculator, label: "Simulação" },
             { value: "reps", icon: UserPlus, label: "Representantes" },
             { value: "registry", icon: Building2, label: "Cadastros" },
@@ -364,7 +366,7 @@ const PriceCalculator = () => {
       <main className="flex-1 overflow-y-auto px-3 py-4 pb-24 md:py-10 md:px-8 md:pb-10">
         <div className="w-full">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="hidden"><TabsList><TabsTrigger value="simulation" /><TabsTrigger value="deals" /><TabsTrigger value="closing-radar" /><TabsTrigger value="commissions" /><TabsTrigger value="reps" /><TabsTrigger value="dashboard" /><TabsTrigger value="registry" /><TabsTrigger value="catalog" /><TabsTrigger value="deep-analysis" /></TabsList></div>
+          <div className="hidden"><TabsList><TabsTrigger value="simulation" /><TabsTrigger value="deals" /><TabsTrigger value="closing-radar" /><TabsTrigger value="commissions" /><TabsTrigger value="rep-kpis" /><TabsTrigger value="reps" /><TabsTrigger value="dashboard" /><TabsTrigger value="registry" /><TabsTrigger value="catalog" /><TabsTrigger value="deep-analysis" /></TabsList></div>
 
           <TabsContent value="simulation">
             <div className="grid gap-6 lg:grid-cols-5">
@@ -757,6 +759,10 @@ const PriceCalculator = () => {
 
           <TabsContent value="catalog">
             <MachineCatalog catalog={catalog} setCatalog={setCatalog} userId={user.id} />
+          </TabsContent>
+
+          <TabsContent value="rep-kpis">
+            <RepKPIs userId={user.id} />
           </TabsContent>
 
           <TabsContent value="deep-analysis">
