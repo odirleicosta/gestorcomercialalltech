@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Plus, Crosshair, Search, Filter, Edit2, Trash2, Trophy, XCircle,
   Calendar, MapPin, User, Package, DollarSign, TrendingUp, AlertTriangle,
-  ArrowRight, Repeat2, Clock,
+  ArrowRight, Repeat2, Clock, ImagePlus, Loader2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -115,6 +115,7 @@ const ClosingRadar = ({ userId }: Props) => {
   const [form, setForm] = useState<FormData>({ ...emptyForm });
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [imageLoading, setImageLoading] = useState(false);
 
   // Filters
   const [fRep, setFRep] = useState("all");
@@ -240,6 +241,89 @@ const ClosingRadar = ({ userId }: Props) => {
     }
   }
 
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Selecione um arquivo de imagem", variant: "destructive" });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "Imagem muito grande (máx 10MB)", variant: "destructive" });
+      return;
+    }
+
+    setImageLoading(true);
+    try {
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const { data, error } = await supabase.functions.invoke("parse-closing-image", {
+        body: { imageBase64: base64 },
+      });
+
+      if (error) throw new Error(error.message || "Erro ao processar imagem");
+      if (data?.error) throw new Error(data.error);
+
+      const extracted = data?.data;
+      if (!extracted) throw new Error("Nenhum dado extraído da imagem");
+
+      // Match representative by name
+      let repId: string | null = null;
+      if (extracted.representative_name) {
+        const repNameLower = extracted.representative_name.toLowerCase();
+        const matchedRep = reps.find((r) => r.nome.toLowerCase().includes(repNameLower) || repNameLower.includes(r.nome.toLowerCase()));
+        if (matchedRep) repId = matchedRep.id;
+      }
+
+      // Match client by name
+      let empresaId: string | null = null;
+      if (extracted.client_name) {
+        const clientLower = extracted.client_name.toLowerCase();
+        const matchedClient = clients.find((c) => c.nome.toLowerCase().includes(clientLower) || clientLower.includes(c.nome.toLowerCase()));
+        if (matchedClient) {
+          empresaId = matchedClient.id;
+          if (!extracted.city && matchedClient.cidade) extracted.city = matchedClient.cidade;
+        }
+      }
+
+      setEditingId(null);
+      setForm({
+        ...emptyForm,
+        start_date: new Date().toISOString().split("T")[0],
+        client_name: extracted.client_name || "",
+        city: extracted.city || null,
+        machine_name: extracted.machine_name || "",
+        machine_type: extracted.machine_type || "",
+        quantity: extracted.quantity || 1,
+        deal_value: extracted.deal_value || 0,
+        sale_type: extracted.sale_type === "Rentall" ? "Rentall" : "Venda Direta",
+        stage: ["Proposta Enviada", "Negociação Ativa", "Decisão Próxima"].includes(extracted.stage) ? extracted.stage : "Proposta Enviada",
+        probability: ["Alta", "Média", "Baixa"].includes(extracted.probability) ? extracted.probability : "Média",
+        competitor: extracted.competitor || null,
+        trade_in: extracted.trade_in || false,
+        main_objection: extracted.main_objection || null,
+        next_step: extracted.next_step || null,
+        notes: extracted.notes || null,
+        representative_id: repId,
+        empresa_id: empresaId,
+        expected_close_date: null,
+        status: "ativa",
+      });
+      setDialogOpen(true);
+      toast({ title: "Dados extraídos com sucesso!", description: "Revise e confirme os dados antes de salvar." });
+    } catch (err: any) {
+      toast({ title: "Erro ao processar imagem", description: err.message, variant: "destructive" });
+    } finally {
+      setImageLoading(false);
+      e.target.value = "";
+    }
+  }
+
   const repName = (id: string | null) => reps.find((r) => r.id === id)?.nome || "—";
 
   // Stats
@@ -265,6 +349,13 @@ const ClosingRadar = ({ userId }: Props) => {
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
             <Filter className="h-4 w-4 mr-1" /> Filtros
+          </Button>
+          <Button variant="outline" size="sm" disabled={imageLoading} asChild>
+            <label className="cursor-pointer">
+              {imageLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ImagePlus className="h-4 w-4 mr-1" />}
+              {imageLoading ? "Processando..." : "Importar Imagem"}
+              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={imageLoading} />
+            </label>
           </Button>
           <Button size="sm" onClick={openNew}>
             <Plus className="h-4 w-4 mr-1" /> Nova Negociação
