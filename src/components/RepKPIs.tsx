@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Target, Eye, TrendingUp, TrendingDown, XCircle, CheckCircle, BarChart3, Users, Calendar, MessageSquare, Plus, FileText, Trash2, Edit2 } from "lucide-react";
+import { Target, Eye, TrendingUp, TrendingDown, XCircle, CheckCircle, BarChart3, Users, Calendar, Plus, FileText, Trash2, Edit2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend } from "recharts";
@@ -19,7 +19,7 @@ interface Deal { id: string; representative_id: string | null; status: string; c
 interface ClosingDeal { id: string; representative_id: string | null; status: string; deal_value: number; start_date: string; stage: string; probability: string; created_at: string; client_name?: string; machine_name?: string; machine_type?: string; sale_type?: string; notes?: string; }
 interface Visit { representative_id: string; semana: number; quantidade: number; meta: number; }
 interface MonthlyGoal { representative_id: string; mes: number; meta_valor: number; meta_quantidade: number; machine_type: string; }
-interface Feedback { id: string; representative_id: string; descricao: string; status: string; prioridade: string; created_at: string; resolved_at: string | null; }
+
 
 type PeriodMode = "week" | "month" | "quarter" | "year";
 
@@ -52,7 +52,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [closingDeals, setClosingDeals] = useState<ClosingDeal[]>([]);
   const [visits, setVisits] = useState<Visit[]>([]);
   const [goals, setGoals] = useState<MonthlyGoal[]>([]);
-  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  
   const [loading, setLoading] = useState(true);
   const now = new Date();
   const [filterYear, setFilterYear] = useState(now.getFullYear());
@@ -61,11 +61,6 @@ const RepKPIs = ({ userId }: Props) => {
   const [filterQuarter, setFilterQuarter] = useState<string>(`T${Math.floor(now.getMonth() / 3) + 1}`);
   const [filterWeek, setFilterWeek] = useState(getWeekNumber(now));
 
-  // Feedback dialog
-  const [fbDialogOpen, setFbDialogOpen] = useState(false);
-  const [fbRepId, setFbRepId] = useState("");
-  const [fbDesc, setFbDesc] = useState("");
-  const [fbPrioridade, setFbPrioridade] = useState("normal");
 
   // Negociação dialog
   const [negDialogOpen, setNegDialogOpen] = useState(false);
@@ -161,10 +156,6 @@ const RepKPIs = ({ userId }: Props) => {
     if (data) setClosingDeals(data as any);
   };
 
-  const fetchFeedbacks = async () => {
-    const { data } = await supabase.from("feedbacks" as any).select("*").order("created_at", { ascending: false });
-    if (data) setFeedbacks(data as any);
-  };
 
   useEffect(() => {
     const fetchData = async () => {
