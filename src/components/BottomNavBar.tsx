@@ -21,7 +21,7 @@ const PRIMARY_TABS = [
 ];
 
 const MORE_TABS = [
-  { value: "closing-radar", icon: Crosshair, label: "Radar" },
+  // { value: "closing-radar", icon: Crosshair, label: "Radar" }, // desabilitado temporariamente
   { value: "rep-kpis", icon: Target, label: "KPIs" },
   { value: "reps", icon: UserPlus, label: "Representantes" },
   { value: "registry", icon: Building2, label: "Cadastros" },
