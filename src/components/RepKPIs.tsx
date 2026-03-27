@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Target, Eye, TrendingUp, TrendingDown, XCircle, CheckCircle, BarChart3, Users, Calendar, MessageSquare, Plus, FileText, Trash2, Edit2 } from "lucide-react";
+import { Target, Eye, TrendingUp, TrendingDown, XCircle, CheckCircle, BarChart3, Users, Calendar, Plus, FileText, Trash2, Edit2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend } from "recharts";
@@ -19,7 +19,7 @@ interface Deal { id: string; representative_id: string | null; status: string; c
 interface ClosingDeal { id: string; representative_id: string | null; status: string; deal_value: number; start_date: string; stage: string; probability: string; created_at: string; client_name?: string; machine_name?: string; machine_type?: string; sale_type?: string; notes?: string; }
 interface Visit { representative_id: string; semana: number; quantidade: number; meta: number; }
 interface MonthlyGoal { representative_id: string; mes: number; meta_valor: number; meta_quantidade: number; machine_type: string; }
-interface Feedback { id: string; representative_id: string; descricao: string; status: string; prioridade: string; created_at: string; resolved_at: string | null; }
+
 
 type PeriodMode = "week" | "month" | "quarter" | "year";
 
@@ -52,7 +52,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [closingDeals, setClosingDeals] = useState<ClosingDeal[]>([]);
   const [visits, setVisits] = useState<Visit[]>([]);
   const [goals, setGoals] = useState<MonthlyGoal[]>([]);
-  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  
   const [loading, setLoading] = useState(true);
   const now = new Date();
   const [filterYear, setFilterYear] = useState(now.getFullYear());
@@ -61,11 +61,6 @@ const RepKPIs = ({ userId }: Props) => {
   const [filterQuarter, setFilterQuarter] = useState<string>(`T${Math.floor(now.getMonth() / 3) + 1}`);
   const [filterWeek, setFilterWeek] = useState(getWeekNumber(now));
 
-  // Feedback dialog
-  const [fbDialogOpen, setFbDialogOpen] = useState(false);
-  const [fbRepId, setFbRepId] = useState("");
-  const [fbDesc, setFbDesc] = useState("");
-  const [fbPrioridade, setFbPrioridade] = useState("normal");
 
   // Negociação dialog
   const [negDialogOpen, setNegDialogOpen] = useState(false);
@@ -161,27 +156,21 @@ const RepKPIs = ({ userId }: Props) => {
     if (data) setClosingDeals(data as any);
   };
 
-  const fetchFeedbacks = async () => {
-    const { data } = await supabase.from("feedbacks" as any).select("*").order("created_at", { ascending: false });
-    if (data) setFeedbacks(data as any);
-  };
 
   useEffect(() => {
     const fetchData = async () => {
-      const [repsRes, dealsRes, closingRes, visitsRes, goalsRes, fbRes] = await Promise.all([
+      const [repsRes, dealsRes, closingRes, visitsRes, goalsRes] = await Promise.all([
         supabase.from("representatives" as any).select("id, nome, meta_mensal_padrao, meta_quantidade").eq("status", "ATIVO").order("nome"),
         supabase.from("deals" as any).select("id, representative_id, status, closed_at, created_at, base_price, dollar_rate, machine_type"),
         supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes"),
         supabase.from("weekly_visits" as any).select("representative_id, semana, quantidade, meta").eq("ano", filterYear),
         supabase.from("monthly_goals" as any).select("representative_id, mes, meta_valor, meta_quantidade, machine_type").eq("ano", filterYear),
-        supabase.from("feedbacks" as any).select("*").order("created_at", { ascending: false }),
       ]);
       if (repsRes.data) setReps(repsRes.data as any);
       if (dealsRes.data) setDeals(dealsRes.data as any);
       if (closingRes.data) setClosingDeals(closingRes.data as any);
       if (visitsRes.data) setVisits(visitsRes.data as any);
       if (goalsRes.data) setGoals(goalsRes.data as any);
-      if (fbRes.data) setFeedbacks(fbRes.data as any);
       setLoading(false);
     };
     fetchData();
@@ -292,9 +281,6 @@ const RepKPIs = ({ userId }: Props) => {
       const yearFobBrl = yearClosed.reduce((s, d) => s + d.base_price * (d.dollar_rate || 0), 0);
       const yearCount = yearClosed.length;
 
-      // Feedbacks pendentes por rep
-      const pendingFb = feedbacks.filter(f => f.representative_id === rep.id && f.status === "pendente");
-
       return {
         id: rep.id, nome: rep.nome,
         totalVisits, visitPct,
@@ -304,10 +290,9 @@ const RepKPIs = ({ userId }: Props) => {
         closedCount, closedFobBrl,
         metaValor, metaQtd, pctValor, pctQtd,
         yearFobBrl, yearCount,
-        pendingFbCount: pendingFb.length,
       };
     }).sort((a, b) => b.closedFobBrl - a.closedFobBrl);
-  }, [reps, deals, closingDeals, visits, goals, feedbacks, filterYear, periodMode, filterMonth, filterQuarter, filterWeek, activeMonths]);
+  }, [reps, deals, closingDeals, visits, goals, filterYear, periodMode, filterMonth, filterQuarter, filterWeek, activeMonths]);
 
   const chartData = useMemo(() => {
     return repMetrics.map(r => ({
@@ -327,41 +312,14 @@ const RepKPIs = ({ userId }: Props) => {
     const totalRealized = repMetrics.reduce((s, r) => s + r.closedFobBrl, 0);
     const totalMeta = repMetrics.reduce((s, r) => s + r.metaValor, 0);
     const totalPipeline = repMetrics.reduce((s, r) => s + r.oppValue, 0);
-    const totalPendingFb = feedbacks.filter(f => f.status === "pendente").length;
-    return { totalVisits, totalOpps, totalLost, totalWon, globalWinRate, totalRealized, totalMeta, totalPipeline, totalPendingFb };
-  }, [repMetrics, feedbacks]);
+    return { totalVisits, totalOpps, totalLost, totalWon, globalWinRate, totalRealized, totalMeta, totalPipeline };
+  }, [repMetrics]);
 
-  // Save feedback
-  const handleSaveFeedback = async () => {
-    if (!fbRepId || !fbDesc.trim()) { toast.error("Preencha representante e descrição"); return; }
-    const { error } = await supabase.from("feedbacks" as any).insert({
-      user_id: userId,
-      representative_id: fbRepId,
-      descricao: fbDesc.trim(),
-      prioridade: fbPrioridade,
-    } as any);
-    if (error) { toast.error("Erro ao salvar feedback"); return; }
-    toast.success("Feedback registrado");
-    setFbDesc(""); setFbRepId(""); setFbDialogOpen(false);
-    fetchFeedbacks();
-  };
-
-  const handleResolveFeedback = async (id: string) => {
-    await supabase.from("feedbacks" as any).update({ status: "resolvido", resolved_at: new Date().toISOString() } as any).eq("id", id);
-    toast.success("Feedback resolvido");
-    fetchFeedbacks();
-  };
-
-  const handleDeleteFeedback = async (id: string) => {
-    await supabase.from("feedbacks" as any).delete().eq("id", id);
-    fetchFeedbacks();
-  };
 
   if (loading) return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
 
   const metaPct = globalKpis.totalMeta > 0 ? (globalKpis.totalRealized / globalKpis.totalMeta) * 100 : 0;
   const weekOptions = Array.from({ length: 52 }, (_, i) => i + 1);
-  const pendingFeedbacksList = feedbacks.filter(f => f.status === "pendente");
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -429,13 +387,12 @@ const RepKPIs = ({ userId }: Props) => {
       </div>
 
       {/* Global KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <KpiCard icon={<Eye className="h-4 w-4" />} label="Visitas" value={String(globalKpis.totalVisits)} color="bg-primary/10 text-primary" />
         <KpiCard icon={<Target className="h-4 w-4" />} label="Oportunidades Ativas" value={String(globalKpis.totalOpps)} sub={formatBrl(globalKpis.totalPipeline)} color="bg-accent/10 text-accent" />
         <KpiCard icon={<FileText className="h-4 w-4" />} label={`Neg. Abertas (${periodLabel})`} value={String(openByRep.reduce((s, r) => s + r.total, 0))} sub={`Radar: ${openByRep.reduce((s, r) => s + r.radar, 0)} | Vendas: ${openByRep.reduce((s, r) => s + r.vendas, 0)}`} color="bg-[hsl(var(--ca-blue))]/10 text-[hsl(var(--ca-blue))]" />
         <KpiCard icon={<XCircle className="h-4 w-4" />} label="Perdidas" value={String(globalKpis.totalLost)} color="bg-destructive/10 text-destructive" />
         <KpiCard icon={<CheckCircle className="h-4 w-4" />} label="Win Rate" value={formatPct(globalKpis.globalWinRate)} sub={`${globalKpis.totalWon}W / ${globalKpis.totalLost}L`} color="bg-accent/10 text-accent" />
-        <KpiCard icon={<MessageSquare className="h-4 w-4" />} label="Feedbacks Pendentes" value={String(globalKpis.totalPendingFb)} color={globalKpis.totalPendingFb > 0 ? "bg-[hsl(var(--ca-orange))]/10 text-[hsl(var(--ca-orange))]" : "bg-accent/10 text-accent"} />
       </div>
 
       {/* Meta vs Realizado global */}
@@ -551,49 +508,6 @@ const RepKPIs = ({ userId }: Props) => {
         </Card>
       )}
 
-      {/* Feedbacks Pendentes Section */}
-      <Card className="p-4 border-border bg-card">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <MessageSquare className="h-4 w-4" /> Feedbacks Pendentes
-          </h3>
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setFbDialogOpen(true)}>
-            <Plus className="h-3 w-3" /> Novo Feedback
-          </Button>
-        </div>
-
-        {pendingFeedbacksList.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-4">Nenhum feedback pendente 🎉</p>
-        ) : (
-          <div className="space-y-2 max-h-[300px] overflow-y-auto">
-            {pendingFeedbacksList.map(fb => {
-              const repName = reps.find(r => r.id === fb.representative_id)?.nome || "—";
-              return (
-                <div key={fb.id} className="flex items-start justify-between gap-2 p-2 rounded-lg bg-secondary/30 border border-border">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-xs font-semibold text-foreground">{repName}</span>
-                      <Badge variant={fb.prioridade === "alta" ? "destructive" : fb.prioridade === "baixa" ? "secondary" : "outline"} className="text-[10px]">
-                        {fb.prioridade}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground truncate">{fb.descricao}</p>
-                    <span className="text-[10px] text-muted-foreground">{new Date(fb.created_at).toLocaleDateString("pt-BR")}</span>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => handleResolveFeedback(fb.id)} title="Resolver">
-                      <CheckCircle className="h-3.5 w-3.5 text-accent" />
-                    </Button>
-                    <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => handleDeleteFeedback(fb.id)} title="Excluir">
-                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Card>
 
       {/* Per-rep cards */}
       <div className="space-y-3">
@@ -610,7 +524,7 @@ const RepKPIs = ({ userId }: Props) => {
                   {r.winRate >= 60 && <Badge variant="secondary" className="text-[10px]">🔥 Top Closer</Badge>}
                   {r.pctValor >= 100 && <Badge className="text-[10px] bg-accent text-accent-foreground">✅ Meta Batida</Badge>}
                   {r.lostCount > r.wonCount && r.lostCount > 0 && <Badge variant="destructive" className="text-[10px]">⚠️ Atenção</Badge>}
-                  {r.pendingFbCount > 0 && <Badge variant="outline" className="text-[10px]">💬 {r.pendingFbCount} fb</Badge>}
+                  
                 </div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
@@ -640,44 +554,6 @@ const RepKPIs = ({ userId }: Props) => {
         })}
       </div>
 
-      {/* Feedback Dialog */}
-      <Dialog open={fbDialogOpen} onOpenChange={setFbDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-base">Novo Feedback</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Representante</label>
-              <Select value={fbRepId} onValueChange={setFbRepId}>
-                <SelectTrigger className="h-9 text-sm">
-                  <SelectValue placeholder="Selecione..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {reps.map(r => (
-                    <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Descrição</label>
-              <Input value={fbDesc} onChange={e => setFbDesc(e.target.value)} placeholder="Descreva o feedback..." className="h-9 text-sm" />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">Prioridade</label>
-              <div className="flex gap-2">
-                {["baixa", "normal", "alta"].map(p => (
-                  <PillButton key={p} active={fbPrioridade === p} onClick={() => setFbPrioridade(p)}>
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
-                  </PillButton>
-                ))}
-              </div>
-            </div>
-            <Button onClick={handleSaveFeedback} className="w-full h-9 text-sm">Salvar Feedback</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Negociação Dialog */}
       <Dialog open={negDialogOpen} onOpenChange={(v) => { setNegDialogOpen(v); if (!v) resetNegForm(); }}>
