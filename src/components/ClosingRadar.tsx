@@ -115,6 +115,7 @@ const ClosingRadar = ({ userId }: Props) => {
   const [form, setForm] = useState<FormData>({ ...emptyForm });
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [imageLoading, setImageLoading] = useState(false);
 
   // Filters
   const [fRep, setFRep] = useState("all");
