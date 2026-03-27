@@ -113,36 +113,32 @@ const RepKPIs = ({ userId }: Props) => {
     return activeMonths.includes(dt.getMonth() + 1);
   };
 
-  // Negociações abertas por mês (closing_deals + open deals)
-  const openByMonth = useMemo(() => {
-    const counts: Record<number, { closing: number; deals: number }> = {};
-    SHORT_MONTHS.forEach((_, i) => { counts[i + 1] = { closing: 0, deals: 0 }; });
+  // Helper: check if a date falls in active period
+  const isInPeriod = (dt: Date): boolean => {
+    if (dt.getFullYear() !== filterYear) return false;
+    if (periodMode === "week") return getWeekNumber(dt) === filterWeek;
+    return activeMonths.includes(dt.getMonth() + 1);
+  };
 
-    closingDeals.forEach(c => {
-      const dt = new Date(c.created_at);
-      if (dt.getFullYear() === filterYear) {
-        const m = dt.getMonth() + 1;
-        counts[m].closing++;
-      }
-    });
-
-    deals.forEach(d => {
-      if (d.status === "open") {
-        const dt = new Date(d.created_at);
-        if (dt.getFullYear() === filterYear) {
-          const m = dt.getMonth() + 1;
-          counts[m].deals++;
-        }
-      }
-    });
-
-    return SHORT_MONTHS.map((label, i) => ({
-      mes: label,
-      radar: counts[i + 1].closing,
-      vendas: counts[i + 1].deals,
-      total: counts[i + 1].closing + counts[i + 1].deals,
-    }));
-  }, [closingDeals, deals, filterYear]);
+  // Negociações abertas por representante, filtradas por período
+  const openByRep = useMemo(() => {
+    return reps.map(rep => {
+      const repClosing = closingDeals.filter(c => {
+        if (c.representative_id !== rep.id) return false;
+        return isInPeriod(new Date(c.created_at));
+      });
+      const repOpenDeals = deals.filter(d => {
+        if (d.representative_id !== rep.id || d.status !== "open") return false;
+        return isInPeriod(new Date(d.created_at));
+      });
+      return {
+        nome: rep.nome.split(" ")[0],
+        radar: repClosing.length,
+        vendas: repOpenDeals.length,
+        total: repClosing.length + repOpenDeals.length,
+      };
+    }).filter(r => r.total > 0);
+  }, [reps, closingDeals, deals, filterYear, periodMode, filterWeek, activeMonths]);
 
   // Oportunidades por data de criação (closing_deals por mês)
   const oppsByCreation = useMemo(() => {
@@ -340,7 +336,7 @@ const RepKPIs = ({ userId }: Props) => {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <KpiCard icon={<Eye className="h-4 w-4" />} label="Visitas" value={String(globalKpis.totalVisits)} color="bg-primary/10 text-primary" />
         <KpiCard icon={<Target className="h-4 w-4" />} label="Oportunidades Ativas" value={String(globalKpis.totalOpps)} sub={formatBrl(globalKpis.totalPipeline)} color="bg-accent/10 text-accent" />
-        <KpiCard icon={<FileText className="h-4 w-4" />} label="Neg. Abertas (Mês)" value={String(openByMonth.reduce((s, m) => s + m.total, 0))} sub={`Radar: ${openByMonth.reduce((s, m) => s + m.radar, 0)} | Vendas: ${openByMonth.reduce((s, m) => s + m.vendas, 0)}`} color="bg-[hsl(var(--ca-blue))]/10 text-[hsl(var(--ca-blue))]" />
+        <KpiCard icon={<FileText className="h-4 w-4" />} label={`Neg. Abertas (${periodLabel})`} value={String(openByRep.reduce((s, r) => s + r.total, 0))} sub={`Radar: ${openByRep.reduce((s, r) => s + r.radar, 0)} | Vendas: ${openByRep.reduce((s, r) => s + r.vendas, 0)}`} color="bg-[hsl(var(--ca-blue))]/10 text-[hsl(var(--ca-blue))]" />
         <KpiCard icon={<XCircle className="h-4 w-4" />} label="Perdidas" value={String(globalKpis.totalLost)} color="bg-destructive/10 text-destructive" />
         <KpiCard icon={<CheckCircle className="h-4 w-4" />} label="Win Rate" value={formatPct(globalKpis.globalWinRate)} sub={`${globalKpis.totalWon}W / ${globalKpis.totalLost}L`} color="bg-accent/10 text-accent" />
         <KpiCard icon={<MessageSquare className="h-4 w-4" />} label="Feedbacks Pendentes" value={String(globalKpis.totalPendingFb)} color={globalKpis.totalPendingFb > 0 ? "bg-[hsl(var(--ca-orange))]/10 text-[hsl(var(--ca-orange))]" : "bg-accent/10 text-accent"} />
@@ -363,22 +359,26 @@ const RepKPIs = ({ userId }: Props) => {
 
       {/* Negociações Abertas por Mês chart */}
       <Card className="p-4 border-border bg-card">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Negociações Abertas por Mês — {filterYear}</h3>
-        <div className="h-[200px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={openByMonth} barGap={2}>
-              <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-              <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
-              <Tooltip
-                formatter={(value: number, name: string) => [value, name === "radar" ? "Radar" : "Vendas Abertas"]}
-                contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-              />
-              <Legend formatter={(value) => value === "radar" ? "Radar" : "Vendas Abertas"} />
-              <Bar dataKey="radar" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="vendas" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} opacity={0.7} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <h3 className="text-sm font-semibold text-foreground mb-3">Negociações Abertas por Representante — {periodLabel}</h3>
+        {openByRep.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-6">Nenhuma negociação aberta neste período</p>
+        ) : (
+          <div className="h-[220px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={openByRep} barGap={2}>
+                <XAxis dataKey="nome" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
+                <Tooltip
+                  formatter={(value: number, name: string) => [value, name === "radar" ? "Radar" : "Vendas Abertas"]}
+                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                />
+                <Legend formatter={(value) => value === "radar" ? "Radar" : "Vendas Abertas"} />
+                <Bar dataKey="radar" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="vendas" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} opacity={0.7} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </Card>
 
       {/* Chart: Meta vs Realizado by Rep */}
