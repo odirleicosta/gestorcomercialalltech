@@ -678,6 +678,83 @@ const RepKPIs = ({ userId }: Props) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Negociação Dialog */}
+      <Dialog open={negDialogOpen} onOpenChange={(v) => { setNegDialogOpen(v); if (!v) resetNegForm(); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-base">{editingNegId ? "Editar Negociação" : "Nova Negociação"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Representante *</Label>
+                <Select value={negForm.representative_id} onValueChange={v => setNegForm(f => ({ ...f, representative_id: v }))}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    {reps.map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Cliente *</Label>
+                <Input value={negForm.client_name} onChange={e => setNegForm(f => ({ ...f, client_name: e.target.value }))} className="h-9 text-sm" placeholder="Nome do cliente" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Máquina</Label>
+                <Input value={negForm.machine_name} onChange={e => setNegForm(f => ({ ...f, machine_name: e.target.value }))} className="h-9 text-sm" placeholder="Ex: VMC-850" />
+              </div>
+              <div>
+                <Label className="text-xs">Valor (R$)</Label>
+                <Input type="number" value={negForm.deal_value || ""} onChange={e => setNegForm(f => ({ ...f, deal_value: Number(e.target.value) }))} className="h-9 text-sm" placeholder="0" />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label className="text-xs">Estágio</Label>
+                <Select value={negForm.stage} onValueChange={v => setNegForm(f => ({ ...f, stage: v as any }))}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Proposta Enviada">Proposta Enviada</SelectItem>
+                    <SelectItem value="Negociação Ativa">Negociação Ativa</SelectItem>
+                    <SelectItem value="Decisão Próxima">Decisão Próxima</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Probabilidade</Label>
+                <Select value={negForm.probability} onValueChange={v => setNegForm(f => ({ ...f, probability: v as any }))}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Baixa">Baixa</SelectItem>
+                    <SelectItem value="Média">Média</SelectItem>
+                    <SelectItem value="Alta">Alta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Tipo Venda</Label>
+                <Select value={negForm.sale_type} onValueChange={v => setNegForm(f => ({ ...f, sale_type: v as any }))}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Venda Direta">Venda Direta</SelectItem>
+                    <SelectItem value="Rentall">Rentall</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Observações</Label>
+              <Textarea value={negForm.notes} onChange={e => setNegForm(f => ({ ...f, notes: e.target.value }))} className="text-sm min-h-[60px]" placeholder="Notas sobre a negociação..." />
+            </div>
+            <Button onClick={handleSaveNeg} className="w-full h-9 text-sm">
+              {editingNegId ? "Atualizar Negociação" : "Registrar Negociação"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
