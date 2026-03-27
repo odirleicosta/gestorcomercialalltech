@@ -316,6 +316,11 @@ const RepKPIs = ({ userId }: Props) => {
   }, [repMetrics]);
 
 
+  if (loading) return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
+
+  const metaPct = globalKpis.totalMeta > 0 ? (globalKpis.totalRealized / globalKpis.totalMeta) * 100 : 0;
+  const weekOptions = Array.from({ length: 52 }, (_, i) => i + 1);
+
   return (
     <div className="space-y-5 animate-fade-in">
       {/* Header */}
