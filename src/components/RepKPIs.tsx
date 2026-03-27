@@ -7,7 +7,9 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Target, Eye, TrendingUp, TrendingDown, XCircle, CheckCircle, BarChart3, Users, Calendar, MessageSquare, Plus, FileText, Trash2 } from "lucide-react";
+import { Target, Eye, TrendingUp, TrendingDown, XCircle, CheckCircle, BarChart3, Users, Calendar, MessageSquare, Plus, FileText, Trash2, Edit2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend } from "recharts";
 import { toast } from "sonner";
 
@@ -64,6 +66,100 @@ const RepKPIs = ({ userId }: Props) => {
   const [fbRepId, setFbRepId] = useState("");
   const [fbDesc, setFbDesc] = useState("");
   const [fbPrioridade, setFbPrioridade] = useState("normal");
+
+  // Negociação dialog
+  const [negDialogOpen, setNegDialogOpen] = useState(false);
+  const [editingNegId, setEditingNegId] = useState<string | null>(null);
+  const [negForm, setNegForm] = useState({
+    representative_id: "",
+    client_name: "",
+    machine_name: "",
+    machine_type: "Centro de Usinagem",
+    deal_value: 0,
+    stage: "Proposta Enviada" as "Proposta Enviada" | "Negociação Ativa" | "Decisão Próxima",
+    probability: "Média" as "Baixa" | "Média" | "Alta",
+    sale_type: "Venda Direta" as "Rentall" | "Venda Direta",
+    notes: "",
+  });
+
+  const resetNegForm = () => {
+    setNegForm({ representative_id: "", client_name: "", machine_name: "", machine_type: "Centro de Usinagem", deal_value: 0, stage: "Proposta Enviada", probability: "Média", sale_type: "Venda Direta", notes: "" });
+    setEditingNegId(null);
+  };
+
+  const openNewNeg = () => { resetNegForm(); setNegDialogOpen(true); };
+
+  const openEditNeg = (c: ClosingDeal) => {
+    setEditingNegId(c.id);
+    setNegForm({
+      representative_id: c.representative_id || "",
+      client_name: (c as any).client_name || "",
+      machine_name: (c as any).machine_name || "",
+      machine_type: (c as any).machine_type || "Centro de Usinagem",
+      deal_value: c.deal_value,
+      stage: c.stage as any,
+      probability: c.probability as any,
+      sale_type: (c as any).sale_type || "Venda Direta",
+      notes: (c as any).notes || "",
+    });
+    setNegDialogOpen(true);
+  };
+
+  const handleSaveNeg = async () => {
+    if (!negForm.representative_id || !negForm.client_name.trim()) {
+      toast.error("Preencha representante e cliente");
+      return;
+    }
+    if (editingNegId) {
+      const { error } = await supabase.from("closing_deals" as any).update({
+        representative_id: negForm.representative_id,
+        client_name: negForm.client_name.trim(),
+        machine_name: negForm.machine_name.trim(),
+        machine_type: negForm.machine_type,
+        deal_value: negForm.deal_value,
+        stage: negForm.stage,
+        probability: negForm.probability,
+        sale_type: negForm.sale_type,
+        notes: negForm.notes.trim() || null,
+      } as any).eq("id", editingNegId);
+      if (error) { toast.error("Erro ao atualizar"); return; }
+      toast.success("Negociação atualizada");
+    } else {
+      const { error } = await supabase.from("closing_deals" as any).insert({
+        user_id: userId,
+        representative_id: negForm.representative_id,
+        client_name: negForm.client_name.trim(),
+        machine_name: negForm.machine_name.trim(),
+        machine_type: negForm.machine_type,
+        deal_value: negForm.deal_value,
+        stage: negForm.stage,
+        probability: negForm.probability,
+        sale_type: negForm.sale_type,
+        notes: negForm.notes.trim() || null,
+      } as any);
+      if (error) { toast.error("Erro ao salvar"); return; }
+      toast.success("Negociação registrada");
+    }
+    setNegDialogOpen(false);
+    resetNegForm();
+    // Reload closing deals
+    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes");
+    if (data) setClosingDeals(data as any);
+  };
+
+  const handleDeleteNeg = async (id: string) => {
+    await supabase.from("closing_deals" as any).delete().eq("id", id);
+    toast.success("Negociação excluída");
+    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes");
+    if (data) setClosingDeals(data as any);
+  };
+
+  const handleMarkNeg = async (id: string, status: "ganha" | "perdida") => {
+    await supabase.from("closing_deals" as any).update({ status } as any).eq("id", id);
+    toast.success(status === "ganha" ? "Marcada como ganha!" : "Marcada como perdida");
+    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes");
+    if (data) setClosingDeals(data as any);
+  };
 
   const fetchFeedbacks = async () => {
     const { data } = await supabase.from("feedbacks" as any).select("*").order("created_at", { ascending: false });
