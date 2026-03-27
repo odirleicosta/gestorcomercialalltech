@@ -350,6 +350,13 @@ const ClosingRadar = ({ userId }: Props) => {
           <Button variant="outline" size="sm" onClick={() => setShowFilters(!showFilters)}>
             <Filter className="h-4 w-4 mr-1" /> Filtros
           </Button>
+          <Button variant="outline" size="sm" disabled={imageLoading} asChild>
+            <label className="cursor-pointer">
+              {imageLoading ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ImagePlus className="h-4 w-4 mr-1" />}
+              {imageLoading ? "Processando..." : "Importar Imagem"}
+              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={imageLoading} />
+            </label>
+          </Button>
           <Button size="sm" onClick={openNew}>
             <Plus className="h-4 w-4 mr-1" /> Nova Negociação
           </Button>
