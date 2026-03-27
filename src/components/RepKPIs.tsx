@@ -7,14 +7,16 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Target, Eye, TrendingUp, TrendingDown, XCircle, CheckCircle, BarChart3, Users, Calendar, MessageSquare, Plus, FileText, Trash2 } from "lucide-react";
+import { Target, Eye, TrendingUp, TrendingDown, XCircle, CheckCircle, BarChart3, Users, Calendar, MessageSquare, Plus, FileText, Trash2, Edit2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend } from "recharts";
 import { toast } from "sonner";
 
 interface Props { userId: string; }
 interface Rep { id: string; nome: string; meta_mensal_padrao: number; meta_quantidade: number; }
 interface Deal { id: string; representative_id: string | null; status: string; closed_at: string | null; created_at: string; base_price: number; dollar_rate: number; machine_type: string; }
-interface ClosingDeal { id: string; representative_id: string | null; status: string; deal_value: number; start_date: string; stage: string; probability: string; created_at: string; }
+interface ClosingDeal { id: string; representative_id: string | null; status: string; deal_value: number; start_date: string; stage: string; probability: string; created_at: string; client_name?: string; machine_name?: string; machine_type?: string; sale_type?: string; notes?: string; }
 interface Visit { representative_id: string; semana: number; quantidade: number; meta: number; }
 interface MonthlyGoal { representative_id: string; mes: number; meta_valor: number; meta_quantidade: number; machine_type: string; }
 interface Feedback { id: string; representative_id: string; descricao: string; status: string; prioridade: string; created_at: string; resolved_at: string | null; }
@@ -65,6 +67,100 @@ const RepKPIs = ({ userId }: Props) => {
   const [fbDesc, setFbDesc] = useState("");
   const [fbPrioridade, setFbPrioridade] = useState("normal");
 
+  // Negociação dialog
+  const [negDialogOpen, setNegDialogOpen] = useState(false);
+  const [editingNegId, setEditingNegId] = useState<string | null>(null);
+  const [negForm, setNegForm] = useState({
+    representative_id: "",
+    client_name: "",
+    machine_name: "",
+    machine_type: "Centro de Usinagem",
+    deal_value: 0,
+    stage: "Proposta Enviada" as "Proposta Enviada" | "Negociação Ativa" | "Decisão Próxima",
+    probability: "Média" as "Baixa" | "Média" | "Alta",
+    sale_type: "Venda Direta" as "Rentall" | "Venda Direta",
+    notes: "",
+  });
+
+  const resetNegForm = () => {
+    setNegForm({ representative_id: "", client_name: "", machine_name: "", machine_type: "Centro de Usinagem", deal_value: 0, stage: "Proposta Enviada", probability: "Média", sale_type: "Venda Direta", notes: "" });
+    setEditingNegId(null);
+  };
+
+  const openNewNeg = () => { resetNegForm(); setNegDialogOpen(true); };
+
+  const openEditNeg = (c: ClosingDeal) => {
+    setEditingNegId(c.id);
+    setNegForm({
+      representative_id: c.representative_id || "",
+      client_name: (c as any).client_name || "",
+      machine_name: (c as any).machine_name || "",
+      machine_type: (c as any).machine_type || "Centro de Usinagem",
+      deal_value: c.deal_value,
+      stage: c.stage as any,
+      probability: c.probability as any,
+      sale_type: (c as any).sale_type || "Venda Direta",
+      notes: (c as any).notes || "",
+    });
+    setNegDialogOpen(true);
+  };
+
+  const handleSaveNeg = async () => {
+    if (!negForm.representative_id || !negForm.client_name.trim()) {
+      toast.error("Preencha representante e cliente");
+      return;
+    }
+    if (editingNegId) {
+      const { error } = await supabase.from("closing_deals" as any).update({
+        representative_id: negForm.representative_id,
+        client_name: negForm.client_name.trim(),
+        machine_name: negForm.machine_name.trim(),
+        machine_type: negForm.machine_type,
+        deal_value: negForm.deal_value,
+        stage: negForm.stage,
+        probability: negForm.probability,
+        sale_type: negForm.sale_type,
+        notes: negForm.notes.trim() || null,
+      } as any).eq("id", editingNegId);
+      if (error) { toast.error("Erro ao atualizar"); return; }
+      toast.success("Negociação atualizada");
+    } else {
+      const { error } = await supabase.from("closing_deals" as any).insert({
+        user_id: userId,
+        representative_id: negForm.representative_id,
+        client_name: negForm.client_name.trim(),
+        machine_name: negForm.machine_name.trim(),
+        machine_type: negForm.machine_type,
+        deal_value: negForm.deal_value,
+        stage: negForm.stage,
+        probability: negForm.probability,
+        sale_type: negForm.sale_type,
+        notes: negForm.notes.trim() || null,
+      } as any);
+      if (error) { toast.error("Erro ao salvar"); return; }
+      toast.success("Negociação registrada");
+    }
+    setNegDialogOpen(false);
+    resetNegForm();
+    // Reload closing deals
+    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes");
+    if (data) setClosingDeals(data as any);
+  };
+
+  const handleDeleteNeg = async (id: string) => {
+    await supabase.from("closing_deals" as any).delete().eq("id", id);
+    toast.success("Negociação excluída");
+    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes");
+    if (data) setClosingDeals(data as any);
+  };
+
+  const handleMarkNeg = async (id: string, status: "ganha" | "perdida") => {
+    await supabase.from("closing_deals" as any).update({ status } as any).eq("id", id);
+    toast.success(status === "ganha" ? "Marcada como ganha!" : "Marcada como perdida");
+    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes");
+    if (data) setClosingDeals(data as any);
+  };
+
   const fetchFeedbacks = async () => {
     const { data } = await supabase.from("feedbacks" as any).select("*").order("created_at", { ascending: false });
     if (data) setFeedbacks(data as any);
@@ -75,7 +171,7 @@ const RepKPIs = ({ userId }: Props) => {
       const [repsRes, dealsRes, closingRes, visitsRes, goalsRes, fbRes] = await Promise.all([
         supabase.from("representatives" as any).select("id, nome, meta_mensal_padrao, meta_quantidade").eq("status", "ATIVO").order("nome"),
         supabase.from("deals" as any).select("id, representative_id, status, closed_at, created_at, base_price, dollar_rate, machine_type"),
-        supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at"),
+        supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes"),
         supabase.from("weekly_visits" as any).select("representative_id, semana, quantidade, meta").eq("ano", filterYear),
         supabase.from("monthly_goals" as any).select("representative_id, mes, meta_valor, meta_quantidade, machine_type").eq("ano", filterYear),
         supabase.from("feedbacks" as any).select("*").order("created_at", { ascending: false }),
@@ -357,9 +453,14 @@ const RepKPIs = ({ userId }: Props) => {
         </div>
       </Card>
 
-      {/* Negociações Abertas por Mês chart */}
+      {/* Negociações Abertas por Representante */}
       <Card className="p-4 border-border bg-card">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Negociações Abertas por Representante — {periodLabel}</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-foreground">Negociações Abertas por Representante — {periodLabel}</h3>
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={openNewNeg}>
+            <Plus className="h-3 w-3" /> Nova Negociação
+          </Button>
+        </div>
         {openByRep.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-6">Nenhuma negociação aberta neste período</p>
         ) : (
@@ -379,6 +480,49 @@ const RepKPIs = ({ userId }: Props) => {
             </ResponsiveContainer>
           </div>
         )}
+
+        {/* Lista de negociações ativas no período */}
+        {(() => {
+          const activeNegs = closingDeals.filter(c => c.status === "ativa" && isInPeriod(new Date(c.created_at)));
+          if (activeNegs.length === 0) return null;
+          return (
+            <div className="mt-4 space-y-2 max-h-[300px] overflow-y-auto">
+              <h4 className="text-xs font-semibold text-muted-foreground">Negociações ativas ({activeNegs.length})</h4>
+              {activeNegs.map(neg => {
+                const repName = reps.find(r => r.id === neg.representative_id)?.nome || "—";
+                return (
+                  <div key={neg.id} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-secondary/30 border border-border">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                        <span className="text-xs font-semibold text-foreground">{neg.client_name || "—"}</span>
+                        <Badge variant="outline" className="text-[10px]">{repName}</Badge>
+                        <Badge variant="secondary" className="text-[10px]">{neg.stage}</Badge>
+                        <Badge variant={neg.probability === "Alta" ? "default" : neg.probability === "Baixa" ? "destructive" : "secondary"} className="text-[10px]">{neg.probability}</Badge>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        {neg.machine_name && `${neg.machine_name} · `}{formatBrl(neg.deal_value)}
+                      </p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => openEditNeg(neg)} title="Editar">
+                        <Edit2 className="h-3.5 w-3.5 text-primary" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => handleMarkNeg(neg.id, "ganha")} title="Marcar Ganha">
+                        <CheckCircle className="h-3.5 w-3.5 text-accent" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => handleMarkNeg(neg.id, "perdida")} title="Marcar Perdida">
+                        <XCircle className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => handleDeleteNeg(neg.id)} title="Excluir">
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </Card>
 
       {/* Chart: Meta vs Realizado by Rep */}
@@ -531,6 +675,83 @@ const RepKPIs = ({ userId }: Props) => {
               </div>
             </div>
             <Button onClick={handleSaveFeedback} className="w-full h-9 text-sm">Salvar Feedback</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Negociação Dialog */}
+      <Dialog open={negDialogOpen} onOpenChange={(v) => { setNegDialogOpen(v); if (!v) resetNegForm(); }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-base">{editingNegId ? "Editar Negociação" : "Nova Negociação"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Representante *</Label>
+                <Select value={negForm.representative_id} onValueChange={v => setNegForm(f => ({ ...f, representative_id: v }))}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectContent>
+                    {reps.map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Cliente *</Label>
+                <Input value={negForm.client_name} onChange={e => setNegForm(f => ({ ...f, client_name: e.target.value }))} className="h-9 text-sm" placeholder="Nome do cliente" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Máquina</Label>
+                <Input value={negForm.machine_name} onChange={e => setNegForm(f => ({ ...f, machine_name: e.target.value }))} className="h-9 text-sm" placeholder="Ex: VMC-850" />
+              </div>
+              <div>
+                <Label className="text-xs">Valor (R$)</Label>
+                <Input type="number" value={negForm.deal_value || ""} onChange={e => setNegForm(f => ({ ...f, deal_value: Number(e.target.value) }))} className="h-9 text-sm" placeholder="0" />
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <Label className="text-xs">Estágio</Label>
+                <Select value={negForm.stage} onValueChange={v => setNegForm(f => ({ ...f, stage: v as any }))}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Proposta Enviada">Proposta Enviada</SelectItem>
+                    <SelectItem value="Negociação Ativa">Negociação Ativa</SelectItem>
+                    <SelectItem value="Decisão Próxima">Decisão Próxima</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Probabilidade</Label>
+                <Select value={negForm.probability} onValueChange={v => setNegForm(f => ({ ...f, probability: v as any }))}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Baixa">Baixa</SelectItem>
+                    <SelectItem value="Média">Média</SelectItem>
+                    <SelectItem value="Alta">Alta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Tipo Venda</Label>
+                <Select value={negForm.sale_type} onValueChange={v => setNegForm(f => ({ ...f, sale_type: v as any }))}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Venda Direta">Venda Direta</SelectItem>
+                    <SelectItem value="Rentall">Rentall</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Observações</Label>
+              <Textarea value={negForm.notes} onChange={e => setNegForm(f => ({ ...f, notes: e.target.value }))} className="text-sm min-h-[60px]" placeholder="Notas sobre a negociação..." />
+            </div>
+            <Button onClick={handleSaveNeg} className="w-full h-9 text-sm">
+              {editingNegId ? "Atualizar Negociação" : "Registrar Negociação"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
