@@ -1,61 +1,39 @@
 
 
-# Plano: Módulo "Radar de Fechamento"
+# Plano: Cadastro de Negociação via Upload de Imagem no Radar
 
-Adicionar um novo módulo estratégico ao app existente sem alterar nenhuma funcionalidade atual.
-
----
-
-## 1. Nova tabela `closing_deals`
-
-Criar via migration uma tabela separada com todos os campos solicitados, enums para `sale_type`, `stage`, `probability` e `status`, RLS por `user_id`, e `updated_at` trigger.
-
-Campos: `id`, `user_id`, `client_name`, `city`, `representative_id`, `empresa_id`, `machine_name`, `machine_type`, `quantity`, `deal_value`, `sale_type` (enum: Rentall, Venda Direta), `stage` (enum: Proposta Enviada, Negociação Ativa, Decisão Próxima), `probability` (enum: Baixa, Média, Alta), `start_date`, `expected_close_date`, `competitor`, `trade_in` (boolean), `main_objection`, `risk_reason`, `next_step`, `notes`, `status` (enum: ativa, ganha, perdida), `created_at`, `updated_at`.
+Permitir que o gestor faça upload de uma foto (print de WhatsApp, proposta escaneada, etc.) e o sistema extraia automaticamente os dados para preencher o formulário de nova negociação.
 
 ---
 
-## 2. Novo componente `ClosingRadar.tsx`
+## 1. Nova Edge Function `parse-closing-image`
 
-Componente principal com:
-
-- **Lista de negociações** em cards com destaque visual por probabilidade (verde/amarelo/vermelho)
-- **Filtros** por vendedor, estágio, probabilidade, tipo de venda, status, concorrente, com/sem usado
-- **Formulário** de cadastro/edição em Dialog/Drawer, reutilizando representantes e empresas existentes via autocomplete
-- **Ações**: cadastrar, editar, marcar ganha/perdida, excluir
-- Cada card mostra: cliente, cidade, vendedor, máquina, tipo, quantidade, valor, tipo venda, estágio, probabilidade, data prevista, dias em aberto, concorrente, indicador de usado
+Criar `supabase/functions/parse-closing-image/index.ts` que:
+- Recebe uma imagem em base64 via POST
+- Envia para o Lovable AI Gateway usando `google/gemini-2.5-flash` (modelo com capacidade de visão)
+- Usa function calling com schema mapeado aos campos do `closing_deals` (client_name, city, machine_name, machine_type, quantity, deal_value, sale_type, competitor, etc.)
+- Retorna JSON estruturado com os campos extraídos
 
 ---
 
-## 3. Integração na navegação
+## 2. Botão de Upload no ClosingRadar
 
-- **Sidebar** (`PriceCalculator.tsx`): adicionar entrada "Radar" com ícone `Crosshair` entre "Vendas" e "Comissões"
-- **BottomNavBar** (`BottomNavBar.tsx`): adicionar "Radar" no array `MORE_TABS`
-- **Tabs**: adicionar `TabsTrigger` e `TabsContent` para `value="closing-radar"` renderizando `<ClosingRadar userId={user.id} />`
-
----
-
-## 4. Blocos no Dashboard
-
-Adicionar ao final do `ExecutiveDashboard.tsx` (sem alterar blocos existentes):
-
-- **Pipeline em Fechamento**: total negociações ativas, valor total, total máquinas, ticket médio
-- **Previsão de Fechamento**: separação por alta/média/baixa probabilidade com quantidade e valor
-- **Alertas do Gestor**: negociações >30 dias, sem próximo passo, baixa probabilidade, próximas da data, risco alto
-- **Top 5 Prioridades**: 5 negociações mais importantes (maior valor + maior probabilidade + data mais próxima)
-
-Dados obtidos via query direta à tabela `closing_deals` filtrada por `user_id`.
+Adicionar um botão "Importar Imagem" ao lado do botão "Nova Negociação" existente. Ao clicar:
+- Abre seletor de arquivo (accept: image/*)
+- Converte a imagem para base64
+- Mostra estado de loading
+- Chama a edge function
+- Preenche o formulário de cadastro com os dados extraídos pela IA
+- Abre o Dialog de cadastro já pré-preenchido para revisão
 
 ---
 
-## Arquivos impactados
+## 3. Arquivos impactados
 
 | Arquivo | Ação |
 |---|---|
-| `supabase/migrations/` | Nova migration (tabela + enums + RLS + trigger) |
-| `src/components/ClosingRadar.tsx` | **Novo** - componente principal |
-| `src/components/PriceCalculator.tsx` | Adicionar aba na sidebar, tabs e import |
-| `src/components/BottomNavBar.tsx` | Adicionar "Radar" no MORE_TABS |
-| `src/components/ExecutiveDashboard.tsx` | Adicionar 4 blocos estratégicos no final |
+| `supabase/functions/parse-closing-image/index.ts` | **Novo** — edge function de visão |
+| `src/components/ClosingRadar.tsx` | Adicionar botão de upload e lógica de pré-preenchimento |
 
-Nenhum arquivo existente será removido ou terá lógica alterada.
+Nenhuma funcionalidade existente será alterada.
 
