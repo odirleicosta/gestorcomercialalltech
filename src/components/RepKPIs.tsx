@@ -453,9 +453,14 @@ const RepKPIs = ({ userId }: Props) => {
         </div>
       </Card>
 
-      {/* Negociações Abertas por Mês chart */}
+      {/* Negociações Abertas por Representante */}
       <Card className="p-4 border-border bg-card">
-        <h3 className="text-sm font-semibold text-foreground mb-3">Negociações Abertas por Representante — {periodLabel}</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-foreground">Negociações Abertas por Representante — {periodLabel}</h3>
+          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={openNewNeg}>
+            <Plus className="h-3 w-3" /> Nova Negociação
+          </Button>
+        </div>
         {openByRep.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-6">Nenhuma negociação aberta neste período</p>
         ) : (
@@ -475,6 +480,49 @@ const RepKPIs = ({ userId }: Props) => {
             </ResponsiveContainer>
           </div>
         )}
+
+        {/* Lista de negociações ativas no período */}
+        {(() => {
+          const activeNegs = closingDeals.filter(c => c.status === "ativa" && isInPeriod(new Date(c.created_at)));
+          if (activeNegs.length === 0) return null;
+          return (
+            <div className="mt-4 space-y-2 max-h-[300px] overflow-y-auto">
+              <h4 className="text-xs font-semibold text-muted-foreground">Negociações ativas ({activeNegs.length})</h4>
+              {activeNegs.map(neg => {
+                const repName = reps.find(r => r.id === neg.representative_id)?.nome || "—";
+                return (
+                  <div key={neg.id} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-secondary/30 border border-border">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                        <span className="text-xs font-semibold text-foreground">{neg.client_name || "—"}</span>
+                        <Badge variant="outline" className="text-[10px]">{repName}</Badge>
+                        <Badge variant="secondary" className="text-[10px]">{neg.stage}</Badge>
+                        <Badge variant={neg.probability === "Alta" ? "default" : neg.probability === "Baixa" ? "destructive" : "secondary"} className="text-[10px]">{neg.probability}</Badge>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        {neg.machine_name && `${neg.machine_name} · `}{formatBrl(neg.deal_value)}
+                      </p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => openEditNeg(neg)} title="Editar">
+                        <Edit2 className="h-3.5 w-3.5 text-primary" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => handleMarkNeg(neg.id, "ganha")} title="Marcar Ganha">
+                        <CheckCircle className="h-3.5 w-3.5 text-accent" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => handleMarkNeg(neg.id, "perdida")} title="Marcar Perdida">
+                        <XCircle className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => handleDeleteNeg(neg.id)} title="Excluir">
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </Card>
 
       {/* Chart: Meta vs Realizado by Rep */}
