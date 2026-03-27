@@ -11,7 +11,7 @@ import {
   DollarSign, Percent, TrendingUp, Package, Receipt,
   Save, AlertTriangle, History, Calculator, RotateCcw, User, StickyNote,
   Building2, Plus, Wrench, Copy, Users, BarChart3, LogOut, UserPlus, Zap,
-  Moon, Sun, PanelLeftClose, PanelLeft, Crosshair,
+  Moon, Sun, PanelLeftClose, PanelLeft, Crosshair, Target,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +28,7 @@ import CommissionGate from "@/components/CommissionGate";
 import Auth from "@/components/Auth";
 import BottomNavBar from "@/components/BottomNavBar";
 import ClosingRadar from "@/components/ClosingRadar";
+import RepKPIs from "@/components/RepKPIs";
 import { useTheme } from "@/hooks/use-theme";
 
 export interface SavedCalculation {
