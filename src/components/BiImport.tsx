@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Upload, FileSpreadsheet, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +21,11 @@ interface Rep {
 
 type TabKey = "visitas" | "oportunidades" | "perdas" | "metas";
 
+const MONTH_NAMES: Record<string, number> = {
+  janeiro: 1, fevereiro: 2, marco: 3, abril: 4, maio: 5, junho: 6,
+  julho: 7, agosto: 8, setembro: 9, outubro: 10, novembro: 11, dezembro: 12,
+};
+
 function getWeekNumber(d: Date): number {
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
   date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
@@ -34,6 +40,11 @@ function normalize(s: string): string {
 function findRep(name: string, reps: Rep[]): Rep | undefined {
   const n = normalize(name);
   return reps.find(r => normalize(r.nome) === n) || reps.find(r => normalize(r.nome).includes(n) || n.includes(normalize(r.nome)));
+}
+
+function parseMonthName(s: string): number {
+  const n = normalize(s);
+  return MONTH_NAMES[n] || parseInt(s, 10) || 0;
 }
 
 function parseExcel(file: File): Promise<Record<string, string>[]> {
@@ -54,6 +65,17 @@ function parseExcel(file: File): Promise<Record<string, string>[]> {
   });
 }
 
+function getFieldCI(row: Record<string, string>, ...names: string[]): string {
+  for (const name of names) {
+    if (row[name] !== undefined && row[name] !== "") return String(row[name]);
+    const lower = name.toLowerCase();
+    for (const key of Object.keys(row)) {
+      if (key.toLowerCase() === lower && row[key] !== undefined && row[key] !== "") return String(row[key]);
+    }
+  }
+  return "";
+}
+
 const LAST_IMPORT_KEY = "bi_import_last_";
 
 const BiImport = ({ userId }: Props) => {
@@ -65,6 +87,7 @@ const BiImport = ({ userId }: Props) => {
   const [fileName, setFileName] = useState("");
   const [importing, setImporting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [metaYear, setMetaYear] = useState(new Date().getFullYear());
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [lastImports, setLastImports] = useState<Record<string, string>>(() => {
@@ -119,19 +142,27 @@ const BiImport = ({ userId }: Props) => {
   const importVisitas = async () => {
     setImporting(true);
     try {
-      let ok = 0, skip = 0;
+      // Group by rep + week
+      const grouped: Record<string, { repId: string; ano: number; semana: number; qty: number }> = {};
+      let skip = 0;
       for (const row of data) {
-        const name = row["Proprietario Nome"] || row["proprietario nome"] || "";
+        const name = getFieldCI(row, "Proprietario Nome");
         const rep = findRep(name, reps);
         if (!rep) { skip++; continue; }
-        const dateVal = row["Data"] || row["data"] || "";
+        const dateVal = getFieldCI(row, "Data");
         const d = new Date(dateVal);
         if (isNaN(d.getTime())) { skip++; continue; }
-        const qty = parseInt(row["Quantidade"] || row["quantidade"] || "0", 10);
+        const qty = parseInt(getFieldCI(row, "Quantidade") || "0", 10);
         const ano = d.getFullYear();
         const semana = getWeekNumber(d);
+        const key = `${rep.id}-${ano}-${semana}`;
+        if (!grouped[key]) grouped[key] = { repId: rep.id, ano, semana, qty: 0 };
+        grouped[key].qty += qty;
+      }
+      let ok = 0;
+      for (const g of Object.values(grouped)) {
         const { error } = await supabase.from("weekly_visits").upsert(
-          { representative_id: rep.id, ano, semana, quantidade: qty, meta: 16, user_id: userId },
+          { representative_id: g.repId, ano: g.ano, semana: g.semana, quantidade: g.qty, meta: 0, user_id: userId },
           { onConflict: "representative_id,ano,semana" }
         );
         if (!error) ok++; else skip++;
@@ -149,16 +180,15 @@ const BiImport = ({ userId }: Props) => {
     try {
       const grouped: Record<string, { rep: Rep; ano: number; mes: number; qty: number }> = {};
       for (const row of data) {
-        const name = row["Proprietario Nome"] || row["proprietario nome"] || "";
+        const name = getFieldCI(row, "Proprietario Nome");
         const rep = findRep(name, reps);
         if (!rep) continue;
-        const dateVal = row["Data Criação"] || row["Data Criacao"] || row["data criação"] || row["data criacao"] || "";
+        const dateVal = getFieldCI(row, "Data Criação", "Data Criacao");
         const d = new Date(dateVal);
         if (isNaN(d.getTime())) continue;
-        const qty = parseInt(row["Quantidade"] || row["quantidade"] || "1", 10);
         const key = `${rep.id}-${d.getFullYear()}-${d.getMonth() + 1}`;
         if (!grouped[key]) grouped[key] = { rep, ano: d.getFullYear(), mes: d.getMonth() + 1, qty: 0 };
-        grouped[key].qty += qty;
+        grouped[key].qty += 1;
       }
       let ok = 0;
       for (const g of Object.values(grouped)) {
@@ -181,19 +211,22 @@ const BiImport = ({ userId }: Props) => {
     try {
       let ok = 0, skip = 0;
       for (const row of data) {
-        const name = row["Proprietario Nome"] || row["proprietario nome"] || "";
+        const name = getFieldCI(row, "Fechado por");
         const rep = findRep(name, reps);
-        const clientName = row["Cliente"] || row["cliente"] || "";
-        const machineName = row["Máquina"] || row["Maquina"] || row["máquina"] || row["maquina"] || "";
-        const value = parseFloat(String(row["Valor"] || row["valor"] || "0").replace(/[^\d.,\-]/g, "").replace(",", ".")) || 0;
+        const clientName = getFieldCI(row, "Cliente");
+        const lostReason = getFieldCI(row, "Motivo_da_Perda", "Motivo da Perda");
+        const lostDetail = getFieldCI(row, "Submotivo_da_Perda", "Submotivo da Perda");
+        const dateVal = getFieldCI(row, "Criação", "Criacao");
+        const d = new Date(dateVal);
+        const startDate = isNaN(d.getTime()) ? new Date().toISOString().slice(0, 10) : d.toISOString().slice(0, 10);
 
-        // Check duplicate
+        // Check duplicate by client_name + lost_reason + start_date
         const { data: existing } = await supabase.from("closing_deals")
           .select("id")
           .eq("user_id", userId)
           .eq("client_name", clientName)
-          .eq("machine_name", machineName)
-          .eq("deal_value", value)
+          .eq("lost_reason", lostReason)
+          .eq("start_date", startDate)
           .eq("status", "perdida")
           .limit(1);
         if (existing && existing.length > 0) { skip++; continue; }
@@ -202,10 +235,13 @@ const BiImport = ({ userId }: Props) => {
           user_id: userId,
           representative_id: rep?.id || null,
           client_name: clientName,
-          machine_name: machineName,
+          machine_name: "",
           machine_type: "",
-          deal_value: value,
+          deal_value: 0,
           status: "perdida",
+          lost_reason: lostReason,
+          lost_reason_detail: lostDetail,
+          start_date: startDate,
         });
         if (!error) ok++; else skip++;
       }
@@ -222,17 +258,17 @@ const BiImport = ({ userId }: Props) => {
     try {
       let ok = 0, skip = 0;
       for (const row of data) {
-        const name = row["Proprietario Nome"] || row["proprietario nome"] || "";
+        const name = getFieldCI(row, "Representante");
         const rep = findRep(name, reps);
         if (!rep) { skip++; continue; }
-        const mes = parseInt(row["Mês"] || row["Mes"] || row["mes"] || "0", 10);
-        const ano = parseInt(row["Ano"] || row["ano"] || "0", 10);
-        if (!mes || !ano) { skip++; continue; }
-        const metaValor = parseFloat(String(row["Meta Valor"] || row["meta valor"] || "0").replace(/[^\d.,\-]/g, "").replace(",", ".")) || 0;
-        const metaQtd = parseInt(row["Meta Quantidade"] || row["meta quantidade"] || "0", 10);
+        const mesStr = getFieldCI(row, "Nome Mês", "Nome Mes");
+        const mes = parseMonthName(mesStr);
+        if (!mes) { skip++; continue; }
+        const metaQtd = parseInt(getFieldCI(row, "Meta") || "0", 10);
+        const machineType = getFieldCI(row, "Tipo Produto") || "all";
 
         const { error } = await supabase.from("monthly_goals").upsert(
-          { representative_id: rep.id, mes, ano, meta_valor: metaValor, meta_quantidade: metaQtd, machine_type: "all", user_id: userId },
+          { representative_id: rep.id, mes, ano: metaYear, meta_quantidade: metaQtd, meta_valor: 0, machine_type: machineType, user_id: userId },
           { onConflict: "representative_id,mes,ano,machine_type" }
         );
         if (!error) ok++; else skip++;
@@ -253,20 +289,21 @@ const BiImport = ({ userId }: Props) => {
 
   const expectedColumns: Record<TabKey, string[]> = {
     visitas: ["Proprietario Nome", "Data", "Quantidade"],
-    oportunidades: ["Proprietario Nome", "Data Criação", "Quantidade"],
-    perdas: ["Proprietario Nome", "Cliente", "Máquina", "Valor", "Data"],
-    metas: ["Proprietario Nome", "Mês", "Ano", "Meta Valor", "Meta Quantidade"],
+    oportunidades: ["Proprietario Nome", "Data Criação", "Nome da Oportunidade"],
+    perdas: ["Fechado por", "Cliente", "Motivo_da_Perda", "Submotivo_da_Perda", "Criação"],
+    metas: ["Representante", "Tipo Produto", "Meta", "Realizado", "Nome Mês"],
   };
 
   const previewRows = data.slice(0, 5);
   const columns = data.length ? Object.keys(data[0]) : [];
 
-  // Check unmatched reps in preview
+  // Get the name field based on current tab
+  const nameField = activeTab === "perdas" ? "Fechado por" : activeTab === "metas" ? "Representante" : "Proprietario Nome";
   const unmatchedNames = data.length && reps.length
-    ? [...new Set(data.map(r => r["Proprietario Nome"] || r["proprietario nome"] || "").filter(n => n && !findRep(n, reps)))]
+    ? [...new Set(data.map(r => getFieldCI(r, nameField)).filter(n => n && !findRep(n, reps)))]
     : [];
 
-  const DropZone = () => (
+  const renderDropZone = () => (
     <div
       onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
       onDragLeave={() => setDragOver(false)}
@@ -284,7 +321,7 @@ const BiImport = ({ userId }: Props) => {
     </div>
   );
 
-  const Preview = () => (
+  const renderPreview = () => (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -296,9 +333,9 @@ const BiImport = ({ userId }: Props) => {
       </div>
 
       {unmatchedNames.length > 0 && (
-        <div className="flex items-start gap-2 rounded-lg border border-warning/50 bg-warning/10 p-3">
-          <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
-          <div className="text-sm text-warning-foreground dark:text-warning">
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3">
+          <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+          <div className="text-sm text-destructive">
             <strong>Representantes não encontrados:</strong> {unmatchedNames.join(", ")}
           </div>
         </div>
@@ -310,18 +347,36 @@ const BiImport = ({ userId }: Props) => {
             <TableRow>{columns.map(c => <TableHead key={c} className="text-xs whitespace-nowrap">{c}</TableHead>)}</TableRow>
           </TableHeader>
           <TableBody>
-            {previewRows.map((row, i) => (
-              <TableRow key={i}>
-                {columns.map(c => (
-                  <TableCell key={c} className="text-xs whitespace-nowrap">
-                    {typeof row[c] === "object" && row[c] !== null && "toLocaleDateString" in (row[c] as any) ? (row[c] as any).toLocaleDateString("pt-BR") : String(row[c] ?? "")}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
+            {previewRows.map((row, i) => {
+              const rowName = getFieldCI(row, nameField);
+              const isUnmatched = rowName && !findRep(rowName, reps);
+              return (
+                <TableRow key={i} className={isUnmatched ? "bg-accent/30" : ""}>
+                  {columns.map(c => (
+                    <TableCell key={c} className="text-xs whitespace-nowrap">
+                      {typeof row[c] === "object" && row[c] !== null && "toLocaleDateString" in (row[c] as any) ? (row[c] as any).toLocaleDateString("pt-BR") : String(row[c] ?? "")}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       </div>
+
+      {activeTab === "metas" && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Ano:</span>
+          <Select value={String(metaYear)} onValueChange={(v) => setMetaYear(Number(v))}>
+            <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="2024">2024</SelectItem>
+              <SelectItem value="2025">2025</SelectItem>
+              <SelectItem value="2026">2026</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <Button onClick={() => importFn[activeTab]()} disabled={importing} className="w-full">
         {importing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
@@ -352,12 +407,12 @@ const BiImport = ({ userId }: Props) => {
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v as TabKey); clearData(); }}>
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="visitas">Visitas</TabsTrigger>
-          <TabsTrigger value="oportunidades">Oportunidades</TabsTrigger>
           <TabsTrigger value="perdas">Perdas</TabsTrigger>
           <TabsTrigger value="metas">Metas</TabsTrigger>
+          <TabsTrigger value="oportunidades">Oportunidades</TabsTrigger>
         </TabsList>
 
-        {(["visitas", "oportunidades", "perdas", "metas"] as TabKey[]).map(tab => (
+        {(["visitas", "perdas", "metas", "oportunidades"] as TabKey[]).map(tab => (
           <TabsContent key={tab} value={tab}>
             <Card>
               <CardHeader className="pb-3">
@@ -371,7 +426,7 @@ const BiImport = ({ userId }: Props) => {
                 </div>
               </CardHeader>
               <CardContent>
-                {data.length === 0 ? <DropZone /> : <Preview />}
+                {data.length === 0 ? renderDropZone() : renderPreview()}
               </CardContent>
             </Card>
           </TabsContent>

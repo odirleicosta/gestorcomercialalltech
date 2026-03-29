@@ -33,8 +33,28 @@ type ViewTab = "equipe" | "representante" | "perdas" | "visitas";
 
 const SHORT_MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 const QUARTER_MONTHS: Record<string, number[]> = { T1: [1,2,3], T2: [4,5,6], T3: [7,8,9], T4: [10,11,12] };
-const LOSS_REASONS = ["Preço", "Concorrência", "Prazo de entrega", "Falta de crédito/financiamento", "Cliente desistiu", "Outro"];
-const LOSS_BAR_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(var(--accent))", "hsl(220, 70%, 55%)", "hsl(280, 60%, 55%)", "hsl(30, 80%, 55%)"];
+const LOSS_REASONS = [
+  "Desistência por Cancelamento do Projeto",
+  "Relacionamento com o cliente",
+  "Preço",
+  "Condição de Pagamento",
+  "Comprou máquina usada",
+  "Desistência por Sem Previsão de Investimento",
+  "Desistência por Postergação",
+  "Desistência por Baixa Produção",
+  "Desistência por Cliente Curioso",
+  "Produto não atende",
+  "Concorrência (AMADA)",
+  "Concorrência (MAZAK)",
+  "Outro",
+] as const;
+const LOSS_BAR_COLORS = [
+  "hsl(var(--primary))", "hsl(var(--destructive))", "hsl(var(--accent))",
+  "hsl(220, 70%, 55%)", "hsl(280, 60%, 55%)", "hsl(30, 80%, 55%)",
+  "hsl(160, 60%, 45%)", "hsl(340, 70%, 50%)", "hsl(50, 80%, 50%)",
+  "hsl(200, 60%, 50%)", "hsl(120, 50%, 45%)", "hsl(10, 70%, 50%)",
+  "hsl(0, 0%, 50%)",
+];
 const formatBrl = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 const formatPct = (v: number) => `${v.toFixed(1)}%`;
 
