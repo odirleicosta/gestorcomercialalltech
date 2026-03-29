@@ -874,6 +874,196 @@ const RepKPIs = ({ userId }: Props) => {
         </div>
       )}
 
+      {/* ===================== VIEW: VISITAS ===================== */}
+      {viewTab === "visitas" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Eye className="h-4 w-4" /> Controle de Visitas — {filterYear}
+            </h3>
+            <div className="flex items-center gap-2">
+              <Label className="text-xs text-muted-foreground">Semana:</Label>
+              <Select value={String(visitEditWeek)} onValueChange={v => setVisitEditWeek(parseInt(v))}>
+                <SelectTrigger className="w-[100px] bg-secondary/50 border-border text-xs h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 52 }, (_, i) => i + 1).map(w => (
+                    <SelectItem key={w} value={String(w)}>Sem {w}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Editable table */}
+          <Card className="p-4 border-border bg-card">
+            <h4 className="text-xs font-semibold text-foreground mb-3">Registrar / Editar Visitas — Semana {visitEditWeek}</h4>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Representante</TableHead>
+                    <TableHead className="text-xs text-center">Meta</TableHead>
+                    <TableHead className="text-xs text-center">Realizadas</TableHead>
+                    <TableHead className="text-xs text-center">%</TableHead>
+                    <TableHead className="text-xs text-center">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reps.map(rep => {
+                    const existing = allVisits.find(v => v.representative_id === rep.id && v.semana === visitEditWeek && v.ano === filterYear);
+                    const inlineKey = `${rep.id}-${visitEditWeek}`;
+                    const inlineEntry = visitInlineEntries[inlineKey];
+                    const meta = inlineEntry?.meta ?? existing?.meta ?? 16;
+                    const qtd = inlineEntry?.quantidade ?? existing?.quantidade ?? 0;
+                    const pct = meta > 0 ? (qtd / meta) * 100 : 0;
+                    const statusColor = pct >= 100 ? "text-accent" : pct >= 75 ? "text-foreground" : "text-destructive";
+                    const statusBadge = pct >= 100 ? "default" : pct >= 75 ? "secondary" : "destructive";
+                    return (
+                      <TableRow key={rep.id}>
+                        <TableCell className="text-xs font-medium">{rep.nome}</TableCell>
+                        <TableCell className="text-center">
+                          <Input
+                            type="number"
+                            value={meta}
+                            onChange={e => {
+                              setVisitInlineEntries(prev => ({
+                                ...prev,
+                                [inlineKey]: { meta: Number(e.target.value), quantidade: prev[inlineKey]?.quantidade ?? qtd },
+                              }));
+                            }}
+                            className="h-8 w-16 text-xs text-center mx-auto"
+                          />
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Input
+                            type="number"
+                            value={qtd}
+                            onChange={e => {
+                              setVisitInlineEntries(prev => ({
+                                ...prev,
+                                [inlineKey]: { meta: prev[inlineKey]?.meta ?? meta, quantidade: Number(e.target.value) },
+                              }));
+                            }}
+                            className="h-8 w-16 text-xs text-center mx-auto"
+                          />
+                        </TableCell>
+                        <TableCell className={`text-xs text-center font-semibold ${statusColor}`}>{formatPct(pct)}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant={statusBadge as any} className="text-[10px]">
+                            {pct >= 100 ? "✅ Atingiu" : pct >= 75 ? "⚠️ Parcial" : "❌ Abaixo"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+            <Button
+              className="w-full mt-3 h-9 text-sm"
+              disabled={visitSaving}
+              onClick={async () => {
+                setVisitSaving(true);
+                for (const rep of reps) {
+                  const key = `${rep.id}-${visitEditWeek}`;
+                  const existing = allVisits.find(v => v.representative_id === rep.id && v.semana === visitEditWeek && v.ano === filterYear);
+                  const entry = visitInlineEntries[key];
+                  const meta = entry?.meta ?? existing?.meta ?? 16;
+                  const qtd = entry?.quantidade ?? existing?.quantidade ?? 0;
+                  await supabase.from("weekly_visits" as any).upsert({
+                    user_id: userId,
+                    representative_id: rep.id,
+                    ano: filterYear,
+                    semana: visitEditWeek,
+                    meta,
+                    quantidade: qtd,
+                  } as any, { onConflict: "representative_id,ano,semana" });
+                }
+                const { data } = await supabase.from("weekly_visits" as any).select("representative_id, semana, quantidade, meta, ano").eq("ano", filterYear);
+                if (data) { setVisits(data as any); setAllVisits(data as any); }
+                setVisitInlineEntries({});
+                setVisitSaving(false);
+                toast.success("Visitas salvas!");
+              }}
+            >
+              {visitSaving ? "Salvando..." : "Salvar Visitas"}
+            </Button>
+          </Card>
+
+          {/* Resumo anual */}
+          <Card className="p-4 border-border bg-card">
+            <h4 className="text-xs font-semibold text-foreground mb-3">Resumo Anual — {filterYear}</h4>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Representante</TableHead>
+                    <TableHead className="text-xs text-center">Semanas</TableHead>
+                    <TableHead className="text-xs text-center">Total Realizadas</TableHead>
+                    <TableHead className="text-xs text-center">Total Meta</TableHead>
+                    <TableHead className="text-xs text-center">Média/Sem</TableHead>
+                    <TableHead className="text-xs text-center">% Geral</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reps.map(rep => {
+                    const repVisits = allVisits.filter(v => v.representative_id === rep.id && v.ano === filterYear);
+                    const totalQtd = repVisits.reduce((s, v) => s + v.quantidade, 0);
+                    const totalMeta = repVisits.reduce((s, v) => s + v.meta, 0);
+                    const weekCount = repVisits.length;
+                    const avg = weekCount > 0 ? totalQtd / weekCount : 0;
+                    const pct = totalMeta > 0 ? (totalQtd / totalMeta) * 100 : 0;
+                    const statusColor = pct >= 100 ? "text-accent" : pct >= 75 ? "text-foreground" : "text-destructive";
+                    return (
+                      <TableRow key={rep.id}>
+                        <TableCell className="text-xs font-medium">{rep.nome}</TableCell>
+                        <TableCell className="text-xs text-center">{weekCount}</TableCell>
+                        <TableCell className="text-xs text-center font-semibold">{totalQtd}</TableCell>
+                        <TableCell className="text-xs text-center text-muted-foreground">{totalMeta}</TableCell>
+                        <TableCell className="text-xs text-center">{avg.toFixed(1)}</TableCell>
+                        <TableCell className={`text-xs text-center font-semibold ${statusColor}`}>{formatPct(pct)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+
+          {/* Evolução semanal chart */}
+          {(() => {
+            const weeks: { semana: string; realizadas: number; meta: number }[] = [];
+            for (let w = Math.max(1, visitEditWeek - 7); w <= visitEditWeek; w++) {
+              const wVisits = allVisits.filter(v => v.semana === w && v.ano === filterYear);
+              const totalR = wVisits.reduce((s, v) => s + v.quantidade, 0);
+              const totalM = wVisits.reduce((s, v) => s + v.meta, 0) || reps.length * 16;
+              weeks.push({ semana: `S${w}`, realizadas: totalR, meta: totalM });
+            }
+            if (weeks.length === 0) return null;
+            return (
+              <Card className="p-4 border-border bg-card">
+                <h4 className="text-xs font-semibold text-foreground mb-3">Evolução Semanal</h4>
+                <div className="h-[220px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={weeks}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="semana" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                      <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
+                      <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                      <Legend />
+                      <Line type="monotone" dataKey="realizadas" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4, fill: "hsl(var(--primary))" }} name="Realizadas" />
+                      <Line type="monotone" dataKey="meta" stroke="hsl(var(--muted-foreground))" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Meta" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+            );
+          })()}
+        </div>
+      )}
+
       {/* ===================== DIALOGS ===================== */}
 
       {/* Negociação Dialog */}
