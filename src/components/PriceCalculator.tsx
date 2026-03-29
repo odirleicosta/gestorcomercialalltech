@@ -29,6 +29,7 @@ import Auth from "@/components/Auth";
 import BottomNavBar from "@/components/BottomNavBar";
 import ClosingRadar from "@/components/ClosingRadar";
 import RepKPIs from "@/components/RepKPIs";
+import BiImport from "@/components/BiImport";
 import { useTheme } from "@/hooks/use-theme";
 
 export interface SavedCalculation {
@@ -317,6 +318,7 @@ const PriceCalculator = () => {
             { value: "registry", icon: Building2, label: "Cadastros" },
             { value: "catalog", icon: Package, label: "Catálogo" },
             { value: "deep-analysis", icon: Zap, label: "Análise Profunda" },
+            { value: "bi-import", icon: Upload, label: "Importar BI" },
           ].map(({ value, icon: Icon, label }) => (
             <button
               key={value}
@@ -366,7 +368,7 @@ const PriceCalculator = () => {
       <main className="flex-1 overflow-y-auto px-3 py-4 pb-24 md:py-10 md:px-8 md:pb-10">
         <div className="w-full">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="hidden"><TabsList><TabsTrigger value="simulation" /><TabsTrigger value="deals" /><TabsTrigger value="commissions" /><TabsTrigger value="rep-kpis" /><TabsTrigger value="reps" /><TabsTrigger value="dashboard" /><TabsTrigger value="registry" /><TabsTrigger value="catalog" /><TabsTrigger value="deep-analysis" /></TabsList></div>
+          <div className="hidden"><TabsList><TabsTrigger value="simulation" /><TabsTrigger value="deals" /><TabsTrigger value="commissions" /><TabsTrigger value="rep-kpis" /><TabsTrigger value="reps" /><TabsTrigger value="dashboard" /><TabsTrigger value="registry" /><TabsTrigger value="catalog" /><TabsTrigger value="deep-analysis" /><TabsTrigger value="bi-import" /></TabsList></div>
 
           <TabsContent value="simulation">
             <div className="grid gap-6 lg:grid-cols-5">
@@ -765,6 +767,10 @@ const PriceCalculator = () => {
 
           <TabsContent value="deep-analysis">
             <DeepAnalysis userId={user.id} onBack={() => setActiveTab("dashboard")} />
+          </TabsContent>
+
+          <TabsContent value="bi-import">
+            <BiImport userId={user.id} />
           </TabsContent>
         </Tabs>
         </div>
