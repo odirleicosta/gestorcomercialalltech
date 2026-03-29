@@ -29,7 +29,7 @@ interface Visit { representative_id: string; semana: number; quantidade: number;
 interface MonthlyGoal { representative_id: string; mes: number; meta_valor: number; meta_quantidade: number; machine_type: string; }
 
 type PeriodMode = "week" | "month" | "quarter" | "year";
-type ViewTab = "equipe" | "representante" | "perdas";
+type ViewTab = "equipe" | "representante" | "perdas" | "visitas";
 
 const SHORT_MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 const QUARTER_MONTHS: Record<string, number[]> = { T1: [1,2,3], T2: [4,5,6], T3: [7,8,9], T4: [10,11,12] };
