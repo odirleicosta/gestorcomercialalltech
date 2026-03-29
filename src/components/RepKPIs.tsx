@@ -159,9 +159,28 @@ const RepKPIs = ({ userId }: Props) => {
   };
 
   const handleMarkNeg = async (id: string, status: "ganha" | "perdida") => {
+    if (status === "perdida") {
+      setLossTargetId(id);
+      setLossMotivo("");
+      setLossDetalhe("");
+      setLossDialogOpen(true);
+      return;
+    }
     await supabase.from("closing_deals" as any).update({ status } as any).eq("id", id);
-    toast.success(status === "ganha" ? "Marcada como ganha!" : "Marcada como perdida");
-    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes");
+    toast.success("Marcada como ganha!");
+    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes, motivo_perda, motivo_perda_detalhe");
+    if (data) setClosingDeals(data as any);
+  };
+
+  const confirmLoss = async () => {
+    if (!lossTargetId) return;
+    const motivo = lossMotivo || null;
+    const detalhe = lossMotivo === "Outros" ? (lossDetalhe.trim() || null) : null;
+    await supabase.from("closing_deals" as any).update({ status: "perdida", motivo_perda: motivo, motivo_perda_detalhe: detalhe } as any).eq("id", lossTargetId);
+    toast.success("Marcada como perdida");
+    setLossDialogOpen(false);
+    setLossTargetId(null);
+    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes, motivo_perda, motivo_perda_detalhe");
     if (data) setClosingDeals(data as any);
   };
 
