@@ -520,6 +520,9 @@ const RepKPIs = ({ userId }: Props) => {
         <PillButton active={viewTab === "perdas"} onClick={() => setViewTab("perdas")}>
           <span className="flex items-center gap-1"><XCircle className="h-3 w-3" /> Perdas</span>
         </PillButton>
+        <PillButton active={viewTab === "visitas"} onClick={() => setViewTab("visitas")}>
+          <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> Visitas</span>
+        </PillButton>
       </div>
 
       {/* ===================== VIEW: EQUIPE ===================== */}
