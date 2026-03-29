@@ -582,6 +582,102 @@ const RepKPIs = ({ userId }: Props) => {
         })}
       </div>
 
+      {/* Motivos de Perda */}
+      {(() => {
+        const lostDeals = closingDeals.filter(c => {
+          if (c.status !== "perdida") return false;
+          const dt = new Date(c.created_at);
+          return isInPeriod(dt);
+        });
+        const withMotivo = lostDeals.filter(c => c.motivo_perda);
+        const motivoCounts: Record<string, number> = {};
+        withMotivo.forEach(c => {
+          const m = c.motivo_perda!;
+          motivoCounts[m] = (motivoCounts[m] || 0) + 1;
+        });
+        const totalWithMotivo = withMotivo.length;
+        const pieData = Object.entries(motivoCounts)
+          .map(([name, value]) => ({ name, value, pct: totalWithMotivo > 0 ? ((value / totalWithMotivo) * 100) : 0 }))
+          .sort((a, b) => b.value - a.value);
+
+        if (lostDeals.length === 0) return null;
+
+        return (
+          <>
+            <Card className="p-4 border-border bg-card">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
+                <PieChart className="h-4 w-4 text-destructive" /> Motivos de Perda — {periodLabel}
+              </h3>
+              {pieData.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-6">Nenhum motivo registrado nas perdas deste período</p>
+              ) : (
+                <div className="flex flex-col sm:flex-row gap-4 items-center">
+                  <div className="h-[200px] w-[200px] shrink-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsPie>
+                        <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, pct }) => `${name.length > 12 ? name.slice(0, 12) + '…' : name} (${pct.toFixed(0)}%)`} labelLine={false} fontSize={10}>
+                          {pieData.map((_, i) => (
+                            <Cell key={i} fill={LOSS_PIE_COLORS[i % LOSS_PIE_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: number, name: string) => [`${value} (${totalWithMotivo > 0 ? ((value / totalWithMotivo) * 100).toFixed(1) : 0}%)`, name]} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                      </RechartsPie>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex-1 space-y-1.5 w-full">
+                    {pieData.map((item, i) => (
+                      <div key={item.name} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: LOSS_PIE_COLORS[i % LOSS_PIE_COLORS.length] }} />
+                          <span className="text-foreground">{item.name}</span>
+                        </div>
+                        <span className="text-muted-foreground font-medium">{item.value} ({item.pct.toFixed(1)}%)</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </Card>
+
+            {/* Tabela de Perdas */}
+            <Card className="p-4 border-border bg-card">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Negociações Perdidas — {periodLabel}</h3>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Cliente</TableHead>
+                      <TableHead className="text-xs">Vendedor</TableHead>
+                      <TableHead className="text-xs">Valor</TableHead>
+                      <TableHead className="text-xs">Motivo</TableHead>
+                      <TableHead className="text-xs">Data</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {lostDeals
+                      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                      .map(deal => {
+                        const repName = reps.find(r => r.id === deal.representative_id)?.nome || "—";
+                        const motivo = deal.motivo_perda
+                          ? (deal.motivo_perda === "Outros" && deal.motivo_perda_detalhe ? `Outros: ${deal.motivo_perda_detalhe}` : deal.motivo_perda)
+                          : "—";
+                        return (
+                          <TableRow key={deal.id}>
+                            <TableCell className="text-xs font-medium">{deal.client_name || "—"}</TableCell>
+                            <TableCell className="text-xs">{repName}</TableCell>
+                            <TableCell className="text-xs">{formatBrl(deal.deal_value)}</TableCell>
+                            <TableCell className="text-xs">{motivo}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground">{new Date(deal.created_at).toLocaleDateString("pt-BR")}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                  </TableBody>
+                </Table>
+              </div>
+            </Card>
+          </>
+        );
+      })()}
 
       {/* Negociação Dialog */}
       <Dialog open={negDialogOpen} onOpenChange={(v) => { setNegDialogOpen(v); if (!v) resetNegForm(); }}>
@@ -655,6 +751,35 @@ const RepKPIs = ({ userId }: Props) => {
             </div>
             <Button onClick={handleSaveNeg} className="w-full h-9 text-sm">
               {editingNegId ? "Atualizar Negociação" : "Registrar Negociação"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Loss Reason Dialog */}
+      <Dialog open={lossDialogOpen} onOpenChange={v => { setLossDialogOpen(v); if (!v) setLossTargetId(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base">Motivo da Perda</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs">Motivo *</Label>
+              <Select value={lossMotivo} onValueChange={v => setLossMotivo(v)}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione o motivo..." /></SelectTrigger>
+                <SelectContent>
+                  {MOTIVOS_PERDA.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            {lossMotivo === "Outros" && (
+              <div>
+                <Label className="text-xs">Detalhe</Label>
+                <Input value={lossDetalhe} onChange={e => setLossDetalhe(e.target.value)} className="h-9 text-sm" placeholder="Descreva o motivo..." />
+              </div>
+            )}
+            <Button onClick={confirmLoss} className="w-full h-9 text-sm" variant="destructive">
+              Confirmar Perda
             </Button>
           </div>
         </DialogContent>
