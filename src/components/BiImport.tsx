@@ -314,7 +314,7 @@ const BiImport = ({ userId }: Props) => {
               <TableRow key={i}>
                 {columns.map(c => (
                   <TableCell key={c} className="text-xs whitespace-nowrap">
-                    {row[c] instanceof Date ? (row[c] as unknown as Date).toLocaleDateString("pt-BR") : String(row[c] ?? "")}
+                    {typeof row[c] === "object" && row[c] !== null && "toLocaleDateString" in (row[c] as any) ? (row[c] as any).toLocaleDateString("pt-BR") : String(row[c] ?? "")}
                   </TableCell>
                 ))}
               </TableRow>
