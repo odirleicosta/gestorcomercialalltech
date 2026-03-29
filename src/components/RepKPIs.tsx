@@ -26,6 +26,8 @@ type PeriodMode = "week" | "month" | "quarter" | "year";
 
 const SHORT_MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 const QUARTER_MONTHS: Record<string, number[]> = { T1: [1,2,3], T2: [4,5,6], T3: [7,8,9], T4: [10,11,12] };
+const MOTIVOS_PERDA = ["Preço alto", "Perdeu para concorrente", "Cliente não respondeu", "Projeto cancelado", "Sem orçamento", "Prazo longo", "Produto não adequado", "Outros"];
+const LOSS_PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(var(--accent))", "hsl(220, 70%, 55%)", "hsl(280, 60%, 55%)", "hsl(30, 80%, 55%)", "hsl(170, 60%, 40%)", "hsl(var(--muted-foreground))"];
 const formatBrl = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 const formatPct = (v: number) => `${v.toFixed(1)}%`;
 
