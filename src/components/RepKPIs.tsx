@@ -99,6 +99,11 @@ const RepKPIs = ({ userId }: Props) => {
   // Perdas filter by rep
   const [lossRepFilter, setLossRepFilter] = useState<string>("all");
 
+  // Visitas tab state
+  const [visitEditWeek, setVisitEditWeek] = useState(getWeekNumber(now));
+  const [visitInlineEntries, setVisitInlineEntries] = useState<Record<string, { meta: number; quantidade: number }>>({});
+  const [visitSaving, setVisitSaving] = useState(false);
+
   const resetNegForm = () => {
     setNegForm({ representative_id: "", client_name: "", machine_name: "", machine_type: "Centro de Usinagem", deal_value: 0, stage: "Proposta Enviada", probability: "Média", sale_type: "Venda Direta", notes: "" });
     setEditingNegId(null);
