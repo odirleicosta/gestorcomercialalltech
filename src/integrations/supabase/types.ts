@@ -139,6 +139,8 @@ export type Database = {
           machine_name: string
           machine_type: string
           main_objection: string | null
+          motivo_perda: string | null
+          motivo_perda_detalhe: string | null
           next_step: string | null
           notes: string | null
           probability: Database["public"]["Enums"]["closing_deal_probability"]
@@ -165,6 +167,8 @@ export type Database = {
           machine_name?: string
           machine_type?: string
           main_objection?: string | null
+          motivo_perda?: string | null
+          motivo_perda_detalhe?: string | null
           next_step?: string | null
           notes?: string | null
           probability?: Database["public"]["Enums"]["closing_deal_probability"]
@@ -191,6 +195,8 @@ export type Database = {
           machine_name?: string
           machine_type?: string
           main_objection?: string | null
+          motivo_perda?: string | null
+          motivo_perda_detalhe?: string | null
           next_step?: string | null
           notes?: string | null
           probability?: Database["public"]["Enums"]["closing_deal_probability"]

@@ -7,16 +7,17 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Target, Eye, TrendingUp, TrendingDown, XCircle, CheckCircle, BarChart3, Users, Calendar, Plus, FileText, Trash2, Edit2 } from "lucide-react";
+import { Target, Eye, TrendingUp, TrendingDown, XCircle, CheckCircle, BarChart3, Users, Calendar, Plus, FileText, Trash2, Edit2, PieChart } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend, PieChart as RechartsPie, Pie } from "recharts";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 
 interface Props { userId: string; }
 interface Rep { id: string; nome: string; meta_mensal_padrao: number; meta_quantidade: number; }
 interface Deal { id: string; representative_id: string | null; status: string; closed_at: string | null; created_at: string; base_price: number; dollar_rate: number; machine_type: string; }
-interface ClosingDeal { id: string; representative_id: string | null; status: string; deal_value: number; start_date: string; stage: string; probability: string; created_at: string; client_name?: string; machine_name?: string; machine_type?: string; sale_type?: string; notes?: string; }
+interface ClosingDeal { id: string; representative_id: string | null; status: string; deal_value: number; start_date: string; stage: string; probability: string; created_at: string; client_name?: string; machine_name?: string; machine_type?: string; sale_type?: string; notes?: string; motivo_perda?: string | null; motivo_perda_detalhe?: string | null; }
 interface Visit { representative_id: string; semana: number; quantidade: number; meta: number; }
 interface MonthlyGoal { representative_id: string; mes: number; meta_valor: number; meta_quantidade: number; machine_type: string; }
 
@@ -25,6 +26,8 @@ type PeriodMode = "week" | "month" | "quarter" | "year";
 
 const SHORT_MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 const QUARTER_MONTHS: Record<string, number[]> = { T1: [1,2,3], T2: [4,5,6], T3: [7,8,9], T4: [10,11,12] };
+const MOTIVOS_PERDA = ["Preço alto", "Perdeu para concorrente", "Cliente não respondeu", "Projeto cancelado", "Sem orçamento", "Prazo longo", "Produto não adequado", "Outros"];
+const LOSS_PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(var(--accent))", "hsl(220, 70%, 55%)", "hsl(280, 60%, 55%)", "hsl(30, 80%, 55%)", "hsl(170, 60%, 40%)", "hsl(var(--muted-foreground))"];
 const formatBrl = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 const formatPct = (v: number) => `${v.toFixed(1)}%`;
 
@@ -82,6 +85,12 @@ const RepKPIs = ({ userId }: Props) => {
     setEditingNegId(null);
   };
 
+  // Loss reason dialog
+  const [lossDialogOpen, setLossDialogOpen] = useState(false);
+  const [lossTargetId, setLossTargetId] = useState<string | null>(null);
+  const [lossMotivo, setLossMotivo] = useState("");
+  const [lossDetalhe, setLossDetalhe] = useState("");
+
   const openNewNeg = () => { resetNegForm(); setNegDialogOpen(true); };
 
   const openEditNeg = (c: ClosingDeal) => {
@@ -138,21 +147,40 @@ const RepKPIs = ({ userId }: Props) => {
     setNegDialogOpen(false);
     resetNegForm();
     // Reload closing deals
-    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes");
+    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes, motivo_perda, motivo_perda_detalhe");
     if (data) setClosingDeals(data as any);
   };
 
   const handleDeleteNeg = async (id: string) => {
     await supabase.from("closing_deals" as any).delete().eq("id", id);
     toast.success("Negociação excluída");
-    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes");
+    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes, motivo_perda, motivo_perda_detalhe");
     if (data) setClosingDeals(data as any);
   };
 
   const handleMarkNeg = async (id: string, status: "ganha" | "perdida") => {
+    if (status === "perdida") {
+      setLossTargetId(id);
+      setLossMotivo("");
+      setLossDetalhe("");
+      setLossDialogOpen(true);
+      return;
+    }
     await supabase.from("closing_deals" as any).update({ status } as any).eq("id", id);
-    toast.success(status === "ganha" ? "Marcada como ganha!" : "Marcada como perdida");
-    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes");
+    toast.success("Marcada como ganha!");
+    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes, motivo_perda, motivo_perda_detalhe");
+    if (data) setClosingDeals(data as any);
+  };
+
+  const confirmLoss = async () => {
+    if (!lossTargetId) return;
+    const motivo = lossMotivo || null;
+    const detalhe = lossMotivo === "Outros" ? (lossDetalhe.trim() || null) : null;
+    await supabase.from("closing_deals" as any).update({ status: "perdida", motivo_perda: motivo, motivo_perda_detalhe: detalhe } as any).eq("id", lossTargetId);
+    toast.success("Marcada como perdida");
+    setLossDialogOpen(false);
+    setLossTargetId(null);
+    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes, motivo_perda, motivo_perda_detalhe");
     if (data) setClosingDeals(data as any);
   };
 
@@ -162,7 +190,7 @@ const RepKPIs = ({ userId }: Props) => {
       const [repsRes, dealsRes, closingRes, visitsRes, goalsRes] = await Promise.all([
         supabase.from("representatives" as any).select("id, nome, meta_mensal_padrao, meta_quantidade").eq("status", "ATIVO").order("nome"),
         supabase.from("deals" as any).select("id, representative_id, status, closed_at, created_at, base_price, dollar_rate, machine_type"),
-        supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes"),
+        supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes, motivo_perda, motivo_perda_detalhe"),
         supabase.from("weekly_visits" as any).select("representative_id, semana, quantidade, meta").eq("ano", filterYear),
         supabase.from("monthly_goals" as any).select("representative_id, mes, meta_valor, meta_quantidade, machine_type").eq("ano", filterYear),
       ]);
@@ -554,6 +582,102 @@ const RepKPIs = ({ userId }: Props) => {
         })}
       </div>
 
+      {/* Motivos de Perda */}
+      {(() => {
+        const lostDeals = closingDeals.filter(c => {
+          if (c.status !== "perdida") return false;
+          const dt = new Date(c.created_at);
+          return isInPeriod(dt);
+        });
+        const withMotivo = lostDeals.filter(c => c.motivo_perda);
+        const motivoCounts: Record<string, number> = {};
+        withMotivo.forEach(c => {
+          const m = c.motivo_perda!;
+          motivoCounts[m] = (motivoCounts[m] || 0) + 1;
+        });
+        const totalWithMotivo = withMotivo.length;
+        const pieData = Object.entries(motivoCounts)
+          .map(([name, value]) => ({ name, value, pct: totalWithMotivo > 0 ? ((value / totalWithMotivo) * 100) : 0 }))
+          .sort((a, b) => b.value - a.value);
+
+        if (lostDeals.length === 0) return null;
+
+        return (
+          <>
+            <Card className="p-4 border-border bg-card">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
+                <PieChart className="h-4 w-4 text-destructive" /> Motivos de Perda — {periodLabel}
+              </h3>
+              {pieData.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-6">Nenhum motivo registrado nas perdas deste período</p>
+              ) : (
+                <div className="flex flex-col sm:flex-row gap-4 items-center">
+                  <div className="h-[200px] w-[200px] shrink-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsPie>
+                        <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, pct }) => `${name.length > 12 ? name.slice(0, 12) + '…' : name} (${pct.toFixed(0)}%)`} labelLine={false} fontSize={10}>
+                          {pieData.map((_, i) => (
+                            <Cell key={i} fill={LOSS_PIE_COLORS[i % LOSS_PIE_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value: number, name: string) => [`${value} (${totalWithMotivo > 0 ? ((value / totalWithMotivo) * 100).toFixed(1) : 0}%)`, name]} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                      </RechartsPie>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex-1 space-y-1.5 w-full">
+                    {pieData.map((item, i) => (
+                      <div key={item.name} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: LOSS_PIE_COLORS[i % LOSS_PIE_COLORS.length] }} />
+                          <span className="text-foreground">{item.name}</span>
+                        </div>
+                        <span className="text-muted-foreground font-medium">{item.value} ({item.pct.toFixed(1)}%)</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </Card>
+
+            {/* Tabela de Perdas */}
+            <Card className="p-4 border-border bg-card">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Negociações Perdidas — {periodLabel}</h3>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Cliente</TableHead>
+                      <TableHead className="text-xs">Vendedor</TableHead>
+                      <TableHead className="text-xs">Valor</TableHead>
+                      <TableHead className="text-xs">Motivo</TableHead>
+                      <TableHead className="text-xs">Data</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {lostDeals
+                      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                      .map(deal => {
+                        const repName = reps.find(r => r.id === deal.representative_id)?.nome || "—";
+                        const motivo = deal.motivo_perda
+                          ? (deal.motivo_perda === "Outros" && deal.motivo_perda_detalhe ? `Outros: ${deal.motivo_perda_detalhe}` : deal.motivo_perda)
+                          : "—";
+                        return (
+                          <TableRow key={deal.id}>
+                            <TableCell className="text-xs font-medium">{deal.client_name || "—"}</TableCell>
+                            <TableCell className="text-xs">{repName}</TableCell>
+                            <TableCell className="text-xs">{formatBrl(deal.deal_value)}</TableCell>
+                            <TableCell className="text-xs">{motivo}</TableCell>
+                            <TableCell className="text-xs text-muted-foreground">{new Date(deal.created_at).toLocaleDateString("pt-BR")}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                  </TableBody>
+                </Table>
+              </div>
+            </Card>
+          </>
+        );
+      })()}
 
       {/* Negociação Dialog */}
       <Dialog open={negDialogOpen} onOpenChange={(v) => { setNegDialogOpen(v); if (!v) resetNegForm(); }}>
@@ -627,6 +751,35 @@ const RepKPIs = ({ userId }: Props) => {
             </div>
             <Button onClick={handleSaveNeg} className="w-full h-9 text-sm">
               {editingNegId ? "Atualizar Negociação" : "Registrar Negociação"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Loss Reason Dialog */}
+      <Dialog open={lossDialogOpen} onOpenChange={v => { setLossDialogOpen(v); if (!v) setLossTargetId(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-base">Motivo da Perda</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs">Motivo *</Label>
+              <Select value={lossMotivo} onValueChange={v => setLossMotivo(v)}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione o motivo..." /></SelectTrigger>
+                <SelectContent>
+                  {MOTIVOS_PERDA.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            {lossMotivo === "Outros" && (
+              <div>
+                <Label className="text-xs">Detalhe</Label>
+                <Input value={lossDetalhe} onChange={e => setLossDetalhe(e.target.value)} className="h-9 text-sm" placeholder="Descreva o motivo..." />
+              </div>
+            )}
+            <Button onClick={confirmLoss} className="w-full h-9 text-sm" variant="destructive">
+              Confirmar Perda
             </Button>
           </div>
         </DialogContent>
