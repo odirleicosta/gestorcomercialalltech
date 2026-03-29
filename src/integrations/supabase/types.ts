@@ -136,6 +136,8 @@ export type Database = {
           empresa_id: string | null
           expected_close_date: string | null
           id: string
+          lost_reason: string | null
+          lost_reason_detail: string | null
           machine_name: string
           machine_type: string
           main_objection: string | null
@@ -164,6 +166,8 @@ export type Database = {
           empresa_id?: string | null
           expected_close_date?: string | null
           id?: string
+          lost_reason?: string | null
+          lost_reason_detail?: string | null
           machine_name?: string
           machine_type?: string
           main_objection?: string | null
@@ -192,6 +196,8 @@ export type Database = {
           empresa_id?: string | null
           expected_close_date?: string | null
           id?: string
+          lost_reason?: string | null
+          lost_reason_detail?: string | null
           machine_name?: string
           machine_type?: string
           main_objection?: string | null
