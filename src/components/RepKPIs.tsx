@@ -85,6 +85,12 @@ const RepKPIs = ({ userId }: Props) => {
     setEditingNegId(null);
   };
 
+  // Loss reason dialog
+  const [lossDialogOpen, setLossDialogOpen] = useState(false);
+  const [lossTargetId, setLossTargetId] = useState<string | null>(null);
+  const [lossMotivo, setLossMotivo] = useState("");
+  const [lossDetalhe, setLossDetalhe] = useState("");
+
   const openNewNeg = () => { resetNegForm(); setNegDialogOpen(true); };
 
   const openEditNeg = (c: ClosingDeal) => {
