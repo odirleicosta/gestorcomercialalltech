@@ -1,6 +1,6 @@
 import {
   BarChart3, Users, DollarSign, Calculator, MoreHorizontal,
-  UserPlus, Building2, Package, Zap, LogOut, Moon, Sun, Crosshair, Target,
+  UserPlus, Building2, Package, Zap, LogOut, Moon, Sun, Target,
 } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -17,12 +17,12 @@ const PRIMARY_TABS = [
   { value: "dashboard", icon: BarChart3, label: "Dashboard" },
   { value: "deals", icon: Users, label: "Vendas" },
   { value: "commissions", icon: DollarSign, label: "Comissões" },
-  { value: "simulation", icon: Calculator, label: "Simulação" },
+  { value: "rep-kpis", icon: Target, label: "KPIs" },
 ];
 
 const MORE_TABS = [
   // { value: "closing-radar", icon: Crosshair, label: "Radar" }, // desabilitado temporariamente
-  { value: "rep-kpis", icon: Target, label: "KPIs" },
+  { value: "simulation", icon: Calculator, label: "Simulação" },
   { value: "reps", icon: UserPlus, label: "Representantes" },
   { value: "registry", icon: Building2, label: "Cadastros" },
   { value: "catalog", icon: Package, label: "Catálogo" },
