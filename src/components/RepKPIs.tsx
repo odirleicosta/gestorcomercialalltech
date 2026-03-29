@@ -7,27 +7,34 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Target, Eye, TrendingUp, TrendingDown, XCircle, CheckCircle, BarChart3, Users, Calendar, Plus, FileText, Trash2, Edit2, PieChart } from "lucide-react";
+import { Target, Eye, TrendingUp, TrendingDown, XCircle, CheckCircle, BarChart3, Users, Calendar, Plus, FileText, Trash2, Edit2, PieChart, ChevronDown, ChevronUp, AlertTriangle, ClipboardList } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend, PieChart as RechartsPie, Pie } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend, PieChart as RechartsPie, Pie, LineChart, Line, CartesianGrid } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
 
 interface Props { userId: string; }
 interface Rep { id: string; nome: string; meta_mensal_padrao: number; meta_quantidade: number; }
 interface Deal { id: string; representative_id: string | null; status: string; closed_at: string | null; created_at: string; base_price: number; dollar_rate: number; machine_type: string; }
-interface ClosingDeal { id: string; representative_id: string | null; status: string; deal_value: number; start_date: string; stage: string; probability: string; created_at: string; client_name?: string; machine_name?: string; machine_type?: string; sale_type?: string; notes?: string; motivo_perda?: string | null; motivo_perda_detalhe?: string | null; }
+interface ClosingDeal {
+  id: string; representative_id: string | null; status: string; deal_value: number;
+  start_date: string; stage: string; probability: string; created_at: string;
+  client_name?: string; machine_name?: string; machine_type?: string;
+  sale_type?: string; notes?: string;
+  motivo_perda?: string | null; motivo_perda_detalhe?: string | null;
+  lost_reason?: string | null; lost_reason_detail?: string | null;
+}
 interface Visit { representative_id: string; semana: number; quantidade: number; meta: number; }
 interface MonthlyGoal { representative_id: string; mes: number; meta_valor: number; meta_quantidade: number; machine_type: string; }
 
-
 type PeriodMode = "week" | "month" | "quarter" | "year";
+type ViewTab = "equipe" | "representante" | "perdas";
 
 const SHORT_MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 const QUARTER_MONTHS: Record<string, number[]> = { T1: [1,2,3], T2: [4,5,6], T3: [7,8,9], T4: [10,11,12] };
-const MOTIVOS_PERDA = ["Preço alto", "Perdeu para concorrente", "Cliente não respondeu", "Projeto cancelado", "Sem orçamento", "Prazo longo", "Produto não adequado", "Outros"];
-const LOSS_PIE_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(var(--accent))", "hsl(220, 70%, 55%)", "hsl(280, 60%, 55%)", "hsl(30, 80%, 55%)", "hsl(170, 60%, 40%)", "hsl(var(--muted-foreground))"];
+const LOSS_REASONS = ["Preço", "Concorrência", "Prazo de entrega", "Falta de crédito/financiamento", "Cliente desistiu", "Outro"];
+const LOSS_BAR_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "hsl(var(--accent))", "hsl(220, 70%, 55%)", "hsl(280, 60%, 55%)", "hsl(30, 80%, 55%)"];
 const formatBrl = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 const formatPct = (v: number) => `${v.toFixed(1)}%`;
 
@@ -55,7 +62,8 @@ const RepKPIs = ({ userId }: Props) => {
   const [closingDeals, setClosingDeals] = useState<ClosingDeal[]>([]);
   const [visits, setVisits] = useState<Visit[]>([]);
   const [goals, setGoals] = useState<MonthlyGoal[]>([]);
-  
+  const [allVisits, setAllVisits] = useState<{ representative_id: string; semana: number; quantidade: number; meta: number; ano: number }[]>([]);
+
   const [loading, setLoading] = useState(true);
   const now = new Date();
   const [filterYear, setFilterYear] = useState(now.getFullYear());
@@ -63,27 +71,17 @@ const RepKPIs = ({ userId }: Props) => {
   const [filterMonth, setFilterMonth] = useState(now.getMonth() + 1);
   const [filterQuarter, setFilterQuarter] = useState<string>(`T${Math.floor(now.getMonth() / 3) + 1}`);
   const [filterWeek, setFilterWeek] = useState(getWeekNumber(now));
-
+  const [viewTab, setViewTab] = useState<ViewTab>("equipe");
 
   // Negociação dialog
   const [negDialogOpen, setNegDialogOpen] = useState(false);
   const [editingNegId, setEditingNegId] = useState<string | null>(null);
   const [negForm, setNegForm] = useState({
-    representative_id: "",
-    client_name: "",
-    machine_name: "",
-    machine_type: "Centro de Usinagem",
-    deal_value: 0,
-    stage: "Proposta Enviada" as "Proposta Enviada" | "Negociação Ativa" | "Decisão Próxima",
+    representative_id: "", client_name: "", machine_name: "", machine_type: "Centro de Usinagem",
+    deal_value: 0, stage: "Proposta Enviada" as "Proposta Enviada" | "Negociação Ativa" | "Decisão Próxima",
     probability: "Média" as "Baixa" | "Média" | "Alta",
-    sale_type: "Venda Direta" as "Rentall" | "Venda Direta",
-    notes: "",
+    sale_type: "Venda Direta" as "Rentall" | "Venda Direta", notes: "",
   });
-
-  const resetNegForm = () => {
-    setNegForm({ representative_id: "", client_name: "", machine_name: "", machine_type: "Centro de Usinagem", deal_value: 0, stage: "Proposta Enviada", probability: "Média", sale_type: "Venda Direta", notes: "" });
-    setEditingNegId(null);
-  };
 
   // Loss reason dialog
   const [lossDialogOpen, setLossDialogOpen] = useState(false);
@@ -91,22 +89,42 @@ const RepKPIs = ({ userId }: Props) => {
   const [lossMotivo, setLossMotivo] = useState("");
   const [lossDetalhe, setLossDetalhe] = useState("");
 
+  // Visit registration dialog
+  const [visitDialogOpen, setVisitDialogOpen] = useState(false);
+  const [visitEntries, setVisitEntries] = useState<{ rep_id: string; meta: number; quantidade: number }[]>([]);
+
+  // Expanded rep cards
+  const [expandedReps, setExpandedReps] = useState<Set<string>>(new Set());
+
+  // Perdas filter by rep
+  const [lossRepFilter, setLossRepFilter] = useState<string>("all");
+
+  const resetNegForm = () => {
+    setNegForm({ representative_id: "", client_name: "", machine_name: "", machine_type: "Centro de Usinagem", deal_value: 0, stage: "Proposta Enviada", probability: "Média", sale_type: "Venda Direta", notes: "" });
+    setEditingNegId(null);
+  };
+
   const openNewNeg = () => { resetNegForm(); setNegDialogOpen(true); };
 
   const openEditNeg = (c: ClosingDeal) => {
     setEditingNegId(c.id);
     setNegForm({
       representative_id: c.representative_id || "",
-      client_name: (c as any).client_name || "",
-      machine_name: (c as any).machine_name || "",
-      machine_type: (c as any).machine_type || "Centro de Usinagem",
+      client_name: c.client_name || "",
+      machine_name: c.machine_name || "",
+      machine_type: c.machine_type || "Centro de Usinagem",
       deal_value: c.deal_value,
       stage: c.stage as any,
       probability: c.probability as any,
-      sale_type: (c as any).sale_type || "Venda Direta",
-      notes: (c as any).notes || "",
+      sale_type: c.sale_type || "Venda Direta",
+      notes: c.notes || "",
     });
     setNegDialogOpen(true);
+  };
+
+  const reloadClosing = async () => {
+    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes, motivo_perda, motivo_perda_detalhe, lost_reason, lost_reason_detail");
+    if (data) setClosingDeals(data as any);
   };
 
   const handleSaveNeg = async () => {
@@ -114,48 +132,35 @@ const RepKPIs = ({ userId }: Props) => {
       toast.error("Preencha representante e cliente");
       return;
     }
+    const payload = {
+      representative_id: negForm.representative_id,
+      client_name: negForm.client_name.trim(),
+      machine_name: negForm.machine_name.trim(),
+      machine_type: negForm.machine_type,
+      deal_value: negForm.deal_value,
+      stage: negForm.stage,
+      probability: negForm.probability,
+      sale_type: negForm.sale_type,
+      notes: negForm.notes.trim() || null,
+    };
     if (editingNegId) {
-      const { error } = await supabase.from("closing_deals" as any).update({
-        representative_id: negForm.representative_id,
-        client_name: negForm.client_name.trim(),
-        machine_name: negForm.machine_name.trim(),
-        machine_type: negForm.machine_type,
-        deal_value: negForm.deal_value,
-        stage: negForm.stage,
-        probability: negForm.probability,
-        sale_type: negForm.sale_type,
-        notes: negForm.notes.trim() || null,
-      } as any).eq("id", editingNegId);
+      const { error } = await supabase.from("closing_deals" as any).update(payload as any).eq("id", editingNegId);
       if (error) { toast.error("Erro ao atualizar"); return; }
       toast.success("Negociação atualizada");
     } else {
-      const { error } = await supabase.from("closing_deals" as any).insert({
-        user_id: userId,
-        representative_id: negForm.representative_id,
-        client_name: negForm.client_name.trim(),
-        machine_name: negForm.machine_name.trim(),
-        machine_type: negForm.machine_type,
-        deal_value: negForm.deal_value,
-        stage: negForm.stage,
-        probability: negForm.probability,
-        sale_type: negForm.sale_type,
-        notes: negForm.notes.trim() || null,
-      } as any);
+      const { error } = await supabase.from("closing_deals" as any).insert({ ...payload, user_id: userId } as any);
       if (error) { toast.error("Erro ao salvar"); return; }
       toast.success("Negociação registrada");
     }
     setNegDialogOpen(false);
     resetNegForm();
-    // Reload closing deals
-    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes, motivo_perda, motivo_perda_detalhe");
-    if (data) setClosingDeals(data as any);
+    reloadClosing();
   };
 
   const handleDeleteNeg = async (id: string) => {
     await supabase.from("closing_deals" as any).delete().eq("id", id);
     toast.success("Negociação excluída");
-    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes, motivo_perda, motivo_perda_detalhe");
-    if (data) setClosingDeals(data as any);
+    reloadClosing();
   };
 
   const handleMarkNeg = async (id: string, status: "ganha" | "perdida") => {
@@ -168,36 +173,78 @@ const RepKPIs = ({ userId }: Props) => {
     }
     await supabase.from("closing_deals" as any).update({ status } as any).eq("id", id);
     toast.success("Marcada como ganha!");
-    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes, motivo_perda, motivo_perda_detalhe");
-    if (data) setClosingDeals(data as any);
+    reloadClosing();
   };
 
   const confirmLoss = async () => {
-    if (!lossTargetId) return;
-    const motivo = lossMotivo || null;
-    const detalhe = lossMotivo === "Outros" ? (lossDetalhe.trim() || null) : null;
-    await supabase.from("closing_deals" as any).update({ status: "perdida", motivo_perda: motivo, motivo_perda_detalhe: detalhe } as any).eq("id", lossTargetId);
+    if (!lossTargetId || !lossMotivo) {
+      toast.error("Selecione um motivo");
+      return;
+    }
+    if (lossMotivo === "Outro" && !lossDetalhe.trim()) {
+      toast.error("Descreva o motivo");
+      return;
+    }
+    const reason = lossMotivo;
+    const detail = lossMotivo === "Outro" ? (lossDetalhe.trim() || null) : null;
+    await supabase.from("closing_deals" as any).update({
+      status: "perdida",
+      lost_reason: reason,
+      lost_reason_detail: detail,
+      motivo_perda: reason,
+      motivo_perda_detalhe: detail,
+    } as any).eq("id", lossTargetId);
     toast.success("Marcada como perdida");
     setLossDialogOpen(false);
     setLossTargetId(null);
-    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes, motivo_perda, motivo_perda_detalhe");
-    if (data) setClosingDeals(data as any);
+    reloadClosing();
   };
 
+  // Visit registration
+  const openVisitDialog = () => {
+    const currentWeek = getWeekNumber(now);
+    setVisitEntries(reps.map(r => {
+      const existing = visits.find(v => v.representative_id === r.id && v.semana === currentWeek);
+      return { rep_id: r.id, meta: existing?.meta ?? 16, quantidade: existing?.quantidade ?? 0 };
+    }));
+    setVisitDialogOpen(true);
+  };
+
+  const handleSaveVisits = async () => {
+    const currentWeek = getWeekNumber(now);
+    for (const entry of visitEntries) {
+      await supabase.from("weekly_visits" as any).upsert({
+        user_id: userId,
+        representative_id: entry.rep_id,
+        ano: filterYear,
+        semana: currentWeek,
+        meta: entry.meta,
+        quantidade: entry.quantidade,
+      } as any, { onConflict: "representative_id,ano,semana" });
+    }
+    toast.success("Visitas registradas!");
+    setVisitDialogOpen(false);
+    // Reload visits
+    const { data } = await supabase.from("weekly_visits" as any).select("representative_id, semana, quantidade, meta, ano").eq("ano", filterYear);
+    if (data) {
+      setVisits(data as any);
+      setAllVisits(data as any);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
       const [repsRes, dealsRes, closingRes, visitsRes, goalsRes] = await Promise.all([
         supabase.from("representatives" as any).select("id, nome, meta_mensal_padrao, meta_quantidade").eq("status", "ATIVO").order("nome"),
         supabase.from("deals" as any).select("id, representative_id, status, closed_at, created_at, base_price, dollar_rate, machine_type"),
-        supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes, motivo_perda, motivo_perda_detalhe"),
-        supabase.from("weekly_visits" as any).select("representative_id, semana, quantidade, meta").eq("ano", filterYear),
+        supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes, motivo_perda, motivo_perda_detalhe, lost_reason, lost_reason_detail"),
+        supabase.from("weekly_visits" as any).select("representative_id, semana, quantidade, meta, ano").eq("ano", filterYear),
         supabase.from("monthly_goals" as any).select("representative_id, mes, meta_valor, meta_quantidade, machine_type").eq("ano", filterYear),
       ]);
       if (repsRes.data) setReps(repsRes.data as any);
       if (dealsRes.data) setDeals(dealsRes.data as any);
       if (closingRes.data) setClosingDeals(closingRes.data as any);
-      if (visitsRes.data) setVisits(visitsRes.data as any);
+      if (visitsRes.data) { setVisits(visitsRes.data as any); setAllVisits(visitsRes.data as any); }
       if (goalsRes.data) setGoals(goalsRes.data as any);
       setLoading(false);
     };
@@ -218,53 +265,29 @@ const RepKPIs = ({ userId }: Props) => {
     return `Semana ${filterWeek}/${filterYear}`;
   }, [periodMode, filterYear, filterMonth, filterQuarter, filterWeek]);
 
-  const filterDealByPeriod = (d: Deal): boolean => {
-    if (d.status !== "closed" || !d.closed_at) return false;
-    const dt = new Date(d.closed_at);
-    if (dt.getFullYear() !== filterYear) return false;
-    if (periodMode === "week") return getWeekNumber(dt) === filterWeek;
-    return activeMonths.includes(dt.getMonth() + 1);
-  };
-
-  // Helper: check if a date falls in active period
   const isInPeriod = (dt: Date): boolean => {
     if (dt.getFullYear() !== filterYear) return false;
     if (periodMode === "week") return getWeekNumber(dt) === filterWeek;
     return activeMonths.includes(dt.getMonth() + 1);
   };
 
-  // Negociações abertas por representante, filtradas por período
+  const filterDealByPeriod = (d: Deal): boolean => {
+    if (d.status !== "closed" || !d.closed_at) return false;
+    const dt = new Date(d.closed_at);
+    return isInPeriod(dt);
+  };
+
+  const getLostReason = (c: ClosingDeal): string | null => c.lost_reason || c.motivo_perda || null;
+  const getLostDetail = (c: ClosingDeal): string | null => c.lost_reason_detail || c.motivo_perda_detalhe || null;
+
+  // Negociações abertas por representante
   const openByRep = useMemo(() => {
     return reps.map(rep => {
-      const repClosing = closingDeals.filter(c => {
-        if (c.representative_id !== rep.id) return false;
-        return isInPeriod(new Date(c.created_at));
-      });
-      const repOpenDeals = deals.filter(d => {
-        if (d.representative_id !== rep.id || d.status !== "open") return false;
-        return isInPeriod(new Date(d.created_at));
-      });
-      return {
-        nome: rep.nome.split(" ")[0],
-        radar: repClosing.length,
-        vendas: repOpenDeals.length,
-        total: repClosing.length + repOpenDeals.length,
-      };
+      const repClosing = closingDeals.filter(c => c.representative_id === rep.id && c.status === "ativa" && isInPeriod(new Date(c.created_at)));
+      const repOpenDeals = deals.filter(d => d.representative_id === rep.id && d.status === "open" && isInPeriod(new Date(d.created_at)));
+      return { nome: rep.nome.split(" ")[0], radar: repClosing.length, vendas: repOpenDeals.length, total: repClosing.length + repOpenDeals.length };
     }).filter(r => r.total > 0);
   }, [reps, closingDeals, deals, filterYear, periodMode, filterWeek, activeMonths]);
-
-  // Oportunidades por data de criação (closing_deals por mês)
-  const oppsByCreation = useMemo(() => {
-    const counts: Record<number, number> = {};
-    SHORT_MONTHS.forEach((_, i) => { counts[i + 1] = 0; });
-    closingDeals.forEach(c => {
-      const dt = new Date(c.created_at);
-      if (dt.getFullYear() === filterYear) {
-        counts[dt.getMonth() + 1]++;
-      }
-    });
-    return SHORT_MONTHS.map((label, i) => ({ mes: label, qtd: counts[i + 1] }));
-  }, [closingDeals, filterYear]);
 
   const repMetrics = useMemo(() => {
     return reps.map(rep => {
@@ -288,7 +311,6 @@ const RepKPIs = ({ userId }: Props) => {
       const lost = closingDeals.filter(c => c.representative_id === rep.id && c.status === "perdida");
       const lostCount = lost.length;
       const lostValue = lost.reduce((s, c) => s + c.deal_value, 0);
-
       const won = closingDeals.filter(c => c.representative_id === rep.id && c.status === "ganha");
       const wonCount = won.length;
       const totalDecided = wonCount + lostCount;
@@ -323,11 +345,7 @@ const RepKPIs = ({ userId }: Props) => {
   }, [reps, deals, closingDeals, visits, goals, filterYear, periodMode, filterMonth, filterQuarter, filterWeek, activeMonths]);
 
   const chartData = useMemo(() => {
-    return repMetrics.map(r => ({
-      nome: r.nome.split(" ")[0],
-      meta: r.metaValor,
-      realizado: r.closedFobBrl,
-    }));
+    return repMetrics.map(r => ({ nome: r.nome.split(" ")[0], meta: r.metaValor, realizado: r.closedFobBrl }));
   }, [repMetrics]);
 
   const globalKpis = useMemo(() => {
@@ -343,11 +361,85 @@ const RepKPIs = ({ userId }: Props) => {
     return { totalVisits, totalOpps, totalLost, totalWon, globalWinRate, totalRealized, totalMeta, totalPipeline };
   }, [repMetrics]);
 
+  // Weekly visits chart data (last 8 weeks)
+  const weeklyChartData = useMemo(() => {
+    if (periodMode !== "week") return [];
+    const currentWeek = filterWeek;
+    const weeks: { semana: string; realizadas: number; meta: number }[] = [];
+    for (let i = 7; i >= 0; i--) {
+      const w = currentWeek - i;
+      if (w < 1) continue;
+      const weekVisits = allVisits.filter(v => v.semana === w && v.ano === filterYear);
+      const totalRealizadas = weekVisits.reduce((s, v) => s + v.quantidade, 0);
+      const totalMeta = weekVisits.reduce((s, v) => s + v.meta, 0) || reps.length * 16;
+      weeks.push({ semana: `S${w}`, realizadas: totalRealizadas, meta: totalMeta });
+    }
+    return weeks;
+  }, [periodMode, filterWeek, allVisits, filterYear, reps.length]);
+
+  // Lost deals without reason count
+  const lostWithoutReason = useMemo(() => {
+    return closingDeals.filter(c => c.status === "perdida" && !getLostReason(c)).length;
+  }, [closingDeals]);
+
+  // Perdas analysis
+  const lossAnalysis = useMemo(() => {
+    let lostDeals = closingDeals.filter(c => {
+      if (c.status !== "perdida") return false;
+      return isInPeriod(new Date(c.created_at));
+    });
+    if (lossRepFilter !== "all") {
+      lostDeals = lostDeals.filter(c => c.representative_id === lossRepFilter);
+    }
+    const withReason = lostDeals.filter(c => getLostReason(c));
+    const reasonCounts: Record<string, number> = {};
+    withReason.forEach(c => {
+      const m = getLostReason(c)!;
+      reasonCounts[m] = (reasonCounts[m] || 0) + 1;
+    });
+    const totalWithReason = withReason.length;
+    const rankingData = Object.entries(reasonCounts)
+      .map(([name, value]) => ({ name, value, pct: totalWithReason > 0 ? (value / totalWithReason) * 100 : 0 }))
+      .sort((a, b) => b.value - a.value);
+
+    // Monthly loss chart
+    const monthlyLoss: { mes: string; perdas: number }[] = SHORT_MONTHS.map((label, i) => {
+      const count = lostDeals.filter(c => new Date(c.created_at).getMonth() === i).length;
+      return { mes: label, perdas: count };
+    });
+
+    return { lostDeals, rankingData, monthlyLoss, totalWithReason };
+  }, [closingDeals, filterYear, periodMode, filterWeek, activeMonths, lossRepFilter]);
 
   if (loading) return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
 
   const metaPct = globalKpis.totalMeta > 0 ? (globalKpis.totalRealized / globalKpis.totalMeta) * 100 : 0;
   const weekOptions = Array.from({ length: 52 }, (_, i) => i + 1);
+
+  const toggleRepExpanded = (id: string) => {
+    setExpandedReps(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const renderNegActions = (neg: ClosingDeal) => (
+    <div className="flex gap-1 shrink-0">
+      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => openEditNeg(neg)} title="Editar">
+        <Edit2 className="h-3.5 w-3.5 text-primary" />
+      </Button>
+      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => handleMarkNeg(neg.id, "ganha")} title="Marcar Ganha">
+        <CheckCircle className="h-3.5 w-3.5 text-accent" />
+      </Button>
+      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => handleMarkNeg(neg.id, "perdida")} title="Marcar Perdida">
+        <XCircle className="h-3.5 w-3.5 text-destructive" />
+      </Button>
+      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => handleDeleteNeg(neg.id)} title="Excluir">
+        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+      </Button>
+    </div>
+  );
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -357,6 +449,9 @@ const RepKPIs = ({ userId }: Props) => {
           <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" /> KPIs de Performance
         </h2>
         <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={openVisitDialog}>
+            <ClipboardList className="h-3.5 w-3.5" /> Registrar Visitas
+          </Button>
           <Select value={String(filterYear)} onValueChange={v => setFilterYear(parseInt(v))}>
             <SelectTrigger className="w-[80px] bg-secondary/50 border-border text-xs h-8">
               <SelectValue />
@@ -414,270 +509,364 @@ const RepKPIs = ({ userId }: Props) => {
         </Badge>
       </div>
 
-      {/* Global KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-        <KpiCard icon={<Eye className="h-4 w-4" />} label="Visitas" value={String(globalKpis.totalVisits)} color="bg-primary/10 text-primary" />
-        <KpiCard icon={<Target className="h-4 w-4" />} label="Oportunidades Ativas" value={String(globalKpis.totalOpps)} sub={formatBrl(globalKpis.totalPipeline)} color="bg-accent/10 text-accent" />
-        <KpiCard icon={<FileText className="h-4 w-4" />} label={`Neg. Abertas (${periodLabel})`} value={String(openByRep.reduce((s, r) => s + r.total, 0))} sub={`Radar: ${openByRep.reduce((s, r) => s + r.radar, 0)} | Vendas: ${openByRep.reduce((s, r) => s + r.vendas, 0)}`} color="bg-[hsl(var(--ca-blue))]/10 text-[hsl(var(--ca-blue))]" />
-        <KpiCard icon={<XCircle className="h-4 w-4" />} label="Perdidas" value={String(globalKpis.totalLost)} color="bg-destructive/10 text-destructive" />
-        <KpiCard icon={<CheckCircle className="h-4 w-4" />} label="Win Rate" value={formatPct(globalKpis.globalWinRate)} sub={`${globalKpis.totalWon}W / ${globalKpis.totalLost}L`} color="bg-accent/10 text-accent" />
+      {/* View Tab Pills */}
+      <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5 w-fit">
+        <PillButton active={viewTab === "equipe"} onClick={() => setViewTab("equipe")}>
+          <span className="flex items-center gap-1"><Users className="h-3 w-3" /> Equipe</span>
+        </PillButton>
+        <PillButton active={viewTab === "representante"} onClick={() => setViewTab("representante")}>
+          <span className="flex items-center gap-1"><Target className="h-3 w-3" /> Por Representante</span>
+        </PillButton>
+        <PillButton active={viewTab === "perdas"} onClick={() => setViewTab("perdas")}>
+          <span className="flex items-center gap-1"><XCircle className="h-3 w-3" /> Perdas</span>
+        </PillButton>
       </div>
 
-      {/* Meta vs Realizado global */}
-      <Card className="p-4 border-border bg-card">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium text-foreground">Meta vs Realizado — {periodLabel}</span>
-          <Badge variant={metaPct >= 100 ? "default" : metaPct >= 70 ? "secondary" : "destructive"} className="text-xs">
-            {formatPct(metaPct)}
-          </Badge>
-        </div>
-        <Progress value={Math.min(metaPct, 100)} className="h-3" />
-        <div className="flex justify-between text-xs text-muted-foreground mt-1">
-          <span>Realizado: {formatBrl(globalKpis.totalRealized)}</span>
-          <span>Meta: {formatBrl(globalKpis.totalMeta)}</span>
-        </div>
-      </Card>
-
-      {/* Negociações Abertas por Representante */}
-      <Card className="p-4 border-border bg-card">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-foreground">Negociações Abertas por Representante — {periodLabel}</h3>
-          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={openNewNeg}>
-            <Plus className="h-3 w-3" /> Nova Negociação
-          </Button>
-        </div>
-        {openByRep.length === 0 ? (
-          <p className="text-xs text-muted-foreground text-center py-6">Nenhuma negociação aberta neste período</p>
-        ) : (
-          <div className="h-[220px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={openByRep} barGap={2}>
-                <XAxis dataKey="nome" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
-                <Tooltip
-                  formatter={(value: number, name: string) => [value, name === "radar" ? "Radar" : "Vendas Abertas"]}
-                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-                />
-                <Legend formatter={(value) => value === "radar" ? "Radar" : "Vendas Abertas"} />
-                <Bar dataKey="radar" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="vendas" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} opacity={0.7} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-
-        {/* Lista de negociações ativas no período */}
-        {(() => {
-          const activeNegs = closingDeals.filter(c => c.status === "ativa" && isInPeriod(new Date(c.created_at)));
-          if (activeNegs.length === 0) return null;
-          return (
-            <div className="mt-4 space-y-2 max-h-[300px] overflow-y-auto">
-              <h4 className="text-xs font-semibold text-muted-foreground">Negociações ativas ({activeNegs.length})</h4>
-              {activeNegs.map(neg => {
-                const repName = reps.find(r => r.id === neg.representative_id)?.nome || "—";
-                return (
-                  <div key={neg.id} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-secondary/30 border border-border">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                        <span className="text-xs font-semibold text-foreground">{neg.client_name || "—"}</span>
-                        <Badge variant="outline" className="text-[10px]">{repName}</Badge>
-                        <Badge variant="secondary" className="text-[10px]">{neg.stage}</Badge>
-                        <Badge variant={neg.probability === "Alta" ? "default" : neg.probability === "Baixa" ? "destructive" : "secondary"} className="text-[10px]">{neg.probability}</Badge>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground">
-                        {neg.machine_name && `${neg.machine_name} · `}{formatBrl(neg.deal_value)}
-                      </p>
-                    </div>
-                    <div className="flex gap-1 shrink-0">
-                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => openEditNeg(neg)} title="Editar">
-                        <Edit2 className="h-3.5 w-3.5 text-primary" />
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => handleMarkNeg(neg.id, "ganha")} title="Marcar Ganha">
-                        <CheckCircle className="h-3.5 w-3.5 text-accent" />
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => handleMarkNeg(neg.id, "perdida")} title="Marcar Perdida">
-                        <XCircle className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => handleDeleteNeg(neg.id)} title="Excluir">
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
+      {/* ===================== VIEW: EQUIPE ===================== */}
+      {viewTab === "equipe" && (
+        <>
+          {/* Alert: losses without reason */}
+          {lostWithoutReason > 0 && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+              <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+              <span className="text-xs text-destructive font-medium">
+                {lostWithoutReason} negociação(ões) perdida(s) sem motivo registrado. Acesse a aba <button className="underline font-bold" onClick={() => setViewTab("perdas")}>Perdas</button> para completar.
+              </span>
             </div>
-          );
-        })()}
-      </Card>
+          )}
 
-      {/* Chart: Meta vs Realizado by Rep */}
-      {chartData.length > 0 && (
-        <Card className="p-4 border-border bg-card">
-          <h3 className="text-sm font-semibold text-foreground mb-3">Meta vs Realizado por Representante — {periodLabel}</h3>
-          <div className="h-[250px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} barGap={2}>
-                <XAxis dataKey="nome" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={v => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
-                <Tooltip
-                  formatter={(value: number, name: string) => [formatBrl(value), name === "meta" ? "Meta" : "Realizado"]}
-                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-                />
-                <Legend formatter={(value) => value === "meta" ? "Meta" : "Realizado"} />
-                <Bar dataKey="meta" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} opacity={0.4} />
-                <Bar dataKey="realizado" radius={[4, 4, 0, 0]}>
-                  {chartData.map((entry, i) => (
-                    <Cell key={i} fill={entry.realizado >= entry.meta ? "hsl(var(--accent))" : "hsl(var(--primary))"} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          {/* Global KPI Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <KpiCard icon={<Eye className="h-4 w-4" />} label="Visitas" value={String(globalKpis.totalVisits)} color="bg-primary/10 text-primary" />
+            <KpiCard icon={<Target className="h-4 w-4" />} label="Oportunidades Ativas" value={String(globalKpis.totalOpps)} sub={formatBrl(globalKpis.totalPipeline)} color="bg-accent/10 text-accent" />
+            <KpiCard icon={<FileText className="h-4 w-4" />} label={`Neg. Abertas (${periodLabel})`} value={String(openByRep.reduce((s, r) => s + r.total, 0))} sub={`Radar: ${openByRep.reduce((s, r) => s + r.radar, 0)} | Vendas: ${openByRep.reduce((s, r) => s + r.vendas, 0)}`} color="bg-primary/10 text-primary" />
+            <KpiCard icon={<XCircle className="h-4 w-4" />} label="Perdidas" value={String(globalKpis.totalLost)} color="bg-destructive/10 text-destructive" />
+            <KpiCard icon={<CheckCircle className="h-4 w-4" />} label="Win Rate" value={formatPct(globalKpis.globalWinRate)} sub={`${globalKpis.totalWon}W / ${globalKpis.totalLost}L`} color="bg-accent/10 text-accent" />
           </div>
-        </Card>
+
+          {/* Meta vs Realizado global */}
+          <Card className="p-4 border-border bg-card">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-foreground">Meta vs Realizado — {periodLabel}</span>
+              <Badge variant={metaPct >= 100 ? "default" : metaPct >= 70 ? "secondary" : "destructive"} className="text-xs">
+                {formatPct(metaPct)}
+              </Badge>
+            </div>
+            <Progress value={Math.min(metaPct, 100)} className="h-3" />
+            <div className="flex justify-between text-xs text-muted-foreground mt-1">
+              <span>Realizado: {formatBrl(globalKpis.totalRealized)}</span>
+              <span>Meta: {formatBrl(globalKpis.totalMeta)}</span>
+            </div>
+          </Card>
+
+          {/* Weekly visits chart */}
+          {periodMode === "week" && weeklyChartData.length > 0 && (
+            <Card className="p-4 border-border bg-card">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Evolução de Visitas Semanais</h3>
+              <div className="h-[220px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={weeklyChartData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="semana" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
+                    <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                    <Legend />
+                    <Line type="monotone" dataKey="realizadas" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4, fill: "hsl(var(--primary))" }} name="Realizadas" />
+                    <Line type="monotone" dataKey="meta" stroke="hsl(var(--muted-foreground))" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Meta" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          )}
+
+          {/* Negociações Abertas por Representante */}
+          <Card className="p-4 border-border bg-card">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-foreground">Negociações Abertas por Representante — {periodLabel}</h3>
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={openNewNeg}>
+                <Plus className="h-3 w-3" /> Nova Negociação
+              </Button>
+            </div>
+            {openByRep.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-6">Nenhuma negociação aberta neste período</p>
+            ) : (
+              <div className="h-[220px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={openByRep} barGap={2}>
+                    <XAxis dataKey="nome" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
+                    <Tooltip
+                      formatter={(value: number, name: string) => [value, name === "radar" ? "Radar" : "Vendas Abertas"]}
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                    />
+                    <Legend formatter={(value) => value === "radar" ? "Radar" : "Vendas Abertas"} />
+                    <Bar dataKey="radar" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="vendas" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} opacity={0.7} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Active negotiations list */}
+            {(() => {
+              const activeNegs = closingDeals.filter(c => c.status === "ativa" && isInPeriod(new Date(c.created_at)));
+              if (activeNegs.length === 0) return null;
+              return (
+                <div className="mt-4 space-y-2 max-h-[300px] overflow-y-auto">
+                  <h4 className="text-xs font-semibold text-muted-foreground">Negociações ativas ({activeNegs.length})</h4>
+                  {activeNegs.map(neg => {
+                    const repName = reps.find(r => r.id === neg.representative_id)?.nome || "—";
+                    return (
+                      <div key={neg.id} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-secondary/30 border border-border">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                            <span className="text-xs font-semibold text-foreground">{neg.client_name || "—"}</span>
+                            <Badge variant="outline" className="text-[10px]">{repName}</Badge>
+                            <Badge variant="secondary" className="text-[10px]">{neg.stage}</Badge>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">{neg.machine_name && `${neg.machine_name} · `}{formatBrl(neg.deal_value)}</p>
+                        </div>
+                        {renderNegActions(neg)}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </Card>
+
+          {/* Chart: Meta vs Realizado by Rep */}
+          {chartData.length > 0 && (
+            <Card className="p-4 border-border bg-card">
+              <h3 className="text-sm font-semibold text-foreground mb-3">Meta vs Realizado por Representante — {periodLabel}</h3>
+              <div className="h-[250px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} barGap={2}>
+                    <XAxis dataKey="nome" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={v => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
+                    <Tooltip
+                      formatter={(value: number, name: string) => [formatBrl(value), name === "meta" ? "Meta" : "Realizado"]}
+                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                    />
+                    <Legend formatter={(value) => value === "meta" ? "Meta" : "Realizado"} />
+                    <Bar dataKey="meta" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} opacity={0.4} />
+                    <Bar dataKey="realizado" radius={[4, 4, 0, 0]}>
+                      {chartData.map((entry, i) => (
+                        <Cell key={i} fill={entry.realizado >= entry.meta ? "hsl(var(--accent))" : "hsl(var(--primary))"} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          )}
+        </>
       )}
 
-
-      {/* Per-rep cards */}
-      <div className="space-y-3">
-        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-          <Users className="h-4 w-4" /> Detalhamento por Representante — {periodLabel}
-        </h3>
-        {repMetrics.map(r => {
-          const metaColor = r.pctValor >= 100 ? "text-accent" : r.pctValor >= 70 ? "text-foreground" : "text-destructive";
-          return (
-            <Card key={r.id} className="p-4 border-border bg-card">
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="font-semibold text-sm text-foreground">{r.nome}</h4>
-                <div className="flex gap-1.5 flex-wrap justify-end">
-                  {r.winRate >= 60 && <Badge variant="secondary" className="text-[10px]">🔥 Top Closer</Badge>}
-                  {r.pctValor >= 100 && <Badge className="text-[10px] bg-accent text-accent-foreground">✅ Meta Batida</Badge>}
-                  {r.lostCount > r.wonCount && r.lostCount > 0 && <Badge variant="destructive" className="text-[10px]">⚠️ Atenção</Badge>}
-                  
-                </div>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                <MetricCell label="Visitas" value={String(r.totalVisits)} sub={r.visitPct > 0 ? `${formatPct(r.visitPct)} da meta` : "—"} icon={<Eye className="h-3 w-3" />} />
-                <MetricCell label="Oportunidades" value={String(r.oppCount)} sub={formatBrl(r.weightedPipeline) + " pond."} icon={<Target className="h-3 w-3" />} />
-                <MetricCell label="Perdidas" value={String(r.lostCount)} sub={formatBrl(r.lostValue)} icon={<XCircle className="h-3 w-3 text-destructive" />} />
-                <MetricCell label="Win Rate" value={formatPct(r.winRate)} sub={`${r.wonCount}W / ${r.lostCount}L`} icon={r.winRate >= 50 ? <TrendingUp className="h-3 w-3 text-accent" /> : <TrendingDown className="h-3 w-3 text-destructive" />} />
-              </div>
-              <div className="mt-3 space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Meta Valor ({periodLabel})</span>
-                  <span className={`font-semibold ${metaColor}`}>{formatPct(r.pctValor)} — {formatBrl(r.closedFobBrl)} / {formatBrl(r.metaValor)}</span>
-                </div>
-                <Progress value={Math.min(r.pctValor, 100)} className="h-2" />
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Meta Qtd ({periodLabel})</span>
-                  <span className="font-medium text-foreground">{r.closedCount} / {r.metaQtd} máq ({formatPct(r.pctQtd)})</span>
-                </div>
-                <Progress value={Math.min(r.pctQtd, 100)} className="h-2" />
-              </div>
-              <div className="mt-2 flex gap-4 text-[11px] text-muted-foreground">
-                <span>Ano: {r.yearCount} máq</span>
-                <span>{formatBrl(r.yearFobBrl)} faturado</span>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Motivos de Perda */}
-      {(() => {
-        const lostDeals = closingDeals.filter(c => {
-          if (c.status !== "perdida") return false;
-          const dt = new Date(c.created_at);
-          return isInPeriod(dt);
-        });
-        const withMotivo = lostDeals.filter(c => c.motivo_perda);
-        const motivoCounts: Record<string, number> = {};
-        withMotivo.forEach(c => {
-          const m = c.motivo_perda!;
-          motivoCounts[m] = (motivoCounts[m] || 0) + 1;
-        });
-        const totalWithMotivo = withMotivo.length;
-        const pieData = Object.entries(motivoCounts)
-          .map(([name, value]) => ({ name, value, pct: totalWithMotivo > 0 ? ((value / totalWithMotivo) * 100) : 0 }))
-          .sort((a, b) => b.value - a.value);
-
-        if (lostDeals.length === 0) return null;
-
-        return (
-          <>
-            <Card className="p-4 border-border bg-card">
-              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-3">
-                <PieChart className="h-4 w-4 text-destructive" /> Motivos de Perda — {periodLabel}
-              </h3>
-              {pieData.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-6">Nenhum motivo registrado nas perdas deste período</p>
-              ) : (
-                <div className="flex flex-col sm:flex-row gap-4 items-center">
-                  <div className="h-[200px] w-[200px] shrink-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RechartsPie>
-                        <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, pct }) => `${name.length > 12 ? name.slice(0, 12) + '…' : name} (${pct.toFixed(0)}%)`} labelLine={false} fontSize={10}>
-                          {pieData.map((_, i) => (
-                            <Cell key={i} fill={LOSS_PIE_COLORS[i % LOSS_PIE_COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(value: number, name: string) => [`${value} (${totalWithMotivo > 0 ? ((value / totalWithMotivo) * 100).toFixed(1) : 0}%)`, name]} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-                      </RechartsPie>
-                    </ResponsiveContainer>
+      {/* ===================== VIEW: POR REPRESENTANTE ===================== */}
+      {viewTab === "representante" && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <Users className="h-4 w-4" /> Detalhamento por Representante — {periodLabel}
+            </h3>
+            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={openNewNeg}>
+              <Plus className="h-3 w-3" /> Nova Negociação
+            </Button>
+          </div>
+          {repMetrics.map(r => {
+            const metaColor = r.pctValor >= 100 ? "text-accent" : r.pctValor >= 70 ? "text-foreground" : "text-destructive";
+            const isExpanded = expandedReps.has(r.id);
+            const repActiveNegs = closingDeals.filter(c => c.representative_id === r.id && c.status === "ativa");
+            return (
+              <Card key={r.id} className="border-border bg-card overflow-hidden">
+                <button
+                  className="w-full p-4 text-left flex items-center justify-between hover:bg-secondary/20 transition-colors"
+                  onClick={() => toggleRepExpanded(r.id)}
+                >
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold text-sm text-foreground">{r.nome}</h4>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {r.winRate >= 60 && <Badge variant="secondary" className="text-[10px]">🔥 Top Closer</Badge>}
+                      {r.pctValor >= 100 && <Badge className="text-[10px] bg-accent text-accent-foreground">✅ Meta Batida</Badge>}
+                      {r.lostCount > r.wonCount && r.lostCount > 0 && <Badge variant="destructive" className="text-[10px]">⚠️ Atenção</Badge>}
+                    </div>
                   </div>
-                  <div className="flex-1 space-y-1.5 w-full">
-                    {pieData.map((item, i) => (
-                      <div key={item.name} className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: LOSS_PIE_COLORS[i % LOSS_PIE_COLORS.length] }} />
-                          <span className="text-foreground">{item.name}</span>
+                  {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                </button>
+
+                <div className="px-4 pb-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <MetricCell label="Visitas" value={String(r.totalVisits)} sub={r.visitPct > 0 ? `${formatPct(r.visitPct)} da meta` : "—"} icon={<Eye className="h-3 w-3" />} />
+                    <MetricCell label="Oportunidades" value={String(r.oppCount)} sub={formatBrl(r.weightedPipeline) + " pond."} icon={<Target className="h-3 w-3" />} />
+                    <MetricCell label="Perdidas" value={String(r.lostCount)} sub={formatBrl(r.lostValue)} icon={<XCircle className="h-3 w-3 text-destructive" />} />
+                    <MetricCell label="Win Rate" value={formatPct(r.winRate)} sub={`${r.wonCount}W / ${r.lostCount}L`} icon={r.winRate >= 50 ? <TrendingUp className="h-3 w-3 text-accent" /> : <TrendingDown className="h-3 w-3 text-destructive" />} />
+                  </div>
+                  <div className="mt-3 space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Meta Valor ({periodLabel})</span>
+                      <span className={`font-semibold ${metaColor}`}>{formatPct(r.pctValor)} — {formatBrl(r.closedFobBrl)} / {formatBrl(r.metaValor)}</span>
+                    </div>
+                    <Progress value={Math.min(r.pctValor, 100)} className="h-2" />
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Meta Qtd ({periodLabel})</span>
+                      <span className="font-medium text-foreground">{r.closedCount} / {r.metaQtd} máq ({formatPct(r.pctQtd)})</span>
+                    </div>
+                    <Progress value={Math.min(r.pctQtd, 100)} className="h-2" />
+                  </div>
+                  <div className="mt-2 flex gap-4 text-[11px] text-muted-foreground">
+                    <span>Ano: {r.yearCount} máq</span>
+                    <span>{formatBrl(r.yearFobBrl)} faturado</span>
+                  </div>
+                </div>
+
+                {/* Expanded: active negotiations */}
+                {isExpanded && (
+                  <div className="border-t border-border px-4 py-3 bg-secondary/10 space-y-2">
+                    <h5 className="text-xs font-semibold text-muted-foreground">Negociações ativas ({repActiveNegs.length})</h5>
+                    {repActiveNegs.length === 0 ? (
+                      <p className="text-xs text-muted-foreground py-2">Nenhuma negociação ativa</p>
+                    ) : (
+                      repActiveNegs.map(neg => (
+                        <div key={neg.id} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-card border border-border">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                              <span className="text-xs font-semibold text-foreground">{neg.client_name || "—"}</span>
+                              <Badge variant="secondary" className="text-[10px]">{neg.stage}</Badge>
+                              <Badge variant={neg.probability === "Alta" ? "default" : neg.probability === "Baixa" ? "destructive" : "secondary"} className="text-[10px]">{neg.probability}</Badge>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">{neg.machine_name && `${neg.machine_name} · `}{formatBrl(neg.deal_value)}</p>
+                          </div>
+                          {renderNegActions(neg)}
                         </div>
-                        <span className="text-muted-foreground font-medium">{item.value} ({item.pct.toFixed(1)}%)</span>
-                      </div>
-                    ))}
+                      ))
+                    )}
                   </div>
-                </div>
-              )}
-            </Card>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
-            {/* Tabela de Perdas */}
-            <Card className="p-4 border-border bg-card">
-              <h3 className="text-sm font-semibold text-foreground mb-3">Negociações Perdidas — {periodLabel}</h3>
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs">Cliente</TableHead>
-                      <TableHead className="text-xs">Vendedor</TableHead>
-                      <TableHead className="text-xs">Valor</TableHead>
-                      <TableHead className="text-xs">Motivo</TableHead>
-                      <TableHead className="text-xs">Data</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {lostDeals
-                      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                      .map(deal => {
-                        const repName = reps.find(r => r.id === deal.representative_id)?.nome || "—";
-                        const motivo = deal.motivo_perda
-                          ? (deal.motivo_perda === "Outros" && deal.motivo_perda_detalhe ? `Outros: ${deal.motivo_perda_detalhe}` : deal.motivo_perda)
-                          : "—";
-                        return (
-                          <TableRow key={deal.id}>
-                            <TableCell className="text-xs font-medium">{deal.client_name || "—"}</TableCell>
-                            <TableCell className="text-xs">{repName}</TableCell>
-                            <TableCell className="text-xs">{formatBrl(deal.deal_value)}</TableCell>
-                            <TableCell className="text-xs">{motivo}</TableCell>
-                            <TableCell className="text-xs text-muted-foreground">{new Date(deal.created_at).toLocaleDateString("pt-BR")}</TableCell>
-                          </TableRow>
-                        );
-                      })}
-                  </TableBody>
-                </Table>
-              </div>
+      {/* ===================== VIEW: PERDAS ===================== */}
+      {viewTab === "perdas" && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+              <PieChart className="h-4 w-4 text-destructive" /> Análise de Perdas — {periodLabel}
+            </h3>
+          </div>
+
+          {/* Rep filter pills */}
+          <div className="flex items-center gap-1 flex-wrap">
+            <PillButton active={lossRepFilter === "all"} onClick={() => setLossRepFilter("all")}>Todos</PillButton>
+            {reps.map(r => (
+              <PillButton key={r.id} active={lossRepFilter === r.id} onClick={() => setLossRepFilter(r.id)}>
+                {r.nome.split(" ")[0]}
+              </PillButton>
+            ))}
+          </div>
+
+          {lossAnalysis.lostDeals.length === 0 ? (
+            <Card className="p-6 border-border bg-card">
+              <p className="text-xs text-muted-foreground text-center">Nenhuma perda registrada neste período</p>
             </Card>
-          </>
-        );
-      })()}
+          ) : (
+            <>
+              {/* Ranking horizontal bars */}
+              <Card className="p-4 border-border bg-card">
+                <h4 className="text-xs font-semibold text-foreground mb-3">Ranking de Motivos</h4>
+                {lossAnalysis.rankingData.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">Nenhum motivo registrado</p>
+                ) : (
+                  <div className="space-y-2">
+                    {lossAnalysis.rankingData.map((item, i) => {
+                      const maxVal = lossAnalysis.rankingData[0]?.value || 1;
+                      const barWidth = (item.value / maxVal) * 100;
+                      return (
+                        <div key={item.name} className="space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-foreground font-medium">{item.name}</span>
+                            <span className="text-muted-foreground">{item.value} ({item.pct.toFixed(0)}%)</span>
+                          </div>
+                          <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{ width: `${barWidth}%`, backgroundColor: LOSS_BAR_COLORS[i % LOSS_BAR_COLORS.length] }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </Card>
+
+              {/* Monthly loss chart */}
+              <Card className="p-4 border-border bg-card">
+                <h4 className="text-xs font-semibold text-foreground mb-3">Perdas por Mês</h4>
+                <div className="h-[200px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={lossAnalysis.monthlyLoss}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="mes" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                      <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
+                      <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
+                      <Bar dataKey="perdas" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} name="Perdas" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </Card>
+
+              {/* Detailed loss table */}
+              <Card className="p-4 border-border bg-card">
+                <h4 className="text-xs font-semibold text-foreground mb-3">Lista Detalhada de Perdas ({lossAnalysis.lostDeals.length})</h4>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs">Cliente</TableHead>
+                        <TableHead className="text-xs">Representante</TableHead>
+                        <TableHead className="text-xs">Motivo</TableHead>
+                        <TableHead className="text-xs">Máquina</TableHead>
+                        <TableHead className="text-xs">Valor</TableHead>
+                        <TableHead className="text-xs">Data</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {lossAnalysis.lostDeals
+                        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                        .map(deal => {
+                          const repName = reps.find(r => r.id === deal.representative_id)?.nome || "—";
+                          const reason = getLostReason(deal);
+                          const detail = getLostDetail(deal);
+                          const displayReason = reason
+                            ? (reason === "Outro" && detail ? `Outro: ${detail}` : reason)
+                            : "—";
+                          return (
+                            <TableRow key={deal.id}>
+                              <TableCell className="text-xs font-medium">{deal.client_name || "—"}</TableCell>
+                              <TableCell className="text-xs"><Badge variant="outline" className="text-[10px]">{repName}</Badge></TableCell>
+                              <TableCell className="text-xs">
+                                {reason ? <Badge variant="destructive" className="text-[10px]">{displayReason}</Badge> : <span className="text-muted-foreground">—</span>}
+                              </TableCell>
+                              <TableCell className="text-xs">{deal.machine_name || "—"}</TableCell>
+                              <TableCell className="text-xs">{formatBrl(deal.deal_value)}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{new Date(deal.created_at).toLocaleDateString("pt-BR")}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </Card>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ===================== DIALOGS ===================== */}
 
       {/* Negociação Dialog */}
       <Dialog open={negDialogOpen} onOpenChange={(v) => { setNegDialogOpen(v); if (!v) resetNegForm(); }}>
@@ -768,20 +957,77 @@ const RepKPIs = ({ userId }: Props) => {
               <Select value={lossMotivo} onValueChange={v => setLossMotivo(v)}>
                 <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Selecione o motivo..." /></SelectTrigger>
                 <SelectContent>
-                  {MOTIVOS_PERDA.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                  {LOSS_REASONS.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
-            {lossMotivo === "Outros" && (
+            {lossMotivo === "Outro" && (
               <div>
-                <Label className="text-xs">Detalhe</Label>
-                <Input value={lossDetalhe} onChange={e => setLossDetalhe(e.target.value)} className="h-9 text-sm" placeholder="Descreva o motivo..." />
+                <Label className="text-xs">Observações *</Label>
+                <Textarea value={lossDetalhe} onChange={e => setLossDetalhe(e.target.value)} className="text-sm min-h-[60px]" placeholder="Descreva o motivo..." />
+              </div>
+            )}
+            {lossMotivo && lossMotivo !== "Outro" && (
+              <div>
+                <Label className="text-xs">Observações (opcional)</Label>
+                <Textarea value={lossDetalhe} onChange={e => setLossDetalhe(e.target.value)} className="text-sm min-h-[60px]" placeholder="Informações adicionais..." />
               </div>
             )}
             <Button onClick={confirmLoss} className="w-full h-9 text-sm" variant="destructive">
               Confirmar Perda
             </Button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Visit Registration Dialog */}
+      <Dialog open={visitDialogOpen} onOpenChange={setVisitDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base">Registrar Visitas — Semana {getWeekNumber(now)}/{filterYear}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[400px] overflow-y-auto">
+            {visitEntries.map((entry, i) => {
+              const rep = reps.find(r => r.id === entry.rep_id);
+              if (!rep) return null;
+              return (
+                <div key={entry.rep_id} className="flex items-center gap-3 p-2 rounded-lg bg-secondary/30 border border-border">
+                  <span className="text-xs font-medium text-foreground flex-1 min-w-0 truncate">{rep.nome}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="text-center">
+                      <Label className="text-[10px] text-muted-foreground">Meta</Label>
+                      <Input
+                        type="number"
+                        value={entry.meta}
+                        onChange={e => {
+                          const next = [...visitEntries];
+                          next[i] = { ...next[i], meta: Number(e.target.value) };
+                          setVisitEntries(next);
+                        }}
+                        className="h-8 w-16 text-xs text-center"
+                      />
+                    </div>
+                    <div className="text-center">
+                      <Label className="text-[10px] text-muted-foreground">Realizadas</Label>
+                      <Input
+                        type="number"
+                        value={entry.quantidade}
+                        onChange={e => {
+                          const next = [...visitEntries];
+                          next[i] = { ...next[i], quantidade: Number(e.target.value) };
+                          setVisitEntries(next);
+                        }}
+                        className="h-8 w-16 text-xs text-center"
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <Button onClick={handleSaveVisits} className="w-full h-9 text-sm">
+            Salvar Visitas
+          </Button>
         </DialogContent>
       </Dialog>
     </div>
