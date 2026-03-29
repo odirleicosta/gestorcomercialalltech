@@ -116,7 +116,7 @@ const RepKPIs = ({ userId }: Props) => {
       deal_value: c.deal_value,
       stage: c.stage as any,
       probability: c.probability as any,
-      sale_type: c.sale_type || "Venda Direta",
+      sale_type: (c.sale_type || "Venda Direta") as "Rentall" | "Venda Direta",
       notes: c.notes || "",
     });
     setNegDialogOpen(true);
