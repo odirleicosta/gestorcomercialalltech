@@ -658,6 +658,36 @@ export type Database = {
           },
         ]
       }
+      monthly_opportunities: {
+        Row: {
+          ano: number
+          created_at: string
+          id: string
+          mes: number
+          quantidade: number
+          representative_id: string
+          user_id: string
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          id?: string
+          mes: number
+          quantidade?: number
+          representative_id: string
+          user_id: string
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          id?: string
+          mes?: number
+          quantidade?: number
+          representative_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           commission_password: string | null
