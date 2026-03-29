@@ -296,9 +296,9 @@ const BiImport = ({ userId }: Props) => {
       </div>
 
       {unmatchedNames.length > 0 && (
-        <div className="flex items-start gap-2 rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-3">
-          <AlertTriangle className="h-4 w-4 text-yellow-600 shrink-0 mt-0.5" />
-          <div className="text-sm text-yellow-700 dark:text-yellow-400">
+        <div className="flex items-start gap-2 rounded-lg border border-warning/50 bg-warning/10 p-3">
+          <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+          <div className="text-sm text-warning-foreground dark:text-warning">
             <strong>Representantes não encontrados:</strong> {unmatchedNames.join(", ")}
           </div>
         </div>
