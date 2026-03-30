@@ -77,6 +77,27 @@ function getFieldCI(row: Record<string, string>, ...names: string[]): string {
 }
 
 const LAST_IMPORT_KEY = "bi_import_last_";
+const IMPORTED_FILES_KEY = "bi_import_files_";
+
+interface ImportedFile {
+  name: string;
+  tab: TabKey;
+  date: string;
+  rows: number;
+}
+
+function loadImportedFiles(): ImportedFile[] {
+  try {
+    const stored = localStorage.getItem(IMPORTED_FILES_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch { return []; }
+}
+
+function saveImportedFile(file: ImportedFile) {
+  const files = loadImportedFiles();
+  files.unshift(file);
+  localStorage.setItem(IMPORTED_FILES_KEY, JSON.stringify(files.slice(0, 100)));
+}
 
 const BiImport = ({ userId }: Props) => {
   const { toast } = useToast();
@@ -89,6 +110,7 @@ const BiImport = ({ userId }: Props) => {
   const [dragOver, setDragOver] = useState(false);
   const [metaYear, setMetaYear] = useState(new Date().getFullYear());
   const fileRef = useRef<HTMLInputElement>(null);
+  const [importedFiles, setImportedFiles] = useState<ImportedFile[]>(loadImportedFiles);
 
   const [lastImports, setLastImports] = useState<Record<string, string>>(() => {
     const stored: Record<string, string> = {};
