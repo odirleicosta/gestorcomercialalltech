@@ -14,6 +14,9 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import type { Deal } from "@/components/DealManager";
 import RepHistoryPanel from "@/components/RepHistoryPanel";
+import { calcularRiscoMeta } from "@/lib/metaRisk";
+import MetaRiskAlerts from "@/components/MetaRiskAlerts";
+import { Badge } from "@/components/ui/badge";
 
 interface Props { userId: string; }
 interface RepOption { id: string; nome: string; }
@@ -739,6 +742,23 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                     </div>
                   ) : null)}
                 </div>
+
+                {/* Meta em Risco */}
+                {(() => {
+                  const metaRiscos = calcularRiscoMeta(
+                    repRanking.map(r => ({ id: r.id, nome: r.nome, metaValor: r.metaQtd, vendido: r.count })),
+                    new Date().getDate()
+                  );
+                  if (metaRiscos.length === 0) return null;
+                  return (
+                    <div className="mt-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Badge variant="destructive" className="text-[10px]">Meta em Risco</Badge>
+                      </div>
+                      <MetaRiskAlerts riscos={metaRiscos} />
+                    </div>
+                  );
+                })()}
               </section>
             )}
 
