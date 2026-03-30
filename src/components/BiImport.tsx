@@ -129,6 +129,15 @@ const BiImport = ({ userId }: Props) => {
 
   const handleFile = async (file: File) => {
     await loadReps();
+    // Check if this file was already imported for this tab
+    const alreadyImported = importedFiles.find(f => f.name === file.name && f.tab === activeTab);
+    if (alreadyImported) {
+      toast({ 
+        title: "Arquivo já importado", 
+        description: `"${file.name}" já foi importado em ${activeTab} em ${alreadyImported.date}. Selecione outro arquivo ou continue se deseja reimportar.`,
+        variant: "destructive" 
+      });
+    }
     try {
       const rows = await parseExcel(file);
       if (!rows.length) { toast({ title: "Arquivo vazio", variant: "destructive" }); return; }
