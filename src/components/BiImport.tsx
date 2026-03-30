@@ -369,7 +369,7 @@ const BiImport = ({ userId }: Props) => {
             {filesForTab.map((f, i) => (
               <div key={i} className="flex items-center justify-between text-xs rounded-md bg-background/50 px-2.5 py-1.5">
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                  <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />
                   <span className="font-medium text-foreground">{f.name}</span>
                 </div>
                 <div className="flex items-center gap-3 text-muted-foreground">
