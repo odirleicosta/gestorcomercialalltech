@@ -382,8 +382,6 @@ const BiImport = ({ userId }: Props) => {
         </div>
       )}
     </div>
-      </div>
-    </div>
   );
 
   const renderPreview = () => (
