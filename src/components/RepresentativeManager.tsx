@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { calcularRiscoMeta } from "@/lib/metaRisk";
+import MetaRiskAlerts from "@/components/MetaRiskAlerts";
 
 interface Representative {
   id: string;
@@ -314,6 +316,19 @@ const RepresentativeManager = ({ userId }: Props) => {
           </Select>
         </div>
       </div>
+
+      {/* Meta Risk Alerts */}
+      <MetaRiskAlerts
+        riscos={calcularRiscoMeta(
+          performance.map(p => ({
+            id: p.rep.id,
+            nome: p.rep.nome,
+            metaValor: p.totalMeta,
+            vendido: p.totalVendido,
+          })),
+          new Date().getDate()
+        )}
+      />
 
       {/* Performance cards */}
       {performance.length === 0 ? (
