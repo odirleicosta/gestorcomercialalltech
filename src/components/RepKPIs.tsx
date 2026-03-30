@@ -796,12 +796,112 @@ const RepKPIs = ({ userId }: Props) => {
             ))}
           </div>
 
+          {/* KPI summary cards */}
+          {(() => {
+            const allLostInPeriod = closingDeals.filter(c => c.status === "perdida" && isInPeriod(new Date(c.created_at)));
+            const totalPerdas = allLostInPeriod.length;
+            const globalReasonCounts: Record<string, number> = {};
+            allLostInPeriod.forEach(c => {
+              const r = getLostReason(c);
+              if (r) globalReasonCounts[r] = (globalReasonCounts[r] || 0) + 1;
+            });
+            const globalRanking = Object.entries(globalReasonCounts).sort((a, b) => b[1] - a[1]);
+            const topGlobal = globalRanking[0];
+            const topGlobalPct = topGlobal && totalPerdas > 0 ? (topGlobal[1] / totalPerdas) * 100 : 0;
+            const semPrevisaoGlobal = allLostInPeriod.filter(c => (getLostReason(c) || "").includes("Sem Previsão")).length;
+            const semPrevisaoGlobalPct = totalPerdas > 0 ? (semPrevisaoGlobal / totalPerdas) * 100 : 0;
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Card className="p-4 border-border bg-card text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Total de Perdas no Período</p>
+                  <p className="text-2xl font-bold text-destructive">{totalPerdas}</p>
+                </Card>
+                <Card className="p-4 border-border bg-card text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Maior Motivo Global</p>
+                  <p className="text-sm font-bold text-foreground truncate">{topGlobal ? topGlobal[0] : "—"}</p>
+                  {topGlobal && <p className="text-xs text-muted-foreground">{topGlobalPct.toFixed(0)}% das perdas</p>}
+                </Card>
+                <Card className="p-4 border-border bg-card text-center">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Alerta SDR</p>
+                  <p className="text-sm font-bold text-foreground">{semPrevisaoGlobalPct.toFixed(0)}% Sem Previsão</p>
+                  <Badge variant={semPrevisaoGlobalPct > 40 ? "destructive" : "default"} className={`text-[10px] mt-1 ${semPrevisaoGlobalPct < 20 ? "bg-accent text-accent-foreground" : ""}`}>
+                    {semPrevisaoGlobalPct > 40 ? "Crítico" : semPrevisaoGlobalPct < 20 ? "Saudável" : "Moderado"}
+                  </Badge>
+                </Card>
+              </div>
+            );
+          })()}
+
           {lossAnalysis.lostDeals.length === 0 ? (
             <Card className="p-6 border-border bg-card">
               <p className="text-xs text-muted-foreground text-center">Nenhuma perda registrada neste período</p>
             </Card>
           ) : (
             <>
+              {/* Diagnóstico por Representante */}
+              {(() => {
+                const allLostInPeriod = closingDeals.filter(c => c.status === "perdida" && isInPeriod(new Date(c.created_at)));
+                const repsWithLosses = reps.filter(rep => allLostInPeriod.some(c => c.representative_id === rep.id));
+                if (repsWithLosses.length === 0) return null;
+                return (
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-semibold text-foreground flex items-center gap-2">
+                      <Users className="h-4 w-4 text-destructive" /> Diagnóstico por Representante
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                      {repsWithLosses.map(rep => {
+                        const repLosses = allLostInPeriod.filter(c => c.representative_id === rep.id);
+                        const totalPerdas = repLosses.length;
+                        const motivoMap: Record<string, number> = {};
+                        repLosses.forEach(c => {
+                          const m = getLostReason(c) || "Sem motivo";
+                          motivoMap[m] = (motivoMap[m] || 0) + 1;
+                        });
+                        const sorted = Object.entries(motivoMap).sort((a, b) => b[1] - a[1]);
+                        const topMotivo = sorted[0]?.[0] || "—";
+                        const topMotivoCount = sorted[0]?.[1] || 0;
+                        const topMotivoPct = totalPerdas > 0 ? (topMotivoCount / totalPerdas) * 100 : 0;
+                        const semPrevisao = repLosses.filter(c => (getLostReason(c) || "").includes("Sem Previsão")).length;
+                        const semPrevisaoPct = totalPerdas > 0 ? (semPrevisao / totalPerdas) * 100 : 0;
+                        const barColor = topMotivoPct > 50 ? "bg-destructive" : topMotivoPct >= 30 ? "bg-yellow-500" : "bg-muted-foreground";
+                        const demais = sorted.slice(1);
+                        return (
+                          <Card key={rep.id} className="p-4 border-border bg-card space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-sm font-semibold text-foreground truncate">{rep.nome}</span>
+                              <Badge variant="destructive" className="text-[10px] shrink-0">{totalPerdas}</Badge>
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-foreground">{topMotivo} <span className="font-normal text-muted-foreground">({topMotivoPct.toFixed(0)}%)</span></p>
+                              <div className="h-2 bg-secondary rounded-full overflow-hidden mt-1">
+                                <div className={`h-full rounded-full ${barColor}`} style={{ width: `${Math.min(topMotivoPct, 100)}%` }} />
+                              </div>
+                            </div>
+                            {demais.length > 0 && (
+                              <p className="text-[10px] text-muted-foreground">
+                                {demais.map(([m, c]) => `${m} (${c})`).join(" · ")}
+                              </p>
+                            )}
+                            {semPrevisaoPct >= 50 && (
+                              <div className="p-2 rounded border border-destructive/40 bg-destructive/10 flex items-start gap-2">
+                                <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+                                <p className="text-[10px] text-foreground">{semPrevisaoPct.toFixed(0)}% das perdas são por 'Sem Previsão de Investimento' — revise a qualificação dos leads desta carteira</p>
+                              </div>
+                            )}
+                            {topMotivo === "Produto não atende" && topMotivoPct >= 30 && (
+                              <div className="p-2 rounded border border-yellow-500/40 bg-yellow-500/10 flex items-start gap-2">
+                                <AlertTriangle className="h-4 w-4 text-yellow-500 shrink-0 mt-0.5" />
+                                <p className="text-[10px] text-foreground">O produto não está atendendo as expectativas — verifique alinhamento técnico</p>
+                              </div>
+                            )}
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Ranking horizontal bars */}
               <Card className="p-4 border-border bg-card">
                 <h4 className="text-xs font-semibold text-foreground mb-3">Ranking de Motivos</h4>
