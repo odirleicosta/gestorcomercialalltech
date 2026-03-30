@@ -167,6 +167,11 @@ const BiImport = ({ userId }: Props) => {
     const now = new Date().toLocaleString("pt-BR");
     localStorage.setItem(LAST_IMPORT_KEY + tab, now);
     setLastImports(prev => ({ ...prev, [tab]: now }));
+    if (fileName) {
+      const entry: ImportedFile = { name: fileName, tab, date: now, rows: data.length };
+      saveImportedFile(entry);
+      setImportedFiles(loadImportedFiles());
+    }
   };
 
   // ---- VISITAS ----
