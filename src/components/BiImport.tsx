@@ -339,20 +339,49 @@ const BiImport = ({ userId }: Props) => {
     ? [...new Set(data.map(r => getFieldCI(r, nameField)).filter(n => n && !findRep(n, reps)))]
     : [];
 
+  const filesForTab = importedFiles.filter(f => f.tab === activeTab);
+
   const renderDropZone = () => (
-    <div
-      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-      onDragLeave={() => setDragOver(false)}
-      onDrop={onDrop}
-      onClick={() => fileRef.current?.click()}
-      className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
-    >
-      <input ref={fileRef} type="file" accept=".xlsx,.csv,.xls" className="hidden" onChange={onFileChange} />
-      <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-      <p className="text-sm font-medium text-foreground">Arraste o arquivo ou clique para selecionar</p>
-      <p className="text-xs text-muted-foreground mt-1">.xlsx ou .csv</p>
-      <div className="mt-3 flex flex-wrap justify-center gap-1">
-        {expectedColumns[activeTab].map(c => <Badge key={c} variant="secondary" className="text-xs">{c}</Badge>)}
+    <div className="space-y-4">
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={onDrop}
+        onClick={() => fileRef.current?.click()}
+        className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+      >
+        <input ref={fileRef} type="file" accept=".xlsx,.csv,.xls" className="hidden" onChange={onFileChange} />
+        <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+        <p className="text-sm font-medium text-foreground">Arraste o arquivo ou clique para selecionar</p>
+        <p className="text-xs text-muted-foreground mt-1">.xlsx ou .csv</p>
+        <div className="mt-3 flex flex-wrap justify-center gap-1">
+          {expectedColumns[activeTab].map(c => <Badge key={c} variant="secondary" className="text-xs">{c}</Badge>)}
+        </div>
+      </div>
+
+      {filesForTab.length > 0 && (
+        <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-2">
+          <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            Arquivos já importados nesta aba:
+          </p>
+          <div className="space-y-1">
+            {filesForTab.map((f, i) => (
+              <div key={i} className="flex items-center justify-between text-xs rounded-md bg-background/50 px-2.5 py-1.5">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                  <span className="font-medium text-foreground">{f.name}</span>
+                </div>
+                <div className="flex items-center gap-3 text-muted-foreground">
+                  <span>{f.rows} linhas</span>
+                  <span>{f.date}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
       </div>
     </div>
   );
