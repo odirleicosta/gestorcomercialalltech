@@ -75,6 +75,25 @@ const Auth = () => {
                 <Label className="mb-1.5 text-sm text-muted-foreground">Senha</Label>
                 <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="bg-secondary/50 border-border" onKeyDown={(e) => e.key === "Enter" && handleLogin()} />
               </div>
+              <div className="flex justify-end">
+                <span
+                  className="text-xs text-primary underline cursor-pointer hover:text-primary/80"
+                  onClick={async () => {
+                    if (!email) {
+                      toast({ title: "Informe o email", description: "Digite seu email acima antes de redefinir a senha.", variant: "destructive" });
+                      return;
+                    }
+                    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+                    if (error) {
+                      toast({ title: "Erro", description: error.message, variant: "destructive" });
+                    } else {
+                      toast({ title: "Email enviado!", description: "Verifique sua caixa de entrada para redefinir a senha." });
+                    }
+                  }}
+                >
+                  Esqueci minha senha
+                </span>
+              </div>
               <Button className="w-full" onClick={handleLogin} disabled={loading || !email || !password}>
                 {loading ? "Entrando..." : "Entrar"}
               </Button>
