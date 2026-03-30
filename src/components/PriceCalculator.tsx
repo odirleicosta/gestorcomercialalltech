@@ -31,6 +31,7 @@ import ClosingRadar from "@/components/ClosingRadar";
 import RepKPIs from "@/components/RepKPIs";
 import BiImport from "@/components/BiImport";
 import { useTheme } from "@/hooks/use-theme";
+import { ALL_APP_TABS, AppTabId, DEFAULT_APP_TAB, isAppTab } from "@/lib/app-tabs";
 
 export interface SavedCalculation {
   id: string;
@@ -77,7 +78,7 @@ const PriceCalculator = () => {
   const [observation, setObservation] = useState("");
   const [notes, setNotes] = useState("");
 
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState<AppTabId>(DEFAULT_APP_TAB);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { theme, toggle: toggleTheme } = useTheme();
   const [history, setHistory] = useState<SavedCalculation[]>(loadHistory);
@@ -125,6 +126,12 @@ const PriceCalculator = () => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
   }, [history]);
+
+  const handleTabChange = (tab: string) => {
+    if (isAppTab(tab)) {
+      setActiveTab(tab);
+    }
+  };
 
   const simulation = useMemo(() => {
     const fob = parseFloat(fobCost) || 0;
@@ -307,22 +314,10 @@ const PriceCalculator = () => {
         </div>
         <div className="mb-4" />
         <nav className="flex flex-col gap-1 flex-1 overflow-y-auto">
-          {[
-            { value: "dashboard", icon: BarChart3, label: "Dashboard" },
-            { value: "deals", icon: Users, label: "Vendas" },
-            // { value: "closing-radar", icon: Crosshair, label: "Radar" }, // desabilitado temporariamente
-            { value: "commissions", icon: DollarSign, label: "Comissões" },
-            { value: "rep-kpis", icon: Target, label: "KPIs" },
-            { value: "simulation", icon: Calculator, label: "Simulação" },
-            { value: "reps", icon: UserPlus, label: "Representantes" },
-            { value: "registry", icon: Building2, label: "Cadastros" },
-            { value: "catalog", icon: Package, label: "Catálogo" },
-            { value: "deep-analysis", icon: Zap, label: "Análise Profunda" },
-            { value: "bi-import", icon: Upload, label: "Importar BI" },
-          ].map(({ value, icon: Icon, label }) => (
+          {ALL_APP_TABS.map(({ value, icon: Icon, label }) => (
             <button
               key={value}
-              onClick={() => setActiveTab(value)}
+              onClick={() => handleTabChange(value)}
               title={sidebarCollapsed ? label : undefined}
               className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
                 sidebarCollapsed ? "justify-center px-2" : ""
@@ -358,7 +353,7 @@ const PriceCalculator = () => {
       {/* Mobile bottom navigation */}
       <BottomNavBar
         activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onTabChange={handleTabChange}
         onLogout={() => supabase.auth.signOut()}
         theme={theme}
         onToggleTheme={toggleTheme}
@@ -367,8 +362,14 @@ const PriceCalculator = () => {
       {/* Main content */}
       <main className="flex-1 overflow-y-auto px-3 py-4 pb-24 md:py-10 md:px-8 md:pb-10">
         <div className="w-full">
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <div className="hidden"><TabsList><TabsTrigger value="simulation" /><TabsTrigger value="deals" /><TabsTrigger value="commissions" /><TabsTrigger value="rep-kpis" /><TabsTrigger value="reps" /><TabsTrigger value="dashboard" /><TabsTrigger value="registry" /><TabsTrigger value="catalog" /><TabsTrigger value="deep-analysis" /><TabsTrigger value="bi-import" /></TabsList></div>
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
+          <div className="hidden">
+            <TabsList>
+              {ALL_APP_TABS.map((tab) => (
+                <TabsTrigger key={tab.value} value={tab.value} />
+              ))}
+            </TabsList>
+          </div>
 
           <TabsContent value="simulation">
             <div className="grid gap-6 lg:grid-cols-5">

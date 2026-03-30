@@ -1,44 +1,26 @@
-import {
-  BarChart3, Users, DollarSign, Calculator, MoreHorizontal,
-  UserPlus, Building2, Package, Zap, LogOut, Moon, Sun, Target,
-} from "lucide-react";
+import { LogOut, Moon, MoreHorizontal, Sun } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { AppTabId, PRIMARY_APP_TABS, SECONDARY_APP_TABS } from "@/lib/app-tabs";
 
 interface BottomNavBarProps {
   activeTab: string;
-  onTabChange: (tab: string) => void;
+  onTabChange: (tab: AppTabId) => void;
   onLogout: () => void;
   theme?: "light" | "dark";
   onToggleTheme?: () => void;
 }
 
-const PRIMARY_TABS = [
-  { value: "dashboard", icon: BarChart3, label: "Dashboard" },
-  { value: "deals", icon: Users, label: "Vendas" },
-  { value: "commissions", icon: DollarSign, label: "Comissões" },
-  { value: "rep-kpis", icon: Target, label: "KPIs" },
-];
-
-const MORE_TABS = [
-  // { value: "closing-radar", icon: Crosshair, label: "Radar" }, // desabilitado temporariamente
-  { value: "simulation", icon: Calculator, label: "Simulação" },
-  { value: "reps", icon: UserPlus, label: "Representantes" },
-  { value: "registry", icon: Building2, label: "Cadastros" },
-  { value: "catalog", icon: Package, label: "Catálogo" },
-  { value: "deep-analysis", icon: Zap, label: "Análise Profunda" },
-];
-
 const BottomNavBar = ({ activeTab, onTabChange, onLogout, theme, onToggleTheme }: BottomNavBarProps) => {
   const [moreOpen, setMoreOpen] = useState(false);
 
-  const isMoreActive = MORE_TABS.some((t) => t.value === activeTab);
+  const isMoreActive = SECONDARY_APP_TABS.some((t) => t.value === activeTab);
 
   return (
     <>
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-[0_-2px_10px_rgba(0,0,0,0.08)]">
         <div className="flex items-center justify-around px-1 py-1.5 safe-area-bottom">
-          {PRIMARY_TABS.map(({ value, icon: Icon, label }) => {
+          {PRIMARY_APP_TABS.map(({ value, icon: Icon, label }) => {
             const isActive = activeTab === value;
             return (
               <button
@@ -88,7 +70,7 @@ const BottomNavBar = ({ activeTab, onTabChange, onLogout, theme, onToggleTheme }
             <SheetTitle className="text-base font-heading">Mais opções</SheetTitle>
           </SheetHeader>
           <div className="grid grid-cols-2 gap-3 mt-4">
-            {MORE_TABS.map(({ value, icon: Icon, label }) => {
+            {SECONDARY_APP_TABS.map(({ value, icon: Icon, label }) => {
               const isActive = activeTab === value;
               return (
                 <button
