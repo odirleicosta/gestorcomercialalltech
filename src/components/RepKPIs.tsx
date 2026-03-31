@@ -265,18 +265,20 @@ const RepKPIs = ({ userId }: Props) => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [repsRes, dealsRes, closingRes, visitsRes, goalsRes] = await Promise.all([
+      const [repsRes, dealsRes, closingRes, visitsRes, goalsRes, oppsRes] = await Promise.all([
         supabase.from("representatives" as any).select("id, nome, meta_mensal_padrao, meta_quantidade").eq("status", "ATIVO").order("nome"),
         supabase.from("deals" as any).select("id, representative_id, status, closed_at, created_at, base_price, dollar_rate, machine_type"),
-        supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes, motivo_perda, motivo_perda_detalhe, lost_reason, lost_reason_detail"),
+        supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes, motivo_perda, motivo_perda_detalhe, lost_reason, lost_reason_detail, updated_at, next_step"),
         supabase.from("weekly_visits" as any).select("representative_id, semana, quantidade, meta, ano").eq("ano", filterYear),
         supabase.from("monthly_goals" as any).select("representative_id, mes, meta_valor, meta_quantidade, machine_type").eq("ano", filterYear),
+        supabase.from("monthly_opportunities" as any).select("representative_id, mes, quantidade").eq("ano", filterYear),
       ]);
       if (repsRes.data) setReps(repsRes.data as any);
       if (dealsRes.data) setDeals(dealsRes.data as any);
       if (closingRes.data) setClosingDeals(closingRes.data as any);
       if (visitsRes.data) { setVisits(visitsRes.data as any); setAllVisits(visitsRes.data as any); }
       if (goalsRes.data) setGoals(goalsRes.data as any);
+      if (oppsRes.data) setMonthlyOpps(oppsRes.data as any);
       setLoading(false);
     };
     fetchData();
