@@ -130,6 +130,13 @@ const RepKPIs = ({ userId }: Props) => {
   const [visitInlineEntries, setVisitInlineEntries] = useState<Record<string, { meta: number; quantidade: number }>>({});
   const [visitSaving, setVisitSaving] = useState(false);
 
+  // Dados tab state
+  const [oppsData, setOppsData] = useState<Record<string, Record<number, number>>>({});
+  const [goalsData, setGoalsData] = useState<Record<string, Record<number, number>>>({});
+  const [goalsFilterType, setGoalsFilterType] = useState("all");
+  const [dataSaving, setDataSaving] = useState(false);
+  const MACHINE_TYPES = ["all", "Centro de Usinagem", "Torno CNC", "Corte a Laser", "Dobradeira", "Mandrilhadora", "Retífica", "Eletroerosão", "Outro"];
+
   const resetNegForm = () => {
     setNegForm({ representative_id: "", client_name: "", machine_name: "", machine_type: "Centro de Usinagem", deal_value: 0, stage: "Proposta Enviada", probability: "Média", sale_type: "Venda Direta", notes: "" });
     setEditingNegId(null);
