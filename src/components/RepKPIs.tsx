@@ -13,6 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend, PieChart as RechartsPie, Pie, LineChart, Line, CartesianGrid } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
+import SalesFunnel from "@/components/kpis/SalesFunnel";
+import FollowUps from "@/components/kpis/FollowUps";
+import PipelineValue from "@/components/kpis/PipelineValue";
 
 interface Props { userId: string; }
 interface Rep { id: string; nome: string; meta_mensal_padrao: number; meta_quantidade: number; }
@@ -24,7 +27,9 @@ interface ClosingDeal {
   sale_type?: string; notes?: string;
   motivo_perda?: string | null; motivo_perda_detalhe?: string | null;
   lost_reason?: string | null; lost_reason_detail?: string | null;
+  updated_at?: string; next_step?: string | null;
 }
+interface MonthlyOpp { representative_id: string; mes: number; quantidade: number; }
 interface Visit { representative_id: string; semana: number; quantidade: number; meta: number; }
 interface MonthlyGoal { representative_id: string; mes: number; meta_valor: number; meta_quantidade: number; machine_type: string; }
 
@@ -82,6 +87,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [closingDeals, setClosingDeals] = useState<ClosingDeal[]>([]);
   const [visits, setVisits] = useState<Visit[]>([]);
   const [goals, setGoals] = useState<MonthlyGoal[]>([]);
+  const [monthlyOpps, setMonthlyOpps] = useState<MonthlyOpp[]>([]);
   const [allVisits, setAllVisits] = useState<{ representative_id: string; semana: number; quantidade: number; meta: number; ano: number }[]>([]);
 
   const [loading, setLoading] = useState(true);
@@ -148,7 +154,7 @@ const RepKPIs = ({ userId }: Props) => {
   };
 
   const reloadClosing = async () => {
-    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes, motivo_perda, motivo_perda_detalhe, lost_reason, lost_reason_detail");
+    const { data } = await supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes, motivo_perda, motivo_perda_detalhe, lost_reason, lost_reason_detail, updated_at, next_step");
     if (data) setClosingDeals(data as any);
   };
 
@@ -259,18 +265,20 @@ const RepKPIs = ({ userId }: Props) => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [repsRes, dealsRes, closingRes, visitsRes, goalsRes] = await Promise.all([
+      const [repsRes, dealsRes, closingRes, visitsRes, goalsRes, oppsRes] = await Promise.all([
         supabase.from("representatives" as any).select("id, nome, meta_mensal_padrao, meta_quantidade").eq("status", "ATIVO").order("nome"),
         supabase.from("deals" as any).select("id, representative_id, status, closed_at, created_at, base_price, dollar_rate, machine_type"),
-        supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes, motivo_perda, motivo_perda_detalhe, lost_reason, lost_reason_detail"),
+        supabase.from("closing_deals" as any).select("id, representative_id, status, deal_value, start_date, stage, probability, created_at, client_name, machine_name, machine_type, sale_type, notes, motivo_perda, motivo_perda_detalhe, lost_reason, lost_reason_detail, updated_at, next_step"),
         supabase.from("weekly_visits" as any).select("representative_id, semana, quantidade, meta, ano").eq("ano", filterYear),
         supabase.from("monthly_goals" as any).select("representative_id, mes, meta_valor, meta_quantidade, machine_type").eq("ano", filterYear),
+        supabase.from("monthly_opportunities" as any).select("representative_id, mes, quantidade").eq("ano", filterYear),
       ]);
       if (repsRes.data) setReps(repsRes.data as any);
       if (dealsRes.data) setDeals(dealsRes.data as any);
       if (closingRes.data) setClosingDeals(closingRes.data as any);
       if (visitsRes.data) { setVisits(visitsRes.data as any); setAllVisits(visitsRes.data as any); }
       if (goalsRes.data) setGoals(goalsRes.data as any);
+      if (oppsRes.data) setMonthlyOpps(oppsRes.data as any);
       setLoading(false);
     };
     fetchData();
@@ -385,6 +393,19 @@ const RepKPIs = ({ userId }: Props) => {
     const totalPipeline = repMetrics.reduce((s, r) => s + r.oppValue, 0);
     return { totalVisits, totalOpps, totalLost, totalWon, globalWinRate, totalRealized, totalMeta, totalPipeline };
   }, [repMetrics]);
+
+  // Funnel data
+  const funnelData = useMemo(() => {
+    const totalVisitsVal = globalKpis.totalVisits;
+    const opportunities = monthlyOpps
+      .filter(o => activeMonths.includes(o.mes))
+      .reduce((s, o) => s + o.quantidade, 0);
+    const proposals = closingDeals.filter(c => c.status === "ativa" && isInPeriod(new Date(c.created_at))).length
+      + deals.filter(d => d.status === "open" && isInPeriod(new Date(d.created_at))).length;
+    const won = globalKpis.totalWon;
+    const lost = globalKpis.totalLost;
+    return { visits: totalVisitsVal, opportunities, proposals, won, lost };
+  }, [globalKpis, monthlyOpps, closingDeals, deals, activeMonths, filterYear, periodMode, filterWeek]);
 
   // Weekly visits chart data (last 8 weeks)
   const weeklyChartData = useMemo(() => {
@@ -688,6 +709,25 @@ const RepKPIs = ({ userId }: Props) => {
               </div>
             </Card>
           )}
+
+          {/* ===== NEW SECTIONS ===== */}
+          <SalesFunnel
+            visits={funnelData.visits}
+            opportunities={funnelData.opportunities}
+            proposals={funnelData.proposals}
+            won={funnelData.won}
+            lost={funnelData.lost}
+          />
+
+          <FollowUps
+            negotiations={closingDeals as any}
+            reps={reps}
+          />
+
+          <PipelineValue
+            negotiations={closingDeals as any}
+            reps={reps}
+          />
         </>
       )}
 
