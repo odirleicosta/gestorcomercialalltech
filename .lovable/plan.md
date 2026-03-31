@@ -1,39 +1,42 @@
 
 
-# Plano: Cadastro de Negociação via Upload de Imagem no Radar
+## Plano: Remover aba "Importar BI" e adicionar entrada manual de dados na aba KPIs
 
-Permitir que o gestor faça upload de uma foto (print de WhatsApp, proposta escaneada, etc.) e o sistema extraia automaticamente os dados para preencher o formulário de nova negociação.
+### Contexto
+A aba "Importar BI" permite importar dados de 4 categorias via Excel: Visitas, Oportunidades, Perdas e Metas. A aba KPIs já possui entrada manual para **Visitas** (tab "visitas" com editor inline) e **Negociações/Perdas** (dialogs de criação). Faltam apenas formulários manuais para **Oportunidades** e **Metas**.
 
----
+### Mudanças
 
-## 1. Nova Edge Function `parse-closing-image`
+**1. Remover a aba "Importar BI" da navegação**
+- `src/lib/app-tabs.ts`: Remover `"bi-import"` do tipo `AppTabId` e do array `SECONDARY_APP_TABS`, remover import do ícone `Upload`
+- `src/components/PriceCalculator.tsx`: Remover o import do `BiImport`, remover o `<TabsContent value="bi-import">` correspondente
 
-Criar `supabase/functions/parse-closing-image/index.ts` que:
-- Recebe uma imagem em base64 via POST
-- Envia para o Lovable AI Gateway usando `google/gemini-2.5-flash` (modelo com capacidade de visão)
-- Usa function calling com schema mapeado aos campos do `closing_deals` (client_name, city, machine_name, machine_type, quantity, deal_value, sale_type, competitor, etc.)
-- Retorna JSON estruturado com os campos extraídos
+**2. Adicionar nova view "Dados" na aba KPIs**
+- `src/components/RepKPIs.tsx`:
+  - Adicionar `"dados"` ao tipo `ViewTab`
+  - Adicionar botão "Dados" na barra de views (junto a Equipe, Representante, Perdas, Visitas)
+  - Criar seção com dois cards:
 
----
+**Card 1 — Oportunidades Mensais**
+- Tabela editável: linhas = representantes, colunas = meses (Jan-Dez)
+- Células com input numérico (quantidade de oportunidades)
+- Carrega dados existentes de `monthly_opportunities`
+- Botão "Salvar Oportunidades" faz upsert em `monthly_opportunities` com `onConflict: "user_id,representative_id,ano,mes"`
+- Seletor de ano no topo
 
-## 2. Botão de Upload no ClosingRadar
+**Card 2 — Metas Mensais**
+- Tabela editável: linhas = representantes, colunas = meses (Jan-Dez)
+- Células com input numérico (meta de quantidade)
+- Select de `machine_type` (filtro) para editar metas por tipo
+- Carrega dados existentes de `monthly_goals`
+- Botão "Salvar Metas" faz upsert em `monthly_goals` com `onConflict: "representative_id,mes,ano,machine_type"`
 
-Adicionar um botão "Importar Imagem" ao lado do botão "Nova Negociação" existente. Ao clicar:
-- Abre seletor de arquivo (accept: image/*)
-- Converte a imagem para base64
-- Mostra estado de loading
-- Chama a edge function
-- Preenche o formulário de cadastro com os dados extraídos pela IA
-- Abre o Dialog de cadastro já pré-preenchido para revisão
+### Arquivos modificados
+1. `src/lib/app-tabs.ts` — remover bi-import
+2. `src/components/PriceCalculator.tsx` — remover BiImport import e TabsContent
+3. `src/components/RepKPIs.tsx` — adicionar view "Dados" com formulários de oportunidades e metas
 
----
-
-## 3. Arquivos impactados
-
-| Arquivo | Ação |
-|---|---|
-| `supabase/functions/parse-closing-image/index.ts` | **Novo** — edge function de visão |
-| `src/components/ClosingRadar.tsx` | Adicionar botão de upload e lógica de pré-preenchimento |
-
-Nenhuma funcionalidade existente será alterada.
+### Design
+- Seguir o padrão dark existente com `Card`, `Table`, `Input`, `Button`, `Select`
+- Mesmo estilo da tab "Visitas" que já funciona com editor inline
 
