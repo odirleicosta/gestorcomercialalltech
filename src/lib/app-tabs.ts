@@ -36,7 +36,6 @@ export const PRIMARY_APP_TABS: AppTabItem[] = [
 
 export const SECONDARY_APP_TABS: AppTabItem[] = [
   { value: "rep-kpis", icon: Target, label: "KPIs" },
-  { value: "bi-import", icon: Upload, label: "Importar BI" },
   { value: "simulation", icon: Calculator, label: "Simulação" },
   { value: "reps", icon: UserPlus, label: "Representantes" },
   { value: "registry", icon: Building2, label: "Cadastros" },

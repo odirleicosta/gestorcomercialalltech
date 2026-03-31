@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   DollarSign, Percent, TrendingUp, Package, Receipt,
   Save, AlertTriangle, History, Calculator, RotateCcw, User, StickyNote,
-  Building2, Plus, Wrench, Copy, Users, BarChart3, LogOut, UserPlus, Zap, Upload,
+  Building2, Plus, Wrench, Copy, Users, BarChart3, LogOut, UserPlus, Zap,
   Moon, Sun, PanelLeftClose, PanelLeft, Crosshair, Target,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
