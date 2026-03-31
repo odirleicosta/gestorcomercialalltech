@@ -87,6 +87,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [closingDeals, setClosingDeals] = useState<ClosingDeal[]>([]);
   const [visits, setVisits] = useState<Visit[]>([]);
   const [goals, setGoals] = useState<MonthlyGoal[]>([]);
+  const [monthlyOpps, setMonthlyOpps] = useState<MonthlyOpp[]>([]);
   const [allVisits, setAllVisits] = useState<{ representative_id: string; semana: number; quantidade: number; meta: number; ano: number }[]>([]);
 
   const [loading, setLoading] = useState(true);
