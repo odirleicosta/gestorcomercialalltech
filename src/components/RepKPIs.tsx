@@ -1234,6 +1234,177 @@ const RepKPIs = ({ userId }: Props) => {
         </div>
       )}
 
+      {/* ===================== VIEW: DADOS ===================== */}
+      {viewTab === "dados" && (
+        <div className="space-y-5">
+          {/* Card 1: Oportunidades Mensais */}
+          <Card className="p-4 border-border bg-card">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Target className="h-4 w-4" /> Oportunidades Mensais — {filterYear}
+              </h4>
+            </div>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs min-w-[120px]">Representante</TableHead>
+                    {SHORT_MONTHS.map((m, i) => (
+                      <TableHead key={i} className="text-xs text-center min-w-[60px]">{m}</TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reps.map(rep => (
+                    <TableRow key={rep.id}>
+                      <TableCell className="text-xs font-medium">{rep.nome}</TableCell>
+                      {SHORT_MONTHS.map((_, mi) => {
+                        const mes = mi + 1;
+                        const key = `${rep.id}-${mes}`;
+                        const existing = monthlyOpps.find(o => o.representative_id === rep.id && o.mes === mes);
+                        const val = oppsData[rep.id]?.[mes] ?? existing?.quantidade ?? 0;
+                        return (
+                          <TableCell key={mi} className="text-center p-1">
+                            <Input
+                              type="number"
+                              min="0"
+                              value={val}
+                              onChange={e => {
+                                setOppsData(prev => ({
+                                  ...prev,
+                                  [rep.id]: { ...prev[rep.id], [mes]: Number(e.target.value) },
+                                }));
+                              }}
+                              className="h-7 w-14 text-xs text-center mx-auto"
+                            />
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <Button
+              className="w-full mt-3 h-9 text-sm"
+              disabled={dataSaving}
+              onClick={async () => {
+                setDataSaving(true);
+                for (const rep of reps) {
+                  for (let mes = 1; mes <= 12; mes++) {
+                    const existing = monthlyOpps.find(o => o.representative_id === rep.id && o.mes === mes);
+                    const val = oppsData[rep.id]?.[mes] ?? existing?.quantidade;
+                    if (val === undefined) continue;
+                    await supabase.from("monthly_opportunities" as any).upsert({
+                      user_id: userId,
+                      representative_id: rep.id,
+                      ano: filterYear,
+                      mes,
+                      quantidade: val,
+                    } as any, { onConflict: "user_id,representative_id,ano,mes" });
+                  }
+                }
+                const { data } = await supabase.from("monthly_opportunities" as any).select("representative_id, mes, quantidade").eq("ano", filterYear);
+                if (data) setMonthlyOpps(data as any);
+                setOppsData({});
+                setDataSaving(false);
+                toast.success("Oportunidades salvas!");
+              }}
+            >
+              {dataSaving ? "Salvando..." : "Salvar Oportunidades"}
+            </Button>
+          </Card>
+
+          {/* Card 2: Metas Mensais */}
+          <Card className="p-4 border-border bg-card">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" /> Metas Mensais — {filterYear}
+              </h4>
+              <Select value={goalsFilterType} onValueChange={v => { setGoalsFilterType(v); setGoalsData({}); }}>
+                <SelectTrigger className="w-[180px] bg-secondary/50 border-border text-xs h-8">
+                  <SelectValue placeholder="Tipo de máquina" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MACHINE_TYPES.map(t => (
+                    <SelectItem key={t} value={t}>{t === "all" ? "Todos os tipos" : t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs min-w-[120px]">Representante</TableHead>
+                    {SHORT_MONTHS.map((m, i) => (
+                      <TableHead key={i} className="text-xs text-center min-w-[60px]">{m}</TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reps.map(rep => (
+                    <TableRow key={rep.id}>
+                      <TableCell className="text-xs font-medium">{rep.nome}</TableCell>
+                      {SHORT_MONTHS.map((_, mi) => {
+                        const mes = mi + 1;
+                        const existing = goals.find(g => g.representative_id === rep.id && g.mes === mes && g.machine_type === goalsFilterType);
+                        const val = goalsData[rep.id]?.[mes] ?? existing?.meta_quantidade ?? 0;
+                        return (
+                          <TableCell key={mi} className="text-center p-1">
+                            <Input
+                              type="number"
+                              min="0"
+                              value={val}
+                              onChange={e => {
+                                setGoalsData(prev => ({
+                                  ...prev,
+                                  [rep.id]: { ...prev[rep.id], [mes]: Number(e.target.value) },
+                                }));
+                              }}
+                              className="h-7 w-14 text-xs text-center mx-auto"
+                            />
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <Button
+              className="w-full mt-3 h-9 text-sm"
+              disabled={dataSaving}
+              onClick={async () => {
+                setDataSaving(true);
+                for (const rep of reps) {
+                  for (let mes = 1; mes <= 12; mes++) {
+                    const existing = goals.find(g => g.representative_id === rep.id && g.mes === mes && g.machine_type === goalsFilterType);
+                    const val = goalsData[rep.id]?.[mes] ?? existing?.meta_quantidade;
+                    if (val === undefined) continue;
+                    await supabase.from("monthly_goals" as any).upsert({
+                      user_id: userId,
+                      representative_id: rep.id,
+                      ano: filterYear,
+                      mes,
+                      meta_quantidade: val,
+                      machine_type: goalsFilterType,
+                    } as any, { onConflict: "representative_id,mes,ano,machine_type" });
+                  }
+                }
+                const { data } = await supabase.from("monthly_goals" as any).select("representative_id, mes, meta_valor, meta_quantidade, machine_type").eq("ano", filterYear);
+                if (data) setGoals(data as any);
+                setGoalsData({});
+                setDataSaving(false);
+                toast.success("Metas salvas!");
+              }}
+            >
+              {dataSaving ? "Salvando..." : "Salvar Metas"}
+            </Button>
+          </Card>
+        </div>
+      )}
+
       {/* ===================== DIALOGS ===================== */}
 
       {/* Negociação Dialog */}
