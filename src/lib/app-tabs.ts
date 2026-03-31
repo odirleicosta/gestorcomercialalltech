@@ -5,7 +5,6 @@ import {
   DollarSign,
   Package,
   Target,
-  Upload,
   UserPlus,
   Users,
   Zap,
@@ -20,8 +19,7 @@ export type AppTabId =
   | "reps"
   | "registry"
   | "catalog"
-  | "deep-analysis"
-  | "bi-import";
+  | "deep-analysis";
 
 export interface AppTabItem {
   value: AppTabId;
