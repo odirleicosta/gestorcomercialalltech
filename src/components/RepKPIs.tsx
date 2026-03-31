@@ -394,6 +394,19 @@ const RepKPIs = ({ userId }: Props) => {
     return { totalVisits, totalOpps, totalLost, totalWon, globalWinRate, totalRealized, totalMeta, totalPipeline };
   }, [repMetrics]);
 
+  // Funnel data
+  const funnelData = useMemo(() => {
+    const totalVisitsVal = globalKpis.totalVisits;
+    const opportunities = monthlyOpps
+      .filter(o => activeMonths.includes(o.mes))
+      .reduce((s, o) => s + o.quantidade, 0);
+    const proposals = closingDeals.filter(c => c.status === "ativa" && isInPeriod(new Date(c.created_at))).length
+      + deals.filter(d => d.status === "open" && isInPeriod(new Date(d.created_at))).length;
+    const won = globalKpis.totalWon;
+    const lost = globalKpis.totalLost;
+    return { visits: totalVisitsVal, opportunities, proposals, won, lost };
+  }, [globalKpis, monthlyOpps, closingDeals, deals, activeMonths, filterYear, periodMode, filterWeek]);
+
   // Weekly visits chart data (last 8 weeks)
   const weeklyChartData = useMemo(() => {
     if (periodMode !== "week") return [];
