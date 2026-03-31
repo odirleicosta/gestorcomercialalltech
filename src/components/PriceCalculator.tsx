@@ -770,9 +770,6 @@ const PriceCalculator = () => {
             <DeepAnalysis userId={user.id} onBack={() => setActiveTab("dashboard")} />
           </TabsContent>
 
-          <TabsContent value="bi-import">
-            <BiImport userId={user.id} />
-          </TabsContent>
         </Tabs>
         </div>
       </main>
