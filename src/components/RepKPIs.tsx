@@ -696,6 +696,25 @@ const RepKPIs = ({ userId }: Props) => {
               </div>
             </Card>
           )}
+
+          {/* ===== NEW SECTIONS ===== */}
+          <SalesFunnel
+            visits={funnelData.visits}
+            opportunities={funnelData.opportunities}
+            proposals={funnelData.proposals}
+            won={funnelData.won}
+            lost={funnelData.lost}
+          />
+
+          <FollowUps
+            negotiations={closingDeals as any}
+            reps={reps}
+          />
+
+          <PipelineValue
+            negotiations={closingDeals as any}
+            reps={reps}
+          />
         </>
       )}
 
