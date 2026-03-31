@@ -13,6 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend, PieChart as RechartsPie, Pie, LineChart, Line, CartesianGrid } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
+import SalesFunnel from "@/components/kpis/SalesFunnel";
+import FollowUps from "@/components/kpis/FollowUps";
+import PipelineValue from "@/components/kpis/PipelineValue";
 
 interface Props { userId: string; }
 interface Rep { id: string; nome: string; meta_mensal_padrao: number; meta_quantidade: number; }
