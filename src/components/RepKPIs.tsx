@@ -27,7 +27,9 @@ interface ClosingDeal {
   sale_type?: string; notes?: string;
   motivo_perda?: string | null; motivo_perda_detalhe?: string | null;
   lost_reason?: string | null; lost_reason_detail?: string | null;
+  updated_at?: string; next_step?: string | null;
 }
+interface MonthlyOpp { representative_id: string; mes: number; quantidade: number; }
 interface Visit { representative_id: string; semana: number; quantidade: number; meta: number; }
 interface MonthlyGoal { representative_id: string; mes: number; meta_valor: number; meta_quantidade: number; machine_type: string; }
 
