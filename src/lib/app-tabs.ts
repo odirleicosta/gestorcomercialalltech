@@ -5,7 +5,6 @@ import {
   DollarSign,
   Package,
   Target,
-  Upload,
   UserPlus,
   Users,
   Zap,
@@ -20,8 +19,7 @@ export type AppTabId =
   | "reps"
   | "registry"
   | "catalog"
-  | "deep-analysis"
-  | "bi-import";
+  | "deep-analysis";
 
 export interface AppTabItem {
   value: AppTabId;
@@ -38,7 +36,6 @@ export const PRIMARY_APP_TABS: AppTabItem[] = [
 
 export const SECONDARY_APP_TABS: AppTabItem[] = [
   { value: "rep-kpis", icon: Target, label: "KPIs" },
-  { value: "bi-import", icon: Upload, label: "Importar BI" },
   { value: "simulation", icon: Calculator, label: "Simulação" },
   { value: "reps", icon: UserPlus, label: "Representantes" },
   { value: "registry", icon: Building2, label: "Cadastros" },

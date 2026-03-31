@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   DollarSign, Percent, TrendingUp, Package, Receipt,
   Save, AlertTriangle, History, Calculator, RotateCcw, User, StickyNote,
-  Building2, Plus, Wrench, Copy, Users, BarChart3, LogOut, UserPlus, Zap, Upload,
+  Building2, Plus, Wrench, Copy, Users, BarChart3, LogOut, UserPlus, Zap,
   Moon, Sun, PanelLeftClose, PanelLeft, Crosshair, Target,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -29,7 +29,7 @@ import Auth from "@/components/Auth";
 import BottomNavBar from "@/components/BottomNavBar";
 import ClosingRadar from "@/components/ClosingRadar";
 import RepKPIs from "@/components/RepKPIs";
-import BiImport from "@/components/BiImport";
+
 import { useTheme } from "@/hooks/use-theme";
 import { ALL_APP_TABS, AppTabId, DEFAULT_APP_TAB, isAppTab } from "@/lib/app-tabs";
 
@@ -770,9 +770,6 @@ const PriceCalculator = () => {
             <DeepAnalysis userId={user.id} onBack={() => setActiveTab("dashboard")} />
           </TabsContent>
 
-          <TabsContent value="bi-import">
-            <BiImport userId={user.id} />
-          </TabsContent>
         </Tabs>
         </div>
       </main>
