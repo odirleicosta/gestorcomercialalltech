@@ -435,10 +435,6 @@ const RepKPIs = ({ userId }: Props) => {
     return weeks;
   }, [periodMode, filterWeek, allVisits, filterYear, reps.length]);
 
-  // Lost deals without reason count
-  const lostWithoutReason = useMemo(() => {
-    return closingDeals.filter(c => c.status === "perdida" && !getLostReason(c)).length;
-  }, [closingDeals]);
 
   // Perdas analysis
   const lossAnalysis = useMemo(() => {
