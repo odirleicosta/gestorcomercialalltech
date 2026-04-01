@@ -150,10 +150,10 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     managerComm: arr.reduce((s,d) => s+d.manager_commission_value, 0),
   });
 
-  const currentDeals = useMemo(() => getMultiMonthClosed(activeMonths, filterYear, filterRep), [deals, activeMonths, filterYear, filterRep]);
-  const prevDeals = useMemo(() => getPrevPeriodClosed(filterRep), [deals, activeMonths, filterYear, filterRep, filterMode, filterMonth, filterQuarter]);
-  const cur = useMemo(() => calcStats(currentDeals), [currentDeals]);
-  const prev = useMemo(() => calcStats(prevDeals), [prevDeals]);
+  const currentDeals = useMemo(() => { try { return getMultiMonthClosed(activeMonths, filterYear, filterRep); } catch(e) { console.error("currentDeals error:", e); return []; } }, [deals, activeMonths, filterYear, filterRep]);
+  const prevDeals = useMemo(() => { try { return getPrevPeriodClosed(filterRep); } catch(e) { console.error("prevDeals error:", e); return []; } }, [deals, activeMonths, filterYear, filterRep, filterMode, filterMonth, filterQuarter]);
+  const cur = useMemo(() => { try { return calcStats(currentDeals); } catch(e) { console.error("cur error:", e); return { count: 0, basePrice: 0, basePriceBrl: 0, netProfit: 0, grossProfit: 0, sellerComm: 0, managerComm: 0 }; } }, [currentDeals]);
+  const prev = useMemo(() => { try { return calcStats(prevDeals); } catch(e) { console.error("prev error:", e); return { count: 0, basePrice: 0, basePriceBrl: 0, netProfit: 0, grossProfit: 0, sellerComm: 0, managerComm: 0 }; } }, [prevDeals]);
 
   // ── pace ──
   const isCurrentYear = filterYear === now.getFullYear();
