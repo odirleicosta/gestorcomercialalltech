@@ -40,6 +40,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   const [activePlan, setActivePlan] = useState<any>(null);
   const [closingDeals, setClosingDeals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const now = new Date();
   const [filterMonth, setFilterMonth] = useState(now.getMonth() + 1);
   const [filterYear, setFilterYear] = useState(now.getFullYear());
