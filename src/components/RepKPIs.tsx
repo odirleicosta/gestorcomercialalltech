@@ -407,7 +407,9 @@ const RepKPIs = ({ userId }: Props) => {
   }, [reps, deals, closingDeals, visits, goals, filterYear, periodMode, filterMonth, filterQuarter, filterWeek, activeMonths]);
 
   const chartData = useMemo(() => {
-    return repMetrics.map(r => ({ nome: r.nome.split(" ")[0], meta: r.metaValor, realizado: r.closedFobBrl }));
+    try {
+      return (repMetrics || []).map(r => ({ nome: (r.nome || "").split(" ")[0], meta: r.metaValor || 0, realizado: r.closedFobBrl || 0 }));
+    } catch (err) { console.error("chartData error:", err); return []; }
   }, [repMetrics]);
 
   const globalKpis = useMemo(() => {
