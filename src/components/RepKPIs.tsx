@@ -130,6 +130,9 @@ const RepKPIs = ({ userId }: Props) => {
   // Perdas filter by rep
   const [lossRepFilter, setLossRepFilter] = useState<string>("all");
 
+  // Rep view filter
+  const [repViewFilter, setRepViewFilter] = useState<string>("all");
+
   // Visitas tab state
   const [visitEditWeek, setVisitEditWeek] = useState(getWeekNumber(now));
   const [visitInlineEntries, setVisitInlineEntries] = useState<Record<string, { meta: number; quantidade: number }>>({});
