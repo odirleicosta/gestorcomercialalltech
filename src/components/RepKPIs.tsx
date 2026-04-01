@@ -130,6 +130,9 @@ const RepKPIs = ({ userId }: Props) => {
   // Perdas filter by rep
   const [lossRepFilter, setLossRepFilter] = useState<string>("all");
 
+  // Rep view filter
+  const [repViewFilter, setRepViewFilter] = useState<string>("all");
+
   // Visitas tab state
   const [visitEditWeek, setVisitEditWeek] = useState(getWeekNumber(now));
   const [visitInlineEntries, setVisitInlineEntries] = useState<Record<string, { meta: number; quantidade: number }>>({});
@@ -766,20 +769,76 @@ const RepKPIs = ({ userId }: Props) => {
       )}
 
       {/* ===================== VIEW: POR REPRESENTANTE ===================== */}
-      {viewTab === "representante" && (
+      {viewTab === "representante" && (() => {
+        const filteredRepMetrics = repViewFilter === "all" ? repMetrics : repMetrics.filter(r => r.id === repViewFilter);
+        return (
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
             <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
               <Users className="h-4 w-4" /> Detalhamento por Representante — {periodLabel}
             </h3>
-            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={openNewNeg}>
-              <Plus className="h-3 w-3" /> Nova Negociação
-            </Button>
+            <div className="flex items-center gap-2">
+              <Select value={repViewFilter} onValueChange={setRepViewFilter}>
+                <SelectTrigger className="h-7 text-xs w-[160px]">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {reps.map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={openNewNeg}>
+                <Plus className="h-3 w-3" /> Nova Negociação
+              </Button>
+            </div>
           </div>
-          {repMetrics.map(r => {
+          {filteredRepMetrics.map(r => {
             const metaColor = r.pctValor >= 100 ? "text-accent" : r.pctValor >= 70 ? "text-foreground" : "text-destructive";
             const isExpanded = expandedReps.has(r.id);
             const repActiveNegs = closingDeals.filter(c => c.representative_id === r.id && c.status === "ativa");
+            const repLostNegs = closingDeals.filter(c => c.representative_id === r.id && c.status === "perdida");
+
+            // Individual funnel data
+            const repVisitsTotal = visits.filter(v => {
+              if (v.representative_id !== r.id) return false;
+              if (periodMode === "week") return v.semana === filterWeek;
+              return true;
+            }).reduce((s, v) => s + v.quantidade, 0);
+            const repOpps = monthlyOpps.filter(o => activeMonths.includes(o.mes) && closingDeals.some(c => c.representative_id === r.id)).length > 0
+              ? monthlyOpps.filter(o => activeMonths.includes(o.mes)).reduce((s, o) => s + o.quantidade, 0) / reps.length
+              : 0;
+            const repProposals = repActiveNegs.length;
+            const repWon = r.wonCount;
+            const repLost = r.lostCount;
+
+            // Monthly trend for this rep (last 6 months)
+            const repMonthlyTrend = (() => {
+              const months: { mes: string; fob: number; qtd: number }[] = [];
+              for (let i = 5; i >= 0; i--) {
+                const d = new Date(filterYear, (now.getMonth()) - i, 1);
+                const m = d.getMonth();
+                const y = d.getFullYear();
+                const monthDeals = deals.filter(deal => deal.representative_id === r.id && deal.status === "closed" && deal.closed_at && new Date(deal.closed_at).getMonth() === m && new Date(deal.closed_at).getFullYear() === y);
+                const fob = monthDeals.reduce((s, deal) => s + deal.base_price * (deal.dollar_rate || 0), 0);
+                months.push({ mes: SHORT_MONTHS[m], fob, qtd: monthDeals.length });
+              }
+              return months;
+            })();
+
+            // Pipeline breakdown by stage
+            const pipelineByStage = (() => {
+              const stages = ["Proposta Enviada", "Negociação Ativa", "Decisão Próxima"] as const;
+              return stages.map(stage => {
+                const stageDeals = repActiveNegs.filter(n => n.stage === stage);
+                return { stage, count: stageDeals.length, value: stageDeals.reduce((s, n) => s + n.deal_value, 0) };
+              }).filter(s => s.count > 0);
+            })();
+
+            // Avg cycle
+            const repClosedDeals = deals.filter(d => d.representative_id === r.id && d.status === "closed" && d.closed_at);
+            const cycles = repClosedDeals.map(d => Math.floor((new Date(d.closed_at!).getTime() - new Date(d.created_at).getTime()) / 86400000)).filter(c => c >= 0);
+            const avgCycle = cycles.length > 0 ? Math.round(cycles.reduce((s, c) => s + c, 0) / cycles.length) : 0;
+
             return (
               <Card key={r.id} className="border-border bg-card overflow-hidden">
                 <button
@@ -819,37 +878,103 @@ const RepKPIs = ({ userId }: Props) => {
                   <div className="mt-2 flex gap-4 text-[11px] text-muted-foreground">
                     <span>Ano: {r.yearCount} máq</span>
                     <span>{formatBrl(r.yearFobBrl)} faturado</span>
+                    {avgCycle > 0 && <span>Ciclo médio: {avgCycle} dias</span>}
                   </div>
                 </div>
 
-                {/* Expanded: active negotiations */}
+                {/* Expanded: detailed KPIs */}
                 {isExpanded && (
-                  <div className="border-t border-border px-4 py-3 bg-secondary/10 space-y-2">
-                    <h5 className="text-xs font-semibold text-muted-foreground">Negociações ativas ({repActiveNegs.length})</h5>
-                    {repActiveNegs.length === 0 ? (
-                      <p className="text-xs text-muted-foreground py-2">Nenhuma negociação ativa</p>
-                    ) : (
-                      repActiveNegs.map(neg => (
-                        <div key={neg.id} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-card border border-border">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                              <span className="text-xs font-semibold text-foreground">{neg.client_name || "—"}</span>
-                              <Badge variant="secondary" className="text-[10px]">{neg.stage}</Badge>
-                              <Badge variant={neg.probability === "Alta" ? "default" : neg.probability === "Baixa" ? "destructive" : "secondary"} className="text-[10px]">{neg.probability}</Badge>
-                            </div>
-                            <p className="text-[10px] text-muted-foreground">{neg.machine_name && `${neg.machine_name} · `}{formatBrl(neg.deal_value)}</p>
+                  <div className="border-t border-border px-4 py-3 bg-secondary/10 space-y-4">
+                    {/* Mini Funnel */}
+                    <div>
+                      <h5 className="text-xs font-semibold text-muted-foreground mb-2">Funil Individual</h5>
+                      <div className="grid grid-cols-5 gap-1 text-center text-[10px]">
+                        {[
+                          { label: "Visitas", value: repVisitsTotal, color: "bg-primary/20 text-primary" },
+                          { label: "Propostas", value: repProposals, color: "bg-blue-500/20 text-blue-700 dark:text-blue-400" },
+                          { label: "Ativas", value: repActiveNegs.length, color: "bg-amber-500/20 text-amber-700 dark:text-amber-400" },
+                          { label: "Ganhas", value: repWon, color: "bg-accent/20 text-accent" },
+                          { label: "Perdidas", value: repLost, color: "bg-destructive/20 text-destructive" },
+                        ].map(step => (
+                          <div key={step.label} className={`rounded-lg p-2 ${step.color}`}>
+                            <p className="text-lg font-bold">{step.value}</p>
+                            <p className="opacity-80">{step.label}</p>
                           </div>
-                          {renderNegActions(neg)}
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Pipeline by Stage */}
+                    {pipelineByStage.length > 0 && (
+                      <div>
+                        <h5 className="text-xs font-semibold text-muted-foreground mb-2">Pipeline por Etapa</h5>
+                        <div className="space-y-1.5">
+                          {pipelineByStage.map(s => (
+                            <div key={s.stage} className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className="text-[10px]">{s.stage}</Badge>
+                                <span className="text-muted-foreground">{s.count} neg.</span>
+                              </div>
+                              <span className="font-semibold text-foreground">{formatBrl(s.value)}</span>
+                            </div>
+                          ))}
+                          <div className="flex items-center justify-between text-xs border-t border-border pt-1.5 mt-1">
+                            <span className="font-semibold text-foreground">Total Pipeline</span>
+                            <span className="font-bold text-primary">{formatBrl(r.oppValue)}</span>
+                          </div>
                         </div>
-                      ))
+                      </div>
                     )}
+
+                    {/* Monthly Trend Mini Chart */}
+                    <div>
+                      <h5 className="text-xs font-semibold text-muted-foreground mb-2">Tendência (6 meses)</h5>
+                      <div className="h-[100px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={repMonthlyTrend} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                            <XAxis dataKey="mes" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                            <YAxis hide />
+                            <Tooltip
+                              formatter={(value: number) => [formatBrl(value), "FOB BRL"]}
+                              contentStyle={{ fontSize: 11, borderRadius: 8 }}
+                            />
+                            <Bar dataKey="fob" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    {/* Active Negotiations */}
+                    <div>
+                      <h5 className="text-xs font-semibold text-muted-foreground">Negociações ativas ({repActiveNegs.length})</h5>
+                      {repActiveNegs.length === 0 ? (
+                        <p className="text-xs text-muted-foreground py-2">Nenhuma negociação ativa</p>
+                      ) : (
+                        <div className="space-y-2 mt-2">
+                          {repActiveNegs.map(neg => (
+                            <div key={neg.id} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-card border border-border">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                                  <span className="text-xs font-semibold text-foreground">{neg.client_name || "—"}</span>
+                                  <Badge variant="secondary" className="text-[10px]">{neg.stage}</Badge>
+                                  <Badge variant={neg.probability === "Alta" ? "default" : neg.probability === "Baixa" ? "destructive" : "secondary"} className="text-[10px]">{neg.probability}</Badge>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground">{neg.machine_name && `${neg.machine_name} · `}{formatBrl(neg.deal_value)}</p>
+                              </div>
+                              {renderNegActions(neg)}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </Card>
             );
           })}
         </div>
-      )}
+        );
+      })()}
 
       {/* ===================== VIEW: PERDAS ===================== */}
       {viewTab === "perdas" && (
