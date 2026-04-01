@@ -464,31 +464,32 @@ const RepKPIs = ({ userId }: Props) => {
 
   // Perdas analysis
   const lossAnalysis = useMemo(() => {
-    let lostDeals = closingDeals.filter(c => {
-      if (c.status !== "perdida") return false;
-      return isInPeriod(new Date(c.created_at));
-    });
-    if (lossRepFilter !== "all") {
-      lostDeals = lostDeals.filter(c => c.representative_id === lossRepFilter);
-    }
-    const withReason = lostDeals.filter(c => getLostReason(c));
-    const reasonCounts: Record<string, number> = {};
-    withReason.forEach(c => {
-      const m = getLostReason(c)!;
-      reasonCounts[m] = (reasonCounts[m] || 0) + 1;
-    });
-    const totalWithReason = withReason.length;
-    const rankingData = Object.entries(reasonCounts)
-      .map(([name, value]) => ({ name, value, pct: totalWithReason > 0 ? (value / totalWithReason) * 100 : 0 }))
-      .sort((a, b) => b.value - a.value);
+    try {
+      let lostDeals = (closingDeals || []).filter(c => {
+        if (c.status !== "perdida") return false;
+        return isInPeriod(new Date(c.created_at));
+      });
+      if (lossRepFilter !== "all") {
+        lostDeals = lostDeals.filter(c => c.representative_id === lossRepFilter);
+      }
+      const withReason = lostDeals.filter(c => getLostReason(c));
+      const reasonCounts: Record<string, number> = {};
+      withReason.forEach(c => {
+        const m = getLostReason(c)!;
+        reasonCounts[m] = (reasonCounts[m] || 0) + 1;
+      });
+      const totalWithReason = withReason.length;
+      const rankingData = Object.entries(reasonCounts)
+        .map(([name, value]) => ({ name, value, pct: totalWithReason > 0 ? (value / totalWithReason) * 100 : 0 }))
+        .sort((a, b) => b.value - a.value);
 
-    // Monthly loss chart
-    const monthlyLoss: { mes: string; perdas: number }[] = SHORT_MONTHS.map((label, i) => {
-      const count = lostDeals.filter(c => new Date(c.created_at).getMonth() === i).length;
-      return { mes: label, perdas: count };
-    });
+      const monthlyLoss: { mes: string; perdas: number }[] = SHORT_MONTHS.map((label, i) => {
+        const count = lostDeals.filter(c => new Date(c.created_at).getMonth() === i).length;
+        return { mes: label, perdas: count };
+      });
 
-    return { lostDeals, rankingData, monthlyLoss, totalWithReason };
+      return { lostDeals, rankingData, monthlyLoss, totalWithReason };
+    } catch (err) { console.error("lossAnalysis error:", err); return { lostDeals: [], rankingData: [], monthlyLoss: [], totalWithReason: 0 }; }
   }, [closingDeals, filterYear, periodMode, filterWeek, activeMonths, lossRepFilter]);
 
   const metaPct = globalKpis.totalMeta > 0 ? (globalKpis.totalRealized / globalKpis.totalMeta) * 100 : 0;
