@@ -308,10 +308,12 @@ const RepKPIs = ({ userId }: Props) => {
   }, [filterYear]);
 
   const activeMonths = useMemo((): number[] => {
-    if (periodMode === "year") return [1,2,3,4,5,6,7,8,9,10,11,12];
-    if (periodMode === "quarter") return QUARTER_MONTHS[filterQuarter];
-    if (periodMode === "month") return [filterMonth];
-    return [1,2,3,4,5,6,7,8,9,10,11,12];
+    try {
+      if (periodMode === "year") return [1,2,3,4,5,6,7,8,9,10,11,12];
+      if (periodMode === "quarter") return QUARTER_MONTHS[filterQuarter] || [1,2,3];
+      if (periodMode === "month") return [filterMonth];
+      return [1,2,3,4,5,6,7,8,9,10,11,12];
+    } catch (err) { console.error("activeMonths error:", err); return [1,2,3,4,5,6,7,8,9,10,11,12]; }
   }, [periodMode, filterMonth, filterQuarter]);
 
   const periodLabel = useMemo(() => {
