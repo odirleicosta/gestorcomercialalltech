@@ -312,14 +312,14 @@ const PriceCalculator = () => {
             {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
           </Button>
         </div>
-        <div className="mb-4" />
-        <nav className="flex flex-col gap-1 flex-1 overflow-y-auto">
+        <div className="mb-2" />
+        <nav className="flex flex-col gap-0.5 flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(var(--sidebar-muted)) transparent' }}>
           {ALL_APP_TABS.map(({ value, icon: Icon, label }) => (
             <button
               key={value}
               onClick={() => handleTabChange(value)}
               title={sidebarCollapsed ? label : undefined}
-              className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+              className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
                 sidebarCollapsed ? "justify-center px-2" : ""
               } ${
                 activeTab === value
