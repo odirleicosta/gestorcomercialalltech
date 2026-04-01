@@ -350,58 +350,60 @@ const RepKPIs = ({ userId }: Props) => {
   }, [reps, closingDeals, deals, filterYear, periodMode, filterWeek, activeMonths]);
 
   const repMetrics = useMemo(() => {
-    return reps.map(rep => {
-      const repVisits = visits.filter(v => {
-        if (v.representative_id !== rep.id) return false;
-        if (periodMode === "week") return v.semana === filterWeek;
-        return true;
-      });
-      const totalVisits = repVisits.reduce((s, v) => s + v.quantidade, 0);
-      const totalVisitMeta = repVisits.reduce((s, v) => s + v.meta, 0);
-      const visitPct = totalVisitMeta > 0 ? (totalVisits / totalVisitMeta) * 100 : 0;
+    try {
+      return (reps || []).map(rep => {
+        const repVisits = (visits || []).filter(v => {
+          if (v.representative_id !== rep.id) return false;
+          if (periodMode === "week") return v.semana === filterWeek;
+          return true;
+        });
+        const totalVisits = repVisits.reduce((s, v) => s + (v.quantidade || 0), 0);
+        const totalVisitMeta = repVisits.reduce((s, v) => s + (v.meta || 0), 0);
+        const visitPct = totalVisitMeta > 0 ? (totalVisits / totalVisitMeta) * 100 : 0;
 
-      const activeOpps = closingDeals.filter(c => c.representative_id === rep.id && c.status === "ativa");
-      const oppCount = activeOpps.length;
-      const oppValue = activeOpps.reduce((s, c) => s + c.deal_value, 0);
-      const weightedPipeline = activeOpps.reduce((s, c) => {
-        const w = c.probability === "Alta" ? 0.8 : c.probability === "Média" ? 0.5 : 0.2;
-        return s + c.deal_value * w;
-      }, 0);
+        const activeOpps = (closingDeals || []).filter(c => c.representative_id === rep.id && c.status === "ativa");
+        const oppCount = activeOpps.length;
+        const oppValue = activeOpps.reduce((s, c) => s + (c.deal_value || 0), 0);
+        const weightedPipeline = activeOpps.reduce((s, c) => {
+          const w = c.probability === "Alta" ? 0.8 : c.probability === "Média" ? 0.5 : 0.2;
+          return s + (c.deal_value || 0) * w;
+        }, 0);
 
-      const lost = closingDeals.filter(c => c.representative_id === rep.id && c.status === "perdida");
-      const lostCount = lost.length;
-      const lostValue = lost.reduce((s, c) => s + c.deal_value, 0);
-      const won = closingDeals.filter(c => c.representative_id === rep.id && c.status === "ganha");
-      const wonCount = won.length;
-      const totalDecided = wonCount + lostCount;
-      const winRate = totalDecided > 0 ? (wonCount / totalDecided) * 100 : 0;
+        const lost = (closingDeals || []).filter(c => c.representative_id === rep.id && c.status === "perdida");
+        const lostCount = lost.length;
+        const lostValue = lost.reduce((s, c) => s + (c.deal_value || 0), 0);
+        const won = (closingDeals || []).filter(c => c.representative_id === rep.id && c.status === "ganha");
+        const wonCount = won.length;
+        const totalDecided = wonCount + lostCount;
+        const winRate = totalDecided > 0 ? (wonCount / totalDecided) * 100 : 0;
 
-      const closedDeals = deals.filter(d => d.representative_id === rep.id && filterDealByPeriod(d));
-      const closedCount = closedDeals.length;
-      const closedFobBrl = closedDeals.reduce((s, d) => s + d.base_price * (d.dollar_rate || 0), 0);
+        const closedDeals = (deals || []).filter(d => d.representative_id === rep.id && filterDealByPeriod(d));
+        const closedCount = closedDeals.length;
+        const closedFobBrl = closedDeals.reduce((s, d) => s + (d.base_price || 0) * (d.dollar_rate || 0), 0);
 
-      const periodGoals = goals.filter(g => g.representative_id === rep.id && activeMonths.includes(g.mes));
-      const monthCount = periodMode === "week" ? 1 : activeMonths.length;
-      const metaValor = periodGoals.reduce((s, g) => s + g.meta_valor, 0) || rep.meta_mensal_padrao * monthCount;
-      const metaQtd = periodGoals.reduce((s, g) => s + g.meta_quantidade, 0) || rep.meta_quantidade * monthCount;
-      const pctValor = metaValor > 0 ? (closedFobBrl / metaValor) * 100 : 0;
-      const pctQtd = metaQtd > 0 ? (closedCount / metaQtd) * 100 : 0;
+        const periodGoals = (goals || []).filter(g => g.representative_id === rep.id && activeMonths.includes(g.mes));
+        const monthCount = periodMode === "week" ? 1 : activeMonths.length;
+        const metaValor = periodGoals.reduce((s, g) => s + (g.meta_valor || 0), 0) || (rep.meta_mensal_padrao || 0) * monthCount;
+        const metaQtd = periodGoals.reduce((s, g) => s + (g.meta_quantidade || 0), 0) || (rep.meta_quantidade || 0) * monthCount;
+        const pctValor = metaValor > 0 ? (closedFobBrl / metaValor) * 100 : 0;
+        const pctQtd = metaQtd > 0 ? (closedCount / metaQtd) * 100 : 0;
 
-      const yearClosed = deals.filter(d => d.representative_id === rep.id && d.status === "closed" && d.closed_at && new Date(d.closed_at).getFullYear() === filterYear);
-      const yearFobBrl = yearClosed.reduce((s, d) => s + d.base_price * (d.dollar_rate || 0), 0);
-      const yearCount = yearClosed.length;
+        const yearClosed = (deals || []).filter(d => d.representative_id === rep.id && d.status === "closed" && d.closed_at && new Date(d.closed_at).getFullYear() === filterYear);
+        const yearFobBrl = yearClosed.reduce((s, d) => s + (d.base_price || 0) * (d.dollar_rate || 0), 0);
+        const yearCount = yearClosed.length;
 
-      return {
-        id: rep.id, nome: rep.nome,
-        totalVisits, visitPct,
-        oppCount, oppValue, weightedPipeline,
-        lostCount, lostValue,
-        wonCount, winRate,
-        closedCount, closedFobBrl,
-        metaValor, metaQtd, pctValor, pctQtd,
-        yearFobBrl, yearCount,
-      };
-    }).sort((a, b) => b.closedFobBrl - a.closedFobBrl);
+        return {
+          id: rep.id, nome: rep.nome || "",
+          totalVisits, visitPct,
+          oppCount, oppValue, weightedPipeline,
+          lostCount, lostValue,
+          wonCount, winRate,
+          closedCount, closedFobBrl,
+          metaValor, metaQtd, pctValor, pctQtd,
+          yearFobBrl, yearCount,
+        };
+      }).sort((a, b) => b.closedFobBrl - a.closedFobBrl);
+    } catch (err) { console.error("repMetrics error:", err); return []; }
   }, [reps, deals, closingDeals, visits, goals, filterYear, periodMode, filterMonth, filterQuarter, filterWeek, activeMonths]);
 
   const chartData = useMemo(() => {
