@@ -1,58 +1,46 @@
 
 
-## Problema Identificado
+## Problema Raiz
 
-A aba KPIs (e o Dashboard) **desaparece** porque os componentes `RepKPIs` e `ExecutiveDashboard` fazem um **early return** quando há erro de carregamento. Na linha 479 do `RepKPIs.tsx`:
+As abas "somem" porque componentes como `RepKPIs` e `ExecutiveDashboard` têm **cálculos complexos (useMemo) entre o carregamento de dados e o `return`**. Se qualquer cálculo lança exceção (dados `undefined`, divisão por zero, `.filter()` em `null`), o componente inteiro crasha ANTES de chegar ao `SafeComponent`. O `KpiErrorBoundary` captura, mas mostra um card genérico que substitui todo o conteúdo da aba.
 
-```tsx
-if (loading || loadError) return (
-  <SafeComponent loading={loading} error={loadError} onRetry={...}>
-    <></>
-  </SafeComponent>
-);
-```
+A sidebar em si sempre renderiza (vem do `PriceCalculator`), mas o **conteúdo** da aba ativa desaparece — e o usuário percebe como "a aba sumiu".
 
-Isso funciona para loading/erro, mas o problema real é que **erros de runtime dentro do `useMemo` ou da renderização** (como acessar propriedades de dados `undefined`) causam um crash que o `KpiErrorBoundary` deveria capturar — mas o ErrorBoundary mostra um card genérico que pode não ser visível se o layout do tab não renderizar corretamente.
+## Solução Definitiva
 
-Além disso, o componente `RepKPIs` tem **1756 linhas** com muitos `useMemo` complexos que podem lançar exceções em dados inesperados (ex: `null` em campos, arrays vazios, divisão por zero).
+### 1. Proteger TODOS os useMemo no RepKPIs com try-catch
+**Arquivo**: `src/components/RepKPIs.tsx`
 
-## Plano de Correção
-
-### 1. Remover early returns nos componentes internos das abas
-**Arquivos**: `RepKPIs.tsx`, `ExecutiveDashboard.tsx`
-
-Em vez de retornar completamente quando loading/erro, mover a lógica de `SafeComponent` para **dentro** do return principal, envolvendo apenas o conteúdo — garantindo que o componente sempre monta sem crash.
+Envolver cada bloco `useMemo` complexo (linhas ~310-477: `activeMonths`, `openByRep`, `repMetrics`, `chartData`, `globalKpis`, `funnelData`, `weeklyChartData`, `lossAnalysis`) em try-catch, retornando valores default seguros em caso de erro:
 
 ```tsx
-// ANTES (causa desaparecimento):
-if (loading || loadError) return <SafeComponent ...><></></SafeComponent>;
-// lógica complexa com useMemo que pode crashar...
-return <div>...</div>;
-
-// DEPOIS (seguro):
-return (
-  <SafeComponent loading={loading} error={loadError} onRetry={...}>
-    {/* conteúdo normal aqui */}
-  </SafeComponent>
-);
+const repMetrics = useMemo(() => {
+  try {
+    // lógica existente...
+  } catch (err) {
+    console.error("repMetrics error:", err);
+    return [];
+  }
+}, [deps]);
 ```
 
-### 2. Proteger os `useMemo` contra dados vazios/undefined
-**Arquivo**: `RepKPIs.tsx`
+Também proteger `metaPct` (linha 479) com fallback: `const metaPct = (globalKpis?.totalMeta ?? 0) > 0 ? ... : 0;`
 
-Adicionar guards nos useMemo mais complexos para evitar crashes quando `reps`, `deals`, `closingDeals` estão vazios ou com campos nulos. Usar valores default (`[]`, `0`, `""`) antes de operações como `.filter()`, `.map()`, `.reduce()`.
+### 2. Proteger computações no ExecutiveDashboard
+**Arquivo**: `src/components/ExecutiveDashboard.tsx`
 
-### 3. Garantir que `handleTabChange` valida o tab
-**Arquivo**: `PriceCalculator.tsx`
+Envolver os blocos de cálculo de KPIs (repRanking, resumoExecutivo, etc.) em try-catch com valores default.
 
-Já existe validação com `isAppTab()` — está OK. Confirmar que `activeTab` nunca fica undefined.
+### 3. Melhorar KpiErrorBoundary para manter layout
+**Arquivo**: `src/components/KpiErrorBoundary.tsx`
 
-### 4. Adicionar try-catch nos useMemo críticos do RepKPIs
-**Arquivo**: `RepKPIs.tsx`
+Garantir que o fallback do ErrorBoundary tenha `min-height` e layout compatível com o container da aba, para que não "desapareça" visualmente.
 
-Envolver os blocos `useMemo` mais complexos (repMetrics, chartData, lossAnalysis) em try-catch, retornando arrays/objetos vazios em caso de erro, em vez de crashar o componente inteiro.
+### 4. Adicionar console.log de diagnóstico
+Adicionar logs nos catch de cada useMemo para facilitar debug futuro, sem impactar performance.
 
-## Resumo de Arquivos Modificados
-- `src/components/RepKPIs.tsx` — remover early return, proteger useMemos
-- `src/components/ExecutiveDashboard.tsx` — remover early return, usar SafeComponent como wrapper
+## Arquivos Modificados
+- `src/components/RepKPIs.tsx` — try-catch em ~8 useMemo + proteção de `metaPct`
+- `src/components/ExecutiveDashboard.tsx` — try-catch em computações de KPI
+- `src/components/KpiErrorBoundary.tsx` — fallback com min-height adequado
 
