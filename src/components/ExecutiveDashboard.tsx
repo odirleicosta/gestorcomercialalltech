@@ -173,15 +173,17 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
   // ── rep ranking ──
   const repRanking = useMemo(() => {
-    return repsWithGoals.map(rep => {
-      const rd = getMultiMonthClosed(activeMonths, filterYear, rep.id);
-      const s = calcStats(rd);
-      const { metaQtd, metaVal } = getRepMeta(rep.id);
-      const pctQtd = metaQtd > 0 ? (s.count / metaQtd)*100 : 0;
-      const margem = s.basePrice > 0 ? (s.netProfit / s.basePrice)*100 : 0;
-      const totalComm = s.sellerComm + s.managerComm;
-      return { ...rep, ...s, metaQtd, metaVal, pctQtd, margem, totalComm };
-    }).filter(r => r.count > 0 || r.metaQtd > 0).sort((a,b) => b.count - a.count);
+    try {
+      return (repsWithGoals || []).map(rep => {
+        const rd = getMultiMonthClosed(activeMonths, filterYear, rep.id);
+        const s = calcStats(rd);
+        const { metaQtd, metaVal } = getRepMeta(rep.id);
+        const pctQtd = metaQtd > 0 ? (s.count / metaQtd)*100 : 0;
+        const margem = s.basePrice > 0 ? (s.netProfit / s.basePrice)*100 : 0;
+        const totalComm = s.sellerComm + s.managerComm;
+        return { ...rep, ...s, metaQtd, metaVal, pctQtd, margem, totalComm };
+      }).filter(r => r.count > 0 || r.metaQtd > 0).sort((a,b) => b.count - a.count);
+    } catch(e) { console.error("repRanking error:", e); return []; }
   }, [repsWithGoals, deals, activeMonths, filterYear, monthlyGoals]);
 
   // ── 3-month trend ──
