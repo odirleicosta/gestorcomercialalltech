@@ -430,15 +430,17 @@ const RepKPIs = ({ userId }: Props) => {
 
   // Funnel data
   const funnelData = useMemo(() => {
-    const totalVisitsVal = globalKpis.totalVisits;
-    const opportunities = monthlyOpps
-      .filter(o => activeMonths.includes(o.mes))
-      .reduce((s, o) => s + o.quantidade, 0);
-    const proposals = closingDeals.filter(c => c.status === "ativa" && isInPeriod(new Date(c.created_at))).length
-      + deals.filter(d => d.status === "open" && isInPeriod(new Date(d.created_at))).length;
-    const won = globalKpis.totalWon;
-    const lost = globalKpis.totalLost;
-    return { visits: totalVisitsVal, opportunities, proposals, won, lost };
+    try {
+      const totalVisitsVal = globalKpis.totalVisits || 0;
+      const opportunities = (monthlyOpps || [])
+        .filter(o => activeMonths.includes(o.mes))
+        .reduce((s, o) => s + (o.quantidade || 0), 0);
+      const proposals = (closingDeals || []).filter(c => c.status === "ativa" && isInPeriod(new Date(c.created_at))).length
+        + (deals || []).filter(d => d.status === "open" && isInPeriod(new Date(d.created_at))).length;
+      const won = globalKpis.totalWon || 0;
+      const lost = globalKpis.totalLost || 0;
+      return { visits: totalVisitsVal, opportunities, proposals, won, lost };
+    } catch (err) { console.error("funnelData error:", err); return { visits: 0, opportunities: 0, proposals: 0, won: 0, lost: 0 }; }
   }, [globalKpis, monthlyOpps, closingDeals, deals, activeMonths, filterYear, periodMode, filterWeek]);
 
   // Weekly visits chart data (last 8 weeks)
