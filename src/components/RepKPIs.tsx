@@ -435,10 +435,6 @@ const RepKPIs = ({ userId }: Props) => {
     return weeks;
   }, [periodMode, filterWeek, allVisits, filterYear, reps.length]);
 
-  // Lost deals without reason count
-  const lostWithoutReason = useMemo(() => {
-    return closingDeals.filter(c => c.status === "perdida" && !getLostReason(c)).length;
-  }, [closingDeals]);
 
   // Perdas analysis
   const lossAnalysis = useMemo(() => {
@@ -589,15 +585,6 @@ const RepKPIs = ({ userId }: Props) => {
       {/* ===================== VIEW: EQUIPE ===================== */}
       {viewTab === "equipe" && (
         <>
-          {/* Alert: losses without reason */}
-          {lostWithoutReason > 0 && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
-              <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
-              <span className="text-xs text-destructive font-medium">
-                {lostWithoutReason} negociação(ões) perdida(s) sem motivo registrado. Acesse a aba <button className="underline font-bold" onClick={() => setViewTab("perdas")}>Perdas</button> para completar.
-              </span>
-            </div>
-          )}
 
           {/* Global KPI Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
