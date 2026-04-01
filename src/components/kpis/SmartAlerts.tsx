@@ -53,20 +53,6 @@ const SmartAlerts = ({ deals, closingDeals, visits, reps, filterYear, activeMont
   const currentWeek = Math.ceil(((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / 86400000 + 1) / 7);
   const alerts: Alert[] = [];
 
-  // 1. Reps sem visita há 2+ semanas
-  reps.forEach(rep => {
-    const repVisits = visits.filter(v => v.representative_id === rep.id && v.ano === filterYear && v.quantidade > 0);
-    const lastVisitWeek = repVisits.length > 0 ? Math.max(...repVisits.map(v => v.semana)) : 0;
-    const weeksSinceLast = lastVisitWeek > 0 ? currentWeek - lastVisitWeek : currentWeek;
-    if (weeksSinceLast >= 2) {
-      alerts.push({
-        type: weeksSinceLast >= 4 ? "critical" : "warning",
-        icon: <Clock className="h-4 w-4" />,
-        title: `${rep.nome.split(" ")[0]} sem visitas há ${weeksSinceLast} semanas`,
-        description: "Representante pode estar inativo. Verifique o status e entre em contato.",
-      });
-    }
-  });
 
   // 2. Pipeline estagnado (negociações sem update há 7+ dias)
   const stagnatedDeals = closingDeals.filter(c => {
