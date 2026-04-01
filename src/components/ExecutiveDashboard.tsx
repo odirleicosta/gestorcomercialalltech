@@ -159,14 +159,16 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   const isCurrentYear = filterYear === now.getFullYear();
   const currentMonthNum = now.getMonth()+1;
   const { totalDaysPeriod, elapsedDays } = useMemo(() => {
-    let total = 0, elapsed = 0;
-    for (const m of activeMonths) {
-      const d = new Date(filterYear, m, 0).getDate();
-      total += d;
-      if (isCurrentYear) { if (m < currentMonthNum) elapsed += d; else if (m === currentMonthNum) elapsed += Math.min(now.getDate(), d); }
-      else if (filterYear < now.getFullYear()) elapsed += d;
-    }
-    return { totalDaysPeriod: total, elapsedDays: elapsed };
+    try {
+      let total = 0, elapsed = 0;
+      for (const m of activeMonths) {
+        const d = new Date(filterYear, m, 0).getDate();
+        total += d;
+        if (isCurrentYear) { if (m < currentMonthNum) elapsed += d; else if (m === currentMonthNum) elapsed += Math.min(now.getDate(), d); }
+        else if (filterYear < now.getFullYear()) elapsed += d;
+      }
+      return { totalDaysPeriod: total, elapsedDays: elapsed };
+    } catch(e) { console.error("period calc error:", e); return { totalDaysPeriod: 30, elapsedDays: 0 }; }
   }, [activeMonths, filterYear, isCurrentYear, currentMonthNum]);
 
   // ── rep ranking ──
