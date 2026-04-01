@@ -287,28 +287,30 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
   // ── 6) RESUMO EXECUTIVO ──
   const resumoExecutivo = (() => {
-    const lines: string[] = [];
-    if (pctAtingido >= 100) {
-      lines.push(`🏆 Meta superada! Equipe atingiu ${formatPct(pctAtingido)} da meta com ${totalSold} máquinas vendidas.`);
-    } else if (pctAtingido >= 70) {
-      lines.push(`📊 Equipe vendeu ${totalSold} de ${totalMetaQtd} máquinas (${formatPct(pctAtingido)}). Faltam ${faltam} para bater a meta.`);
-    } else {
-      lines.push(`⚠️ Atenção: equipe vendeu apenas ${totalSold} de ${totalMetaQtd} máquinas (${formatPct(pctAtingido)}). Ritmo precisa acelerar.`);
-    }
-    const positivos: string[] = [];
-    if (topPerformer && topPerformer.pctQtd >= 100) positivos.push(`${topPerformer.nome} já bateu a meta individual`);
-    if (vendasVar > 10) positivos.push(`vendas ${vendasVar.toFixed(0)}% acima do período anterior`);
-    if (margemMedia > 15) positivos.push(`margem média saudável de ${formatPct(margemMedia)}`);
-    if (noRitmo && faltam > 0) positivos.push(`ritmo atual é suficiente para bater a meta`);
-    if (positivos.length > 0) lines.push(`✅ Destaques: ${positivos.join("; ")}.`);
-    const alertas: string[] = [];
-    const repsAbaixo = repRanking.filter(r => r.metaQtd > 0 && r.pctQtd < 70);
-    if (repsAbaixo.length > 0) alertas.push(`${repsAbaixo.length} representante${repsAbaixo.length > 1 ? "s" : ""} abaixo de 70% da meta`);
-    if (!noRitmo && diasRestantes > 0) alertas.push(`ritmo atual (${ritmoAtual.toFixed(1)}/sem) abaixo do necessário (${ritmoNecessario.toFixed(1)}/sem)`);
-    if (margemMedia < 5 && cur.count > 0) alertas.push(`margem média baixa (${formatPct(margemMedia)})`);
-    if (trend3m.icon === "down") alertas.push(`tendência de queda nos últimos 3 meses`);
-    if (alertas.length > 0) lines.push(`🔴 Alertas: ${alertas.join("; ")}.`);
-    return lines;
+    try {
+      const lines: string[] = [];
+      if (pctAtingido >= 100) {
+        lines.push(`🏆 Meta superada! Equipe atingiu ${formatPct(pctAtingido)} da meta com ${totalSold} máquinas vendidas.`);
+      } else if (pctAtingido >= 70) {
+        lines.push(`📊 Equipe vendeu ${totalSold} de ${totalMetaQtd} máquinas (${formatPct(pctAtingido)}). Faltam ${faltam} para bater a meta.`);
+      } else {
+        lines.push(`⚠️ Atenção: equipe vendeu apenas ${totalSold} de ${totalMetaQtd} máquinas (${formatPct(pctAtingido)}). Ritmo precisa acelerar.`);
+      }
+      const positivos: string[] = [];
+      if (topPerformer && topPerformer.pctQtd >= 100) positivos.push(`${topPerformer.nome} já bateu a meta individual`);
+      if (vendasVar > 10) positivos.push(`vendas ${vendasVar.toFixed(0)}% acima do período anterior`);
+      if (margemMedia > 15) positivos.push(`margem média saudável de ${formatPct(margemMedia)}`);
+      if (noRitmo && faltam > 0) positivos.push(`ritmo atual é suficiente para bater a meta`);
+      if (positivos.length > 0) lines.push(`✅ Destaques: ${positivos.join("; ")}.`);
+      const alertas: string[] = [];
+      const repsAbaixo = (repRanking || []).filter(r => r.metaQtd > 0 && r.pctQtd < 70);
+      if (repsAbaixo.length > 0) alertas.push(`${repsAbaixo.length} representante${repsAbaixo.length > 1 ? "s" : ""} abaixo de 70% da meta`);
+      if (!noRitmo && diasRestantes > 0) alertas.push(`ritmo atual (${ritmoAtual.toFixed(1)}/sem) abaixo do necessário (${ritmoNecessario.toFixed(1)}/sem)`);
+      if (margemMedia < 5 && cur.count > 0) alertas.push(`margem média baixa (${formatPct(margemMedia)})`);
+      if (trend3m.icon === "down") alertas.push(`tendência de queda nos últimos 3 meses`);
+      if (alertas.length > 0) lines.push(`🔴 Alertas: ${alertas.join("; ")}.`);
+      return lines;
+    } catch(e) { console.error("resumoExecutivo error:", e); return ["Não foi possível gerar o resumo."]; }
   })();
 
   return (
