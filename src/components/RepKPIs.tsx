@@ -413,16 +413,19 @@ const RepKPIs = ({ userId }: Props) => {
   }, [repMetrics]);
 
   const globalKpis = useMemo(() => {
-    const totalVisits = repMetrics.reduce((s, r) => s + r.totalVisits, 0);
-    const totalOpps = repMetrics.reduce((s, r) => s + r.oppCount, 0);
-    const totalLost = repMetrics.reduce((s, r) => s + r.lostCount, 0);
-    const totalWon = repMetrics.reduce((s, r) => s + r.wonCount, 0);
-    const totalDecided = totalWon + totalLost;
-    const globalWinRate = totalDecided > 0 ? (totalWon / totalDecided) * 100 : 0;
-    const totalRealized = repMetrics.reduce((s, r) => s + r.closedFobBrl, 0);
-    const totalMeta = repMetrics.reduce((s, r) => s + r.metaValor, 0);
-    const totalPipeline = repMetrics.reduce((s, r) => s + r.oppValue, 0);
-    return { totalVisits, totalOpps, totalLost, totalWon, globalWinRate, totalRealized, totalMeta, totalPipeline };
+    try {
+      const m = repMetrics || [];
+      const totalVisits = m.reduce((s, r) => s + (r.totalVisits || 0), 0);
+      const totalOpps = m.reduce((s, r) => s + (r.oppCount || 0), 0);
+      const totalLost = m.reduce((s, r) => s + (r.lostCount || 0), 0);
+      const totalWon = m.reduce((s, r) => s + (r.wonCount || 0), 0);
+      const totalDecided = totalWon + totalLost;
+      const globalWinRate = totalDecided > 0 ? (totalWon / totalDecided) * 100 : 0;
+      const totalRealized = m.reduce((s, r) => s + (r.closedFobBrl || 0), 0);
+      const totalMeta = m.reduce((s, r) => s + (r.metaValor || 0), 0);
+      const totalPipeline = m.reduce((s, r) => s + (r.oppValue || 0), 0);
+      return { totalVisits, totalOpps, totalLost, totalWon, globalWinRate, totalRealized, totalMeta, totalPipeline };
+    } catch (err) { console.error("globalKpis error:", err); return { totalVisits: 0, totalOpps: 0, totalLost: 0, totalWon: 0, globalWinRate: 0, totalRealized: 0, totalMeta: 0, totalPipeline: 0 }; }
   }, [repMetrics]);
 
   // Funnel data
