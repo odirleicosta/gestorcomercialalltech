@@ -240,12 +240,6 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     return repRanking.reduce((s, r) => s + r.metaQtd, 0);
   }, [repRanking, filterRep]);
 
-  if (loading || loadError) return (
-    <SafeComponent loading={loading} error={loadError} onRetry={() => window.location.reload()}>
-      <></>
-    </SafeComponent>
-  );
-
 
   const totalSold = cur.count;
   const pctAtingido = totalMetaQtd > 0 ? (totalSold/totalMetaQtd)*100 : 0;
@@ -308,6 +302,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   })();
 
   return (
+    <SafeComponent loading={loading} error={loadError} onRetry={() => window.location.reload()}>
     <div className="space-y-8 animate-fade-in">
       {/* ═══ HEADER ═══ */}
       <div className="flex items-center justify-between">
@@ -823,6 +818,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         />
       )}
     </div>
+    </SafeComponent>
   );
 };
 

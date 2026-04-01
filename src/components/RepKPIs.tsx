@@ -476,12 +476,6 @@ const RepKPIs = ({ userId }: Props) => {
     return { lostDeals, rankingData, monthlyLoss, totalWithReason };
   }, [closingDeals, filterYear, periodMode, filterWeek, activeMonths, lossRepFilter]);
 
-  if (loading || loadError) return (
-    <SafeComponent loading={loading} error={loadError} onRetry={() => window.location.reload()}>
-      <></>
-    </SafeComponent>
-  );
-
   const metaPct = globalKpis.totalMeta > 0 ? (globalKpis.totalRealized / globalKpis.totalMeta) * 100 : 0;
   const weekOptions = Array.from({ length: 52 }, (_, i) => i + 1);
 
@@ -511,6 +505,7 @@ const RepKPIs = ({ userId }: Props) => {
   );
 
   return (
+    <SafeComponent loading={loading} error={loadError} onRetry={() => window.location.reload()}>
     <div className="space-y-5 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1731,6 +1726,7 @@ const RepKPIs = ({ userId }: Props) => {
         </DialogContent>
       </Dialog>
     </div>
+    </SafeComponent>
   );
 };
 
