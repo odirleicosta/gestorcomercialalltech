@@ -1726,6 +1726,7 @@ const RepKPIs = ({ userId }: Props) => {
         </DialogContent>
       </Dialog>
     </div>
+    </SafeComponent>
   );
 };
 
