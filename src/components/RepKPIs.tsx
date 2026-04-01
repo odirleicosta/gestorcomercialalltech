@@ -16,6 +16,11 @@ import { toast } from "sonner";
 import SalesFunnel from "@/components/kpis/SalesFunnel";
 import FollowUps from "@/components/kpis/FollowUps";
 import PipelineValue from "@/components/kpis/PipelineValue";
+import MonthlyTrend from "@/components/kpis/MonthlyTrend";
+import RepRanking from "@/components/kpis/RepRanking";
+import RegionHeatmap from "@/components/kpis/RegionHeatmap";
+import SmartAlerts from "@/components/kpis/SmartAlerts";
+import AdvancedMetrics from "@/components/kpis/AdvancedMetrics";
 
 interface Props { userId: string; }
 interface Rep { id: string; nome: string; meta_mensal_padrao: number; meta_quantidade: number; }
