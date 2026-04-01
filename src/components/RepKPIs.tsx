@@ -445,18 +445,20 @@ const RepKPIs = ({ userId }: Props) => {
 
   // Weekly visits chart data (last 8 weeks)
   const weeklyChartData = useMemo(() => {
-    if (periodMode !== "week") return [];
-    const currentWeek = filterWeek;
-    const weeks: { semana: string; realizadas: number; meta: number }[] = [];
-    for (let i = 7; i >= 0; i--) {
-      const w = currentWeek - i;
-      if (w < 1) continue;
-      const weekVisits = allVisits.filter(v => v.semana === w && v.ano === filterYear);
-      const totalRealizadas = weekVisits.reduce((s, v) => s + v.quantidade, 0);
-      const totalMeta = weekVisits.reduce((s, v) => s + v.meta, 0) || reps.length * 16;
-      weeks.push({ semana: `S${w}`, realizadas: totalRealizadas, meta: totalMeta });
-    }
-    return weeks;
+    try {
+      if (periodMode !== "week") return [];
+      const currentWeek = filterWeek;
+      const weeks: { semana: string; realizadas: number; meta: number }[] = [];
+      for (let i = 7; i >= 0; i--) {
+        const w = currentWeek - i;
+        if (w < 1) continue;
+        const weekVisits = (allVisits || []).filter(v => v.semana === w && v.ano === filterYear);
+        const totalRealizadas = weekVisits.reduce((s, v) => s + (v.quantidade || 0), 0);
+        const totalMeta = weekVisits.reduce((s, v) => s + (v.meta || 0), 0) || (reps || []).length * 16;
+        weeks.push({ semana: `S${w}`, realizadas: totalRealizadas, meta: totalMeta });
+      }
+      return weeks;
+    } catch (err) { console.error("weeklyChartData error:", err); return []; }
   }, [periodMode, filterWeek, allVisits, filterYear, reps.length]);
 
 
