@@ -96,6 +96,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [allVisits, setAllVisits] = useState<{ representative_id: string; semana: number; quantidade: number; meta: number; ano: number }[]>([]);
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const now = new Date();
   const [filterYear, setFilterYear] = useState(now.getFullYear());
   const [periodMode, setPeriodMode] = useState<PeriodMode>("month");
