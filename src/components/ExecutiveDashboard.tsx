@@ -818,6 +818,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         />
       )}
     </div>
+    </SafeComponent>
   );
 };
 
