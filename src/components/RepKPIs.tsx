@@ -340,11 +340,13 @@ const RepKPIs = ({ userId }: Props) => {
 
   // Negociações abertas por representante
   const openByRep = useMemo(() => {
-    return reps.map(rep => {
-      const repClosing = closingDeals.filter(c => c.representative_id === rep.id && c.status === "ativa" && isInPeriod(new Date(c.created_at)));
-      const repOpenDeals = deals.filter(d => d.representative_id === rep.id && d.status === "open" && isInPeriod(new Date(d.created_at)));
-      return { nome: rep.nome.split(" ")[0], radar: repClosing.length, vendas: repOpenDeals.length, total: repClosing.length + repOpenDeals.length };
-    }).filter(r => r.total > 0);
+    try {
+      return (reps || []).map(rep => {
+        const repClosing = (closingDeals || []).filter(c => c.representative_id === rep.id && c.status === "ativa" && isInPeriod(new Date(c.created_at)));
+        const repOpenDeals = (deals || []).filter(d => d.representative_id === rep.id && d.status === "open" && isInPeriod(new Date(d.created_at)));
+        return { nome: (rep.nome || "").split(" ")[0], radar: repClosing.length, vendas: repOpenDeals.length, total: repClosing.length + repOpenDeals.length };
+      }).filter(r => r.total > 0);
+    } catch (err) { console.error("openByRep error:", err); return []; }
   }, [reps, closingDeals, deals, filterYear, periodMode, filterWeek, activeMonths]);
 
   const repMetrics = useMemo(() => {
