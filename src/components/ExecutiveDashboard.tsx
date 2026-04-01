@@ -241,11 +241,13 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
   // When a specific rep is selected, use their individual meta; otherwise sum all
   const totalMetaQtd = useMemo(() => {
-    if (filterRep !== "all") {
-      const rep = repRanking.find(r => r.id === filterRep);
-      return rep ? rep.metaQtd : 0;
-    }
-    return repRanking.reduce((s, r) => s + r.metaQtd, 0);
+    try {
+      if (filterRep !== "all") {
+        const rep = (repRanking || []).find(r => r.id === filterRep);
+        return rep ? rep.metaQtd : 0;
+      }
+      return (repRanking || []).reduce((s, r) => s + (r.metaQtd || 0), 0);
+    } catch(e) { console.error("totalMetaQtd error:", e); return 0; }
   }, [repRanking, filterRep]);
 
 
