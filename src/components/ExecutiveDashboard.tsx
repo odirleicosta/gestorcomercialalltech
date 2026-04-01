@@ -302,6 +302,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   })();
 
   return (
+    <SafeComponent loading={loading} error={loadError} onRetry={() => window.location.reload()}>
     <div className="space-y-8 animate-fade-in">
       {/* ═══ HEADER ═══ */}
       <div className="flex items-center justify-between">
