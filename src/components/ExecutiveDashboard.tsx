@@ -188,19 +188,21 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
   // ── 3-month trend ──
   const trend3m = useMemo(() => {
-    const last = activeMonths[activeMonths.length-1];
-    const prev3: number[] = [];
-    for (let i = 1; i <= 3; i++) {
-      let m = last - i, y = filterYear;
-      while (m <= 0) { m += 12; y--; }
-      prev3.push(getMonthClosed(m, y, filterRep).length);
-    }
-    const avg = prev3.reduce((s,v)=>s+v,0)/3;
-    const c = cur.count;
-    const prevMonth = prev3[0]; // most recent previous month
-    if (c > avg*1.1) return { label: "Crescendo 📈", icon: "up" as const, avg, prevMonth };
-    if (c < avg*0.9) return { label: "Em queda 📉", icon: "down" as const, avg, prevMonth };
-    return { label: "Estável ➡️", icon: "stable" as const, avg, prevMonth };
+    try {
+      const last = activeMonths[activeMonths.length-1] || 1;
+      const prev3: number[] = [];
+      for (let i = 1; i <= 3; i++) {
+        let m = last - i, y = filterYear;
+        while (m <= 0) { m += 12; y--; }
+        prev3.push(getMonthClosed(m, y, filterRep).length);
+      }
+      const avg = prev3.reduce((s,v)=>s+v,0)/3;
+      const c = cur.count;
+      const prevMonth = prev3[0];
+      if (c > avg*1.1) return { label: "Crescendo 📈", icon: "up" as const, avg, prevMonth };
+      if (c < avg*0.9) return { label: "Em queda 📉", icon: "down" as const, avg, prevMonth };
+      return { label: "Estável ➡️", icon: "stable" as const, avg, prevMonth };
+    } catch(e) { console.error("trend3m error:", e); return { label: "Estável ➡️", icon: "stable" as const, avg: 0, prevMonth: 0 }; }
   }, [deals, activeMonths, filterYear, filterRep, cur]);
 
   // ── evolution chart ──
