@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import SafeComponent from "@/components/SafeComponent";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
