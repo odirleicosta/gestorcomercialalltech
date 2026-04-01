@@ -207,20 +207,22 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
   // ── evolution chart ──
   const evolutionData = useMemo(() => {
-    const last = activeMonths[activeMonths.length-1];
-    const data: { name: string; Faturamento: number; "Lucro Líquido": number; Vendas: number }[] = [];
-    for (let i = 5; i >= 0; i--) {
-      let m = last - i, y = filterYear;
-      while (m <= 0) { m += 12; y--; }
-      const closed = getMonthClosed(m, y, filterRep);
-      data.push({
-        name: `${MONTHS[m-1].slice(0,3)}/${String(y).slice(2)}`,
-        Faturamento: Math.round(closed.reduce((s,d)=>s+d.base_price,0)*100)/100,
-        "Lucro Líquido": Math.round(closed.reduce((s,d)=>s+d.net_profit,0)*100)/100,
-        Vendas: closed.length,
-      });
-    }
-    return data;
+    try {
+      const last = activeMonths[activeMonths.length-1] || 1;
+      const data: { name: string; Faturamento: number; "Lucro Líquido": number; Vendas: number }[] = [];
+      for (let i = 5; i >= 0; i--) {
+        let m = last - i, y = filterYear;
+        while (m <= 0) { m += 12; y--; }
+        const closed = getMonthClosed(m, y, filterRep);
+        data.push({
+          name: `${MONTHS[m-1].slice(0,3)}/${String(y).slice(2)}`,
+          Faturamento: Math.round(closed.reduce((s,d)=>s+d.base_price,0)*100)/100,
+          "Lucro Líquido": Math.round(closed.reduce((s,d)=>s+d.net_profit,0)*100)/100,
+          Vendas: closed.length,
+        });
+      }
+      return data;
+    } catch(e) { console.error("evolutionData error:", e); return []; }
   }, [deals, activeMonths, filterYear, filterRep]);
 
   // ── formatting ──
