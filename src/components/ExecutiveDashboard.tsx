@@ -240,7 +240,11 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     return repRanking.reduce((s, r) => s + r.metaQtd, 0);
   }, [repRanking, filterRep]);
 
-  if (loading) return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
+  if (loading || loadError) return (
+    <SafeComponent loading={loading} error={loadError} onRetry={() => window.location.reload()}>
+      <></>
+    </SafeComponent>
+  );
 
 
   const totalSold = cur.count;
