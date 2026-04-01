@@ -298,7 +298,7 @@ const RepKPIs = ({ userId }: Props) => {
         if (oppsRes.data) setMonthlyOpps(oppsRes.data as any);
       } catch (err) {
         console.error("RepKPIs fetchData error:", err);
-        toast.error("Erro ao carregar dados de KPIs");
+        setLoadError("Não foi possível carregar os dados de KPIs.");
       } finally {
         setLoading(false);
       }
