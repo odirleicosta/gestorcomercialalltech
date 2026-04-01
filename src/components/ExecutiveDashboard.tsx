@@ -94,8 +94,12 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
   useEffect(() => {
     const fetchGoals = async () => {
-      const res = await supabase.from("monthly_goals" as any).select("representative_id, meta_quantidade, meta_valor, machine_type, mes").eq("ano", filterYear);
-      if (res.data) setMonthlyGoals(res.data as unknown as MonthlyGoal[]);
+      try {
+        const res = await supabase.from("monthly_goals" as any).select("representative_id, meta_quantidade, meta_valor, machine_type, mes").eq("ano", filterYear);
+        if (res.data) setMonthlyGoals(res.data as unknown as MonthlyGoal[]);
+      } catch (err) {
+        console.error("ExecutiveDashboard fetchGoals error:", err);
+      }
     };
     fetchGoals();
   }, [filterYear]);
