@@ -749,12 +749,12 @@ const RepKPIs = ({ userId }: Props) => {
           />
 
           <FollowUps
-            Negotiations={closingDeals as any}
+            negotiations={closingDeals as any}
             reps={reps}
           />
 
           <PipelineValue
-            Negotiations={closingDeals as any}
+            negotiations={closingDeals as any}
             reps={reps}
           />
 
