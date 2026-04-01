@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import SafeComponent from "@/components/SafeComponent";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
