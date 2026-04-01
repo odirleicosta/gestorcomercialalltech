@@ -1,42 +1,19 @@
 
 
-## Plano: Remover aba "Importar BI" e adicionar entrada manual de dados na aba KPIs
+## Diagnóstico
 
-### Contexto
-A aba "Importar BI" permite importar dados de 4 categorias via Excel: Visitas, Oportunidades, Perdas e Metas. A aba KPIs já possui entrada manual para **Visitas** (tab "visitas" com editor inline) e **Negociações/Perdas** (dialogs de criação). Faltam apenas formulários manuais para **Oportunidades** e **Metas**.
+A sidebar tem `overflow-y-auto` na área de navegação, mas em viewports menores ou com zoom, a 9ª aba fica abaixo da área visível. Como navegadores modernos escondem a scrollbar por padrão, o usuário não percebe que pode rolar — parece que abas estão "faltando".
 
-### Mudanças
+## Plano: Garantir que todas as abas fiquem sempre visíveis
 
-**1. Remover a aba "Importar BI" da navegação**
-- `src/lib/app-tabs.ts`: Remover `"bi-import"` do tipo `AppTabId` e do array `SECONDARY_APP_TABS`, remover import do ícone `Upload`
-- `src/components/PriceCalculator.tsx`: Remover o import do `BiImport`, remover o `<TabsContent value="bi-import">` correspondente
+### Mudança única em `src/components/PriceCalculator.tsx`
 
-**2. Adicionar nova view "Dados" na aba KPIs**
-- `src/components/RepKPIs.tsx`:
-  - Adicionar `"dados"` ao tipo `ViewTab`
-  - Adicionar botão "Dados" na barra de views (junto a Equipe, Representante, Perdas, Visitas)
-  - Criar seção com dois cards:
+1. **Reduzir padding/gap dos botões da sidebar** — diminuir `py-2.5` para `py-2` e `gap-1` para `gap-0.5` nos itens de navegação, para que 9 abas caibam sem scroll na maioria dos viewports.
 
-**Card 1 — Oportunidades Mensais**
-- Tabela editável: linhas = representantes, colunas = meses (Jan-Dez)
-- Células com input numérico (quantidade de oportunidades)
-- Carrega dados existentes de `monthly_opportunities`
-- Botão "Salvar Oportunidades" faz upsert em `monthly_opportunities` com `onConflict: "user_id,representative_id,ano,mes"`
-- Seletor de ano no topo
+2. **Adicionar classe de scrollbar visível** — aplicar `scrollbar-thin` ou estilo inline para que, caso ainda haja overflow, a barra de rolagem fique visível e o usuário saiba que pode rolar.
 
-**Card 2 — Metas Mensais**
-- Tabela editável: linhas = representantes, colunas = meses (Jan-Dez)
-- Células com input numérico (meta de quantidade)
-- Select de `machine_type` (filtro) para editar metas por tipo
-- Carrega dados existentes de `monthly_goals`
-- Botão "Salvar Metas" faz upsert em `monthly_goals` com `onConflict: "representative_id,mes,ano,machine_type"`
+3. **Reduzir o espaçamento do header** — diminuir `mb-4` entre o header e a nav para `mb-2`.
 
-### Arquivos modificados
-1. `src/lib/app-tabs.ts` — remover bi-import
-2. `src/components/PriceCalculator.tsx` — remover BiImport import e TabsContent
-3. `src/components/RepKPIs.tsx` — adicionar view "Dados" com formulários de oportunidades e metas
-
-### Design
-- Seguir o padrão dark existente com `Card`, `Table`, `Input`, `Button`, `Select`
-- Mesmo estilo da tab "Visitas" que já funciona com editor inline
+### Resultado
+Todas as 9 abas ficam visíveis sem precisar rolar em viewports ≥ 670px de altura. Em telas menores, a scrollbar fica visível para indicar que há mais itens.
 
