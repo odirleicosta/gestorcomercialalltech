@@ -30,7 +30,7 @@ class KpiErrorBoundary extends React.Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <Card className="p-8 border-border bg-card text-center space-y-4">
+        <Card className="p-8 border-border bg-card text-center space-y-4 min-h-[300px] flex flex-col items-center justify-center">
           <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
           <h3 className="text-sm font-semibold text-foreground">
             {this.props.fallbackTitle || "Erro ao carregar"}
