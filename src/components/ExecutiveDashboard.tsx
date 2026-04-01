@@ -240,12 +240,6 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     return repRanking.reduce((s, r) => s + r.metaQtd, 0);
   }, [repRanking, filterRep]);
 
-  if (loading || loadError) return (
-    <SafeComponent loading={loading} error={loadError} onRetry={() => window.location.reload()}>
-      <></>
-    </SafeComponent>
-  );
-
 
   const totalSold = cur.count;
   const pctAtingido = totalMetaQtd > 0 ? (totalSold/totalMetaQtd)*100 : 0;
