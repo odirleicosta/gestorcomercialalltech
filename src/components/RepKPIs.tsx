@@ -505,6 +505,7 @@ const RepKPIs = ({ userId }: Props) => {
   );
 
   return (
+    <SafeComponent loading={loading} error={loadError} onRetry={() => window.location.reload()}>
     <div className="space-y-5 animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
