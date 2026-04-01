@@ -16,6 +16,11 @@ import { toast } from "sonner";
 import SalesFunnel from "@/components/kpis/SalesFunnel";
 import FollowUps from "@/components/kpis/FollowUps";
 import PipelineValue from "@/components/kpis/PipelineValue";
+import MonthlyTrend from "@/components/kpis/MonthlyTrend";
+import RepRanking from "@/components/kpis/RepRanking";
+import RegionHeatmap from "@/components/kpis/RegionHeatmap";
+import SmartAlerts from "@/components/kpis/SmartAlerts";
+import AdvancedMetrics from "@/components/kpis/AdvancedMetrics";
 
 interface Props { userId: string; }
 interface Rep { id: string; nome: string; meta_mensal_padrao: number; meta_quantidade: number; }
@@ -721,6 +726,30 @@ const RepKPIs = ({ userId }: Props) => {
           )}
 
           {/* ===== NEW SECTIONS ===== */}
+          {/* Smart Alerts */}
+          <SmartAlerts
+            deals={deals as any}
+            closingDeals={closingDeals as any}
+            visits={allVisits}
+            reps={reps}
+            filterYear={filterYear}
+            activeMonths={activeMonths}
+          />
+
+          {/* Advanced Metrics */}
+          <AdvancedMetrics
+            deals={deals as any}
+            closingDeals={closingDeals as any}
+            filterYear={filterYear}
+            activeMonths={activeMonths}
+          />
+
+          {/* Monthly Trend */}
+          <MonthlyTrend deals={deals as any} filterYear={filterYear} />
+
+          {/* Gamified Ranking */}
+          <RepRanking repMetrics={repMetrics} periodLabel={periodLabel} />
+
           <SalesFunnel
             visits={funnelData.visits}
             opportunities={funnelData.opportunities}
@@ -737,6 +766,14 @@ const RepKPIs = ({ userId }: Props) => {
           <PipelineValue
             negotiations={closingDeals as any}
             reps={reps}
+          />
+
+          {/* Region Heatmap */}
+          <RegionHeatmap
+            deals={deals as any}
+            reps={reps as any}
+            filterYear={filterYear}
+            activeMonths={activeMonths}
           />
         </>
       )}
