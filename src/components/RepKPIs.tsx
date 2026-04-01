@@ -492,7 +492,7 @@ const RepKPIs = ({ userId }: Props) => {
     } catch (err) { console.error("lossAnalysis error:", err); return { lostDeals: [], rankingData: [], monthlyLoss: [], totalWithReason: 0 }; }
   }, [closingDeals, filterYear, periodMode, filterWeek, activeMonths, lossRepFilter]);
 
-  const metaPct = globalKpis.totalMeta > 0 ? (globalKpis.totalRealized / globalKpis.totalMeta) * 100 : 0;
+  const metaPct = (globalKpis?.totalMeta ?? 0) > 0 ? ((globalKpis?.totalRealized ?? 0) / globalKpis.totalMeta) * 100 : 0;
   const weekOptions = Array.from({ length: 52 }, (_, i) => i + 1);
 
   const toggleRepExpanded = (id: string) => {
