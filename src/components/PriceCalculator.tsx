@@ -29,6 +29,7 @@ import Auth from "@/components/Auth";
 import BottomNavBar from "@/components/BottomNavBar";
 import ClosingRadar from "@/components/ClosingRadar";
 import RepKPIs from "@/components/RepKPIs";
+import KpiErrorBoundary from "@/components/KpiErrorBoundary";
 
 import { useTheme } from "@/hooks/use-theme";
 import { ALL_APP_TABS, AppTabId, DEFAULT_APP_TAB, isAppTab } from "@/lib/app-tabs";
