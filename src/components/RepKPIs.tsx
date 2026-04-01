@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import SafeComponent from "@/components/SafeComponent";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -96,6 +97,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [allVisits, setAllVisits] = useState<{ representative_id: string; semana: number; quantidade: number; meta: number; ano: number }[]>([]);
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const now = new Date();
   const [filterYear, setFilterYear] = useState(now.getFullYear());
   const [periodMode, setPeriodMode] = useState<PeriodMode>("month");
@@ -297,7 +299,7 @@ const RepKPIs = ({ userId }: Props) => {
         if (oppsRes.data) setMonthlyOpps(oppsRes.data as any);
       } catch (err) {
         console.error("RepKPIs fetchData error:", err);
-        toast.error("Erro ao carregar dados de KPIs");
+        setLoadError("Não foi possível carregar os dados de KPIs.");
       } finally {
         setLoading(false);
       }
@@ -474,7 +476,11 @@ const RepKPIs = ({ userId }: Props) => {
     return { lostDeals, rankingData, monthlyLoss, totalWithReason };
   }, [closingDeals, filterYear, periodMode, filterWeek, activeMonths, lossRepFilter]);
 
-  if (loading) return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
+  if (loading || loadError) return (
+    <SafeComponent loading={loading} error={loadError} onRetry={() => window.location.reload()}>
+      <></>
+    </SafeComponent>
+  );
 
   const metaPct = globalKpis.totalMeta > 0 ? (globalKpis.totalRealized / globalKpis.totalMeta) * 100 : 0;
   const weekOptions = Array.from({ length: 52 }, (_, i) => i + 1);

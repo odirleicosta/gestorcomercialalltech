@@ -1,15 +1,20 @@
 import React from "react";
 import { Card } from "@/components/ui/card";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+interface Props {
+  children: React.ReactNode;
+  fallbackTitle?: string;
+}
 
 interface State {
   hasError: boolean;
   error?: Error;
 }
 
-class KpiErrorBoundary extends React.Component<{ children: React.ReactNode }, State> {
-  constructor(props: { children: React.ReactNode }) {
+class KpiErrorBoundary extends React.Component<Props, State> {
+  constructor(props: Props) {
     super(props);
     this.state = { hasError: false };
   }
@@ -19,7 +24,7 @@ class KpiErrorBoundary extends React.Component<{ children: React.ReactNode }, St
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    console.error("KPI Error:", error, info.componentStack);
+    console.error("ErrorBoundary caught:", error, info.componentStack);
   }
 
   render() {
@@ -27,17 +32,29 @@ class KpiErrorBoundary extends React.Component<{ children: React.ReactNode }, St
       return (
         <Card className="p-8 border-border bg-card text-center space-y-4">
           <AlertTriangle className="h-10 w-10 text-destructive mx-auto" />
-          <h3 className="text-sm font-semibold text-foreground">Erro ao carregar KPIs</h3>
+          <h3 className="text-sm font-semibold text-foreground">
+            {this.props.fallbackTitle || "Erro ao carregar"}
+          </h3>
           <p className="text-xs text-muted-foreground">
             Ocorreu um erro inesperado. Tente recarregar.
           </p>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => this.setState({ hasError: false, error: undefined })}
-          >
-            Tentar novamente
-          </Button>
+          <div className="flex gap-2 justify-center">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => this.setState({ hasError: false, error: undefined })}
+            >
+              <RefreshCcw className="h-3.5 w-3.5 mr-1.5" />
+              Tentar novamente
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => window.location.reload()}
+            >
+              Recarregar página
+            </Button>
+          </div>
         </Card>
       );
     }

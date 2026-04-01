@@ -734,43 +734,57 @@ const PriceCalculator = () => {
           </TabsContent>
 
           <TabsContent value="deals">
-            <DealManager userId={user.id} />
+            <KpiErrorBoundary fallbackTitle="Erro ao carregar Vendas">
+              <DealManager userId={user.id} />
+            </KpiErrorBoundary>
           </TabsContent>
 
           {/* Radar desabilitado temporariamente */}
 
           <TabsContent value="commissions">
-            <CommissionGate userId={user.id}>
-              <CommissionsTab userId={user.id} />
-            </CommissionGate>
+            <KpiErrorBoundary fallbackTitle="Erro ao carregar Comissões">
+              <CommissionGate userId={user.id}>
+                <CommissionsTab userId={user.id} />
+              </CommissionGate>
+            </KpiErrorBoundary>
           </TabsContent>
 
           <TabsContent value="reps">
-            <RepresentativeManager userId={user.id} />
+            <KpiErrorBoundary fallbackTitle="Erro ao carregar Representantes">
+              <RepresentativeManager userId={user.id} />
+            </KpiErrorBoundary>
           </TabsContent>
 
           <TabsContent value="dashboard">
-            <ExecutiveDashboard userId={user.id} />
+            <KpiErrorBoundary fallbackTitle="Erro ao carregar Dashboard">
+              <ExecutiveDashboard userId={user.id} />
+            </KpiErrorBoundary>
           </TabsContent>
 
           <TabsContent value="registry">
-            <div className="space-y-6">
-              <ClientManager clients={clients} setClients={setClients} />
-            </div>
+            <KpiErrorBoundary fallbackTitle="Erro ao carregar Cadastros">
+              <div className="space-y-6">
+                <ClientManager clients={clients} setClients={setClients} />
+              </div>
+            </KpiErrorBoundary>
           </TabsContent>
 
           <TabsContent value="catalog">
-            <MachineCatalog catalog={catalog} setCatalog={setCatalog} userId={user.id} />
+            <KpiErrorBoundary fallbackTitle="Erro ao carregar Catálogo">
+              <MachineCatalog catalog={catalog} setCatalog={setCatalog} userId={user.id} />
+            </KpiErrorBoundary>
           </TabsContent>
 
           <TabsContent value="rep-kpis">
-            <KpiErrorBoundary>
+            <KpiErrorBoundary fallbackTitle="Erro ao carregar KPIs">
               <RepKPIs userId={user.id} />
             </KpiErrorBoundary>
           </TabsContent>
 
           <TabsContent value="deep-analysis">
-            <DeepAnalysis userId={user.id} onBack={() => setActiveTab("dashboard")} />
+            <KpiErrorBoundary fallbackTitle="Erro ao carregar Análise Profunda">
+              <DeepAnalysis userId={user.id} onBack={() => setActiveTab("dashboard")} />
+            </KpiErrorBoundary>
           </TabsContent>
 
         </Tabs>

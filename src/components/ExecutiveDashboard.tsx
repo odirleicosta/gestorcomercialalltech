@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
+import SafeComponent from "@/components/SafeComponent";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -40,6 +41,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   const [activePlan, setActivePlan] = useState<any>(null);
   const [closingDeals, setClosingDeals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const now = new Date();
   const [filterMonth, setFilterMonth] = useState(now.getMonth() + 1);
   const [filterYear, setFilterYear] = useState(now.getFullYear());
@@ -63,31 +65,42 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const [dealsRes, repsRes, goalsRes, planRes, closingRes] = await Promise.all([
-        supabase.from("deals" as any).select("*").order("created_at", { ascending: false }),
-        supabase.from("representatives" as any).select("id, nome, meta_mensal_padrao, meta_quantidade").eq("status", "ATIVO").order("nome"),
-        supabase.from("monthly_goals" as any).select("representative_id, meta_quantidade, meta_valor, machine_type, mes").eq("ano", filterYear),
-        supabase.from("strategic_plans" as any).select("*").eq("is_active", true).eq("mes", now.getMonth() + 1).eq("ano", now.getFullYear()).limit(1),
-        supabase.from("closing_deals" as any).select("*").eq("status", "ativa"),
-      ]);
-      if (dealsRes.data) setDeals(dealsRes.data as unknown as Deal[]);
-      if (repsRes.data) {
-        const r = repsRes.data as unknown as RepWithGoals[];
-        setReps(r.map(x => ({ id: x.id, nome: x.nome })));
-        setRepsWithGoals(r);
+      try {
+        setLoadError(null);
+        const [dealsRes, repsRes, goalsRes, planRes, closingRes] = await Promise.all([
+          supabase.from("deals" as any).select("*").order("created_at", { ascending: false }),
+          supabase.from("representatives" as any).select("id, nome, meta_mensal_padrao, meta_quantidade").eq("status", "ATIVO").order("nome"),
+          supabase.from("monthly_goals" as any).select("representative_id, meta_quantidade, meta_valor, machine_type, mes").eq("ano", filterYear),
+          supabase.from("strategic_plans" as any).select("*").eq("is_active", true).eq("mes", now.getMonth() + 1).eq("ano", now.getFullYear()).limit(1),
+          supabase.from("closing_deals" as any).select("*").eq("status", "ativa"),
+        ]);
+        if (dealsRes.data) setDeals(dealsRes.data as unknown as Deal[]);
+        if (repsRes.data) {
+          const r = repsRes.data as unknown as RepWithGoals[];
+          setReps(r.map(x => ({ id: x.id, nome: x.nome })));
+          setRepsWithGoals(r);
+        }
+        if (goalsRes.data) setMonthlyGoals(goalsRes.data as unknown as MonthlyGoal[]);
+        if (planRes.data && (planRes.data as any[]).length > 0) setActivePlan((planRes.data as any[])[0]);
+        if (closingRes.data) setClosingDeals(closingRes.data as any[]);
+      } catch (err) {
+        console.error("ExecutiveDashboard fetchData error:", err);
+        setLoadError("Não foi possível carregar os dados do dashboard.");
+      } finally {
+        setLoading(false);
       }
-      if (goalsRes.data) setMonthlyGoals(goalsRes.data as unknown as MonthlyGoal[]);
-      if (planRes.data && (planRes.data as any[]).length > 0) setActivePlan((planRes.data as any[])[0]);
-      if (closingRes.data) setClosingDeals(closingRes.data as any[]);
-      setLoading(false);
     };
     fetchData();
   }, []);
 
   useEffect(() => {
     const fetchGoals = async () => {
-      const res = await supabase.from("monthly_goals" as any).select("representative_id, meta_quantidade, meta_valor, machine_type, mes").eq("ano", filterYear);
-      if (res.data) setMonthlyGoals(res.data as unknown as MonthlyGoal[]);
+      try {
+        const res = await supabase.from("monthly_goals" as any).select("representative_id, meta_quantidade, meta_valor, machine_type, mes").eq("ano", filterYear);
+        if (res.data) setMonthlyGoals(res.data as unknown as MonthlyGoal[]);
+      } catch (err) {
+        console.error("ExecutiveDashboard fetchGoals error:", err);
+      }
     };
     fetchGoals();
   }, [filterYear]);
@@ -227,7 +240,11 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     return repRanking.reduce((s, r) => s + r.metaQtd, 0);
   }, [repRanking, filterRep]);
 
-  if (loading) return <p className="text-muted-foreground text-center py-8">Carregando...</p>;
+  if (loading || loadError) return (
+    <SafeComponent loading={loading} error={loadError} onRetry={() => window.location.reload()}>
+      <></>
+    </SafeComponent>
+  );
 
 
   const totalSold = cur.count;
