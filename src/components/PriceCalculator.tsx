@@ -763,7 +763,9 @@ const PriceCalculator = () => {
           </TabsContent>
 
           <TabsContent value="rep-kpis">
-            <RepKPIs userId={user.id} />
+            <KpiErrorBoundary>
+              <RepKPIs userId={user.id} />
+            </KpiErrorBoundary>
           </TabsContent>
 
           <TabsContent value="deep-analysis">
