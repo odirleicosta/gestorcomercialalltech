@@ -476,12 +476,6 @@ const RepKPIs = ({ userId }: Props) => {
     return { lostDeals, rankingData, monthlyLoss, totalWithReason };
   }, [closingDeals, filterYear, periodMode, filterWeek, activeMonths, lossRepFilter]);
 
-  if (loading || loadError) return (
-    <SafeComponent loading={loading} error={loadError} onRetry={() => window.location.reload()}>
-      <></>
-    </SafeComponent>
-  );
-
   const metaPct = globalKpis.totalMeta > 0 ? (globalKpis.totalRealized / globalKpis.totalMeta) * 100 : 0;
   const weekOptions = Array.from({ length: 52 }, (_, i) => i + 1);
 
