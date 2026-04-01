@@ -308,10 +308,12 @@ const RepKPIs = ({ userId }: Props) => {
   }, [filterYear]);
 
   const activeMonths = useMemo((): number[] => {
-    if (periodMode === "year") return [1,2,3,4,5,6,7,8,9,10,11,12];
-    if (periodMode === "quarter") return QUARTER_MONTHS[filterQuarter];
-    if (periodMode === "month") return [filterMonth];
-    return [1,2,3,4,5,6,7,8,9,10,11,12];
+    try {
+      if (periodMode === "year") return [1,2,3,4,5,6,7,8,9,10,11,12];
+      if (periodMode === "quarter") return QUARTER_MONTHS[filterQuarter] || [1,2,3];
+      if (periodMode === "month") return [filterMonth];
+      return [1,2,3,4,5,6,7,8,9,10,11,12];
+    } catch (err) { console.error("activeMonths error:", err); return [1,2,3,4,5,6,7,8,9,10,11,12]; }
   }, [periodMode, filterMonth, filterQuarter]);
 
   const periodLabel = useMemo(() => {
@@ -338,145 +340,159 @@ const RepKPIs = ({ userId }: Props) => {
 
   // Negociações abertas por representante
   const openByRep = useMemo(() => {
-    return reps.map(rep => {
-      const repClosing = closingDeals.filter(c => c.representative_id === rep.id && c.status === "ativa" && isInPeriod(new Date(c.created_at)));
-      const repOpenDeals = deals.filter(d => d.representative_id === rep.id && d.status === "open" && isInPeriod(new Date(d.created_at)));
-      return { nome: rep.nome.split(" ")[0], radar: repClosing.length, vendas: repOpenDeals.length, total: repClosing.length + repOpenDeals.length };
-    }).filter(r => r.total > 0);
+    try {
+      return (reps || []).map(rep => {
+        const repClosing = (closingDeals || []).filter(c => c.representative_id === rep.id && c.status === "ativa" && isInPeriod(new Date(c.created_at)));
+        const repOpenDeals = (deals || []).filter(d => d.representative_id === rep.id && d.status === "open" && isInPeriod(new Date(d.created_at)));
+        return { nome: (rep.nome || "").split(" ")[0], radar: repClosing.length, vendas: repOpenDeals.length, total: repClosing.length + repOpenDeals.length };
+      }).filter(r => r.total > 0);
+    } catch (err) { console.error("openByRep error:", err); return []; }
   }, [reps, closingDeals, deals, filterYear, periodMode, filterWeek, activeMonths]);
 
   const repMetrics = useMemo(() => {
-    return reps.map(rep => {
-      const repVisits = visits.filter(v => {
-        if (v.representative_id !== rep.id) return false;
-        if (periodMode === "week") return v.semana === filterWeek;
-        return true;
-      });
-      const totalVisits = repVisits.reduce((s, v) => s + v.quantidade, 0);
-      const totalVisitMeta = repVisits.reduce((s, v) => s + v.meta, 0);
-      const visitPct = totalVisitMeta > 0 ? (totalVisits / totalVisitMeta) * 100 : 0;
+    try {
+      return (reps || []).map(rep => {
+        const repVisits = (visits || []).filter(v => {
+          if (v.representative_id !== rep.id) return false;
+          if (periodMode === "week") return v.semana === filterWeek;
+          return true;
+        });
+        const totalVisits = repVisits.reduce((s, v) => s + (v.quantidade || 0), 0);
+        const totalVisitMeta = repVisits.reduce((s, v) => s + (v.meta || 0), 0);
+        const visitPct = totalVisitMeta > 0 ? (totalVisits / totalVisitMeta) * 100 : 0;
 
-      const activeOpps = closingDeals.filter(c => c.representative_id === rep.id && c.status === "ativa");
-      const oppCount = activeOpps.length;
-      const oppValue = activeOpps.reduce((s, c) => s + c.deal_value, 0);
-      const weightedPipeline = activeOpps.reduce((s, c) => {
-        const w = c.probability === "Alta" ? 0.8 : c.probability === "Média" ? 0.5 : 0.2;
-        return s + c.deal_value * w;
-      }, 0);
+        const activeOpps = (closingDeals || []).filter(c => c.representative_id === rep.id && c.status === "ativa");
+        const oppCount = activeOpps.length;
+        const oppValue = activeOpps.reduce((s, c) => s + (c.deal_value || 0), 0);
+        const weightedPipeline = activeOpps.reduce((s, c) => {
+          const w = c.probability === "Alta" ? 0.8 : c.probability === "Média" ? 0.5 : 0.2;
+          return s + (c.deal_value || 0) * w;
+        }, 0);
 
-      const lost = closingDeals.filter(c => c.representative_id === rep.id && c.status === "perdida");
-      const lostCount = lost.length;
-      const lostValue = lost.reduce((s, c) => s + c.deal_value, 0);
-      const won = closingDeals.filter(c => c.representative_id === rep.id && c.status === "ganha");
-      const wonCount = won.length;
-      const totalDecided = wonCount + lostCount;
-      const winRate = totalDecided > 0 ? (wonCount / totalDecided) * 100 : 0;
+        const lost = (closingDeals || []).filter(c => c.representative_id === rep.id && c.status === "perdida");
+        const lostCount = lost.length;
+        const lostValue = lost.reduce((s, c) => s + (c.deal_value || 0), 0);
+        const won = (closingDeals || []).filter(c => c.representative_id === rep.id && c.status === "ganha");
+        const wonCount = won.length;
+        const totalDecided = wonCount + lostCount;
+        const winRate = totalDecided > 0 ? (wonCount / totalDecided) * 100 : 0;
 
-      const closedDeals = deals.filter(d => d.representative_id === rep.id && filterDealByPeriod(d));
-      const closedCount = closedDeals.length;
-      const closedFobBrl = closedDeals.reduce((s, d) => s + d.base_price * (d.dollar_rate || 0), 0);
+        const closedDeals = (deals || []).filter(d => d.representative_id === rep.id && filterDealByPeriod(d));
+        const closedCount = closedDeals.length;
+        const closedFobBrl = closedDeals.reduce((s, d) => s + (d.base_price || 0) * (d.dollar_rate || 0), 0);
 
-      const periodGoals = goals.filter(g => g.representative_id === rep.id && activeMonths.includes(g.mes));
-      const monthCount = periodMode === "week" ? 1 : activeMonths.length;
-      const metaValor = periodGoals.reduce((s, g) => s + g.meta_valor, 0) || rep.meta_mensal_padrao * monthCount;
-      const metaQtd = periodGoals.reduce((s, g) => s + g.meta_quantidade, 0) || rep.meta_quantidade * monthCount;
-      const pctValor = metaValor > 0 ? (closedFobBrl / metaValor) * 100 : 0;
-      const pctQtd = metaQtd > 0 ? (closedCount / metaQtd) * 100 : 0;
+        const periodGoals = (goals || []).filter(g => g.representative_id === rep.id && activeMonths.includes(g.mes));
+        const monthCount = periodMode === "week" ? 1 : activeMonths.length;
+        const metaValor = periodGoals.reduce((s, g) => s + (g.meta_valor || 0), 0) || (rep.meta_mensal_padrao || 0) * monthCount;
+        const metaQtd = periodGoals.reduce((s, g) => s + (g.meta_quantidade || 0), 0) || (rep.meta_quantidade || 0) * monthCount;
+        const pctValor = metaValor > 0 ? (closedFobBrl / metaValor) * 100 : 0;
+        const pctQtd = metaQtd > 0 ? (closedCount / metaQtd) * 100 : 0;
 
-      const yearClosed = deals.filter(d => d.representative_id === rep.id && d.status === "closed" && d.closed_at && new Date(d.closed_at).getFullYear() === filterYear);
-      const yearFobBrl = yearClosed.reduce((s, d) => s + d.base_price * (d.dollar_rate || 0), 0);
-      const yearCount = yearClosed.length;
+        const yearClosed = (deals || []).filter(d => d.representative_id === rep.id && d.status === "closed" && d.closed_at && new Date(d.closed_at).getFullYear() === filterYear);
+        const yearFobBrl = yearClosed.reduce((s, d) => s + (d.base_price || 0) * (d.dollar_rate || 0), 0);
+        const yearCount = yearClosed.length;
 
-      return {
-        id: rep.id, nome: rep.nome,
-        totalVisits, visitPct,
-        oppCount, oppValue, weightedPipeline,
-        lostCount, lostValue,
-        wonCount, winRate,
-        closedCount, closedFobBrl,
-        metaValor, metaQtd, pctValor, pctQtd,
-        yearFobBrl, yearCount,
-      };
-    }).sort((a, b) => b.closedFobBrl - a.closedFobBrl);
+        return {
+          id: rep.id, nome: rep.nome || "",
+          totalVisits, visitPct,
+          oppCount, oppValue, weightedPipeline,
+          lostCount, lostValue,
+          wonCount, winRate,
+          closedCount, closedFobBrl,
+          metaValor, metaQtd, pctValor, pctQtd,
+          yearFobBrl, yearCount,
+        };
+      }).sort((a, b) => b.closedFobBrl - a.closedFobBrl);
+    } catch (err) { console.error("repMetrics error:", err); return []; }
   }, [reps, deals, closingDeals, visits, goals, filterYear, periodMode, filterMonth, filterQuarter, filterWeek, activeMonths]);
 
   const chartData = useMemo(() => {
-    return repMetrics.map(r => ({ nome: r.nome.split(" ")[0], meta: r.metaValor, realizado: r.closedFobBrl }));
+    try {
+      return (repMetrics || []).map(r => ({ nome: (r.nome || "").split(" ")[0], meta: r.metaValor || 0, realizado: r.closedFobBrl || 0 }));
+    } catch (err) { console.error("chartData error:", err); return []; }
   }, [repMetrics]);
 
   const globalKpis = useMemo(() => {
-    const totalVisits = repMetrics.reduce((s, r) => s + r.totalVisits, 0);
-    const totalOpps = repMetrics.reduce((s, r) => s + r.oppCount, 0);
-    const totalLost = repMetrics.reduce((s, r) => s + r.lostCount, 0);
-    const totalWon = repMetrics.reduce((s, r) => s + r.wonCount, 0);
-    const totalDecided = totalWon + totalLost;
-    const globalWinRate = totalDecided > 0 ? (totalWon / totalDecided) * 100 : 0;
-    const totalRealized = repMetrics.reduce((s, r) => s + r.closedFobBrl, 0);
-    const totalMeta = repMetrics.reduce((s, r) => s + r.metaValor, 0);
-    const totalPipeline = repMetrics.reduce((s, r) => s + r.oppValue, 0);
-    return { totalVisits, totalOpps, totalLost, totalWon, globalWinRate, totalRealized, totalMeta, totalPipeline };
+    try {
+      const m = repMetrics || [];
+      const totalVisits = m.reduce((s, r) => s + (r.totalVisits || 0), 0);
+      const totalOpps = m.reduce((s, r) => s + (r.oppCount || 0), 0);
+      const totalLost = m.reduce((s, r) => s + (r.lostCount || 0), 0);
+      const totalWon = m.reduce((s, r) => s + (r.wonCount || 0), 0);
+      const totalDecided = totalWon + totalLost;
+      const globalWinRate = totalDecided > 0 ? (totalWon / totalDecided) * 100 : 0;
+      const totalRealized = m.reduce((s, r) => s + (r.closedFobBrl || 0), 0);
+      const totalMeta = m.reduce((s, r) => s + (r.metaValor || 0), 0);
+      const totalPipeline = m.reduce((s, r) => s + (r.oppValue || 0), 0);
+      return { totalVisits, totalOpps, totalLost, totalWon, globalWinRate, totalRealized, totalMeta, totalPipeline };
+    } catch (err) { console.error("globalKpis error:", err); return { totalVisits: 0, totalOpps: 0, totalLost: 0, totalWon: 0, globalWinRate: 0, totalRealized: 0, totalMeta: 0, totalPipeline: 0 }; }
   }, [repMetrics]);
 
   // Funnel data
   const funnelData = useMemo(() => {
-    const totalVisitsVal = globalKpis.totalVisits;
-    const opportunities = monthlyOpps
-      .filter(o => activeMonths.includes(o.mes))
-      .reduce((s, o) => s + o.quantidade, 0);
-    const proposals = closingDeals.filter(c => c.status === "ativa" && isInPeriod(new Date(c.created_at))).length
-      + deals.filter(d => d.status === "open" && isInPeriod(new Date(d.created_at))).length;
-    const won = globalKpis.totalWon;
-    const lost = globalKpis.totalLost;
-    return { visits: totalVisitsVal, opportunities, proposals, won, lost };
+    try {
+      const totalVisitsVal = globalKpis.totalVisits || 0;
+      const opportunities = (monthlyOpps || [])
+        .filter(o => activeMonths.includes(o.mes))
+        .reduce((s, o) => s + (o.quantidade || 0), 0);
+      const proposals = (closingDeals || []).filter(c => c.status === "ativa" && isInPeriod(new Date(c.created_at))).length
+        + (deals || []).filter(d => d.status === "open" && isInPeriod(new Date(d.created_at))).length;
+      const won = globalKpis.totalWon || 0;
+      const lost = globalKpis.totalLost || 0;
+      return { visits: totalVisitsVal, opportunities, proposals, won, lost };
+    } catch (err) { console.error("funnelData error:", err); return { visits: 0, opportunities: 0, proposals: 0, won: 0, lost: 0 }; }
   }, [globalKpis, monthlyOpps, closingDeals, deals, activeMonths, filterYear, periodMode, filterWeek]);
 
   // Weekly visits chart data (last 8 weeks)
   const weeklyChartData = useMemo(() => {
-    if (periodMode !== "week") return [];
-    const currentWeek = filterWeek;
-    const weeks: { semana: string; realizadas: number; meta: number }[] = [];
-    for (let i = 7; i >= 0; i--) {
-      const w = currentWeek - i;
-      if (w < 1) continue;
-      const weekVisits = allVisits.filter(v => v.semana === w && v.ano === filterYear);
-      const totalRealizadas = weekVisits.reduce((s, v) => s + v.quantidade, 0);
-      const totalMeta = weekVisits.reduce((s, v) => s + v.meta, 0) || reps.length * 16;
-      weeks.push({ semana: `S${w}`, realizadas: totalRealizadas, meta: totalMeta });
-    }
-    return weeks;
+    try {
+      if (periodMode !== "week") return [];
+      const currentWeek = filterWeek;
+      const weeks: { semana: string; realizadas: number; meta: number }[] = [];
+      for (let i = 7; i >= 0; i--) {
+        const w = currentWeek - i;
+        if (w < 1) continue;
+        const weekVisits = (allVisits || []).filter(v => v.semana === w && v.ano === filterYear);
+        const totalRealizadas = weekVisits.reduce((s, v) => s + (v.quantidade || 0), 0);
+        const totalMeta = weekVisits.reduce((s, v) => s + (v.meta || 0), 0) || (reps || []).length * 16;
+        weeks.push({ semana: `S${w}`, realizadas: totalRealizadas, meta: totalMeta });
+      }
+      return weeks;
+    } catch (err) { console.error("weeklyChartData error:", err); return []; }
   }, [periodMode, filterWeek, allVisits, filterYear, reps.length]);
 
 
   // Perdas analysis
   const lossAnalysis = useMemo(() => {
-    let lostDeals = closingDeals.filter(c => {
-      if (c.status !== "perdida") return false;
-      return isInPeriod(new Date(c.created_at));
-    });
-    if (lossRepFilter !== "all") {
-      lostDeals = lostDeals.filter(c => c.representative_id === lossRepFilter);
-    }
-    const withReason = lostDeals.filter(c => getLostReason(c));
-    const reasonCounts: Record<string, number> = {};
-    withReason.forEach(c => {
-      const m = getLostReason(c)!;
-      reasonCounts[m] = (reasonCounts[m] || 0) + 1;
-    });
-    const totalWithReason = withReason.length;
-    const rankingData = Object.entries(reasonCounts)
-      .map(([name, value]) => ({ name, value, pct: totalWithReason > 0 ? (value / totalWithReason) * 100 : 0 }))
-      .sort((a, b) => b.value - a.value);
+    try {
+      let lostDeals = (closingDeals || []).filter(c => {
+        if (c.status !== "perdida") return false;
+        return isInPeriod(new Date(c.created_at));
+      });
+      if (lossRepFilter !== "all") {
+        lostDeals = lostDeals.filter(c => c.representative_id === lossRepFilter);
+      }
+      const withReason = lostDeals.filter(c => getLostReason(c));
+      const reasonCounts: Record<string, number> = {};
+      withReason.forEach(c => {
+        const m = getLostReason(c)!;
+        reasonCounts[m] = (reasonCounts[m] || 0) + 1;
+      });
+      const totalWithReason = withReason.length;
+      const rankingData = Object.entries(reasonCounts)
+        .map(([name, value]) => ({ name, value, pct: totalWithReason > 0 ? (value / totalWithReason) * 100 : 0 }))
+        .sort((a, b) => b.value - a.value);
 
-    // Monthly loss chart
-    const monthlyLoss: { mes: string; perdas: number }[] = SHORT_MONTHS.map((label, i) => {
-      const count = lostDeals.filter(c => new Date(c.created_at).getMonth() === i).length;
-      return { mes: label, perdas: count };
-    });
+      const monthlyLoss: { mes: string; perdas: number }[] = SHORT_MONTHS.map((label, i) => {
+        const count = lostDeals.filter(c => new Date(c.created_at).getMonth() === i).length;
+        return { mes: label, perdas: count };
+      });
 
-    return { lostDeals, rankingData, monthlyLoss, totalWithReason };
+      return { lostDeals, rankingData, monthlyLoss, totalWithReason };
+    } catch (err) { console.error("lossAnalysis error:", err); return { lostDeals: [], rankingData: [], monthlyLoss: [], totalWithReason: 0 }; }
   }, [closingDeals, filterYear, periodMode, filterWeek, activeMonths, lossRepFilter]);
 
-  const metaPct = globalKpis.totalMeta > 0 ? (globalKpis.totalRealized / globalKpis.totalMeta) * 100 : 0;
+  const metaPct = (globalKpis?.totalMeta ?? 0) > 0 ? ((globalKpis?.totalRealized ?? 0) / globalKpis.totalMeta) * 100 : 0;
   const weekOptions = Array.from({ length: 52 }, (_, i) => i + 1);
 
   const toggleRepExpanded = (id: string) => {

@@ -150,71 +150,79 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     managerComm: arr.reduce((s,d) => s+d.manager_commission_value, 0),
   });
 
-  const currentDeals = useMemo(() => getMultiMonthClosed(activeMonths, filterYear, filterRep), [deals, activeMonths, filterYear, filterRep]);
-  const prevDeals = useMemo(() => getPrevPeriodClosed(filterRep), [deals, activeMonths, filterYear, filterRep, filterMode, filterMonth, filterQuarter]);
-  const cur = useMemo(() => calcStats(currentDeals), [currentDeals]);
-  const prev = useMemo(() => calcStats(prevDeals), [prevDeals]);
+  const currentDeals = useMemo(() => { try { return getMultiMonthClosed(activeMonths, filterYear, filterRep); } catch(e) { console.error("currentDeals error:", e); return []; } }, [deals, activeMonths, filterYear, filterRep]);
+  const prevDeals = useMemo(() => { try { return getPrevPeriodClosed(filterRep); } catch(e) { console.error("prevDeals error:", e); return []; } }, [deals, activeMonths, filterYear, filterRep, filterMode, filterMonth, filterQuarter]);
+  const cur = useMemo(() => { try { return calcStats(currentDeals); } catch(e) { console.error("cur error:", e); return { count: 0, basePrice: 0, basePriceBrl: 0, netProfit: 0, grossProfit: 0, sellerComm: 0, managerComm: 0 }; } }, [currentDeals]);
+  const prev = useMemo(() => { try { return calcStats(prevDeals); } catch(e) { console.error("prev error:", e); return { count: 0, basePrice: 0, basePriceBrl: 0, netProfit: 0, grossProfit: 0, sellerComm: 0, managerComm: 0 }; } }, [prevDeals]);
 
   // ── pace ──
   const isCurrentYear = filterYear === now.getFullYear();
   const currentMonthNum = now.getMonth()+1;
   const { totalDaysPeriod, elapsedDays } = useMemo(() => {
-    let total = 0, elapsed = 0;
-    for (const m of activeMonths) {
-      const d = new Date(filterYear, m, 0).getDate();
-      total += d;
-      if (isCurrentYear) { if (m < currentMonthNum) elapsed += d; else if (m === currentMonthNum) elapsed += Math.min(now.getDate(), d); }
-      else if (filterYear < now.getFullYear()) elapsed += d;
-    }
-    return { totalDaysPeriod: total, elapsedDays: elapsed };
+    try {
+      let total = 0, elapsed = 0;
+      for (const m of activeMonths) {
+        const d = new Date(filterYear, m, 0).getDate();
+        total += d;
+        if (isCurrentYear) { if (m < currentMonthNum) elapsed += d; else if (m === currentMonthNum) elapsed += Math.min(now.getDate(), d); }
+        else if (filterYear < now.getFullYear()) elapsed += d;
+      }
+      return { totalDaysPeriod: total, elapsedDays: elapsed };
+    } catch(e) { console.error("period calc error:", e); return { totalDaysPeriod: 30, elapsedDays: 0 }; }
   }, [activeMonths, filterYear, isCurrentYear, currentMonthNum]);
 
   // ── rep ranking ──
   const repRanking = useMemo(() => {
-    return repsWithGoals.map(rep => {
-      const rd = getMultiMonthClosed(activeMonths, filterYear, rep.id);
-      const s = calcStats(rd);
-      const { metaQtd, metaVal } = getRepMeta(rep.id);
-      const pctQtd = metaQtd > 0 ? (s.count / metaQtd)*100 : 0;
-      const margem = s.basePrice > 0 ? (s.netProfit / s.basePrice)*100 : 0;
-      const totalComm = s.sellerComm + s.managerComm;
-      return { ...rep, ...s, metaQtd, metaVal, pctQtd, margem, totalComm };
-    }).filter(r => r.count > 0 || r.metaQtd > 0).sort((a,b) => b.count - a.count);
+    try {
+      return (repsWithGoals || []).map(rep => {
+        const rd = getMultiMonthClosed(activeMonths, filterYear, rep.id);
+        const s = calcStats(rd);
+        const { metaQtd, metaVal } = getRepMeta(rep.id);
+        const pctQtd = metaQtd > 0 ? (s.count / metaQtd)*100 : 0;
+        const margem = s.basePrice > 0 ? (s.netProfit / s.basePrice)*100 : 0;
+        const totalComm = s.sellerComm + s.managerComm;
+        return { ...rep, ...s, metaQtd, metaVal, pctQtd, margem, totalComm };
+      }).filter(r => r.count > 0 || r.metaQtd > 0).sort((a,b) => b.count - a.count);
+    } catch(e) { console.error("repRanking error:", e); return []; }
   }, [repsWithGoals, deals, activeMonths, filterYear, monthlyGoals]);
 
   // ── 3-month trend ──
   const trend3m = useMemo(() => {
-    const last = activeMonths[activeMonths.length-1];
-    const prev3: number[] = [];
-    for (let i = 1; i <= 3; i++) {
-      let m = last - i, y = filterYear;
-      while (m <= 0) { m += 12; y--; }
-      prev3.push(getMonthClosed(m, y, filterRep).length);
-    }
-    const avg = prev3.reduce((s,v)=>s+v,0)/3;
-    const c = cur.count;
-    const prevMonth = prev3[0]; // most recent previous month
-    if (c > avg*1.1) return { label: "Crescendo 📈", icon: "up" as const, avg, prevMonth };
-    if (c < avg*0.9) return { label: "Em queda 📉", icon: "down" as const, avg, prevMonth };
-    return { label: "Estável ➡️", icon: "stable" as const, avg, prevMonth };
+    try {
+      const last = activeMonths[activeMonths.length-1] || 1;
+      const prev3: number[] = [];
+      for (let i = 1; i <= 3; i++) {
+        let m = last - i, y = filterYear;
+        while (m <= 0) { m += 12; y--; }
+        prev3.push(getMonthClosed(m, y, filterRep).length);
+      }
+      const avg = prev3.reduce((s,v)=>s+v,0)/3;
+      const c = cur.count;
+      const prevMonth = prev3[0];
+      if (c > avg*1.1) return { label: "Crescendo 📈", icon: "up" as const, avg, prevMonth };
+      if (c < avg*0.9) return { label: "Em queda 📉", icon: "down" as const, avg, prevMonth };
+      return { label: "Estável ➡️", icon: "stable" as const, avg, prevMonth };
+    } catch(e) { console.error("trend3m error:", e); return { label: "Estável ➡️", icon: "stable" as const, avg: 0, prevMonth: 0 }; }
   }, [deals, activeMonths, filterYear, filterRep, cur]);
 
   // ── evolution chart ──
   const evolutionData = useMemo(() => {
-    const last = activeMonths[activeMonths.length-1];
-    const data: { name: string; Faturamento: number; "Lucro Líquido": number; Vendas: number }[] = [];
-    for (let i = 5; i >= 0; i--) {
-      let m = last - i, y = filterYear;
-      while (m <= 0) { m += 12; y--; }
-      const closed = getMonthClosed(m, y, filterRep);
-      data.push({
-        name: `${MONTHS[m-1].slice(0,3)}/${String(y).slice(2)}`,
-        Faturamento: Math.round(closed.reduce((s,d)=>s+d.base_price,0)*100)/100,
-        "Lucro Líquido": Math.round(closed.reduce((s,d)=>s+d.net_profit,0)*100)/100,
-        Vendas: closed.length,
-      });
-    }
-    return data;
+    try {
+      const last = activeMonths[activeMonths.length-1] || 1;
+      const data: { name: string; Faturamento: number; "Lucro Líquido": number; Vendas: number }[] = [];
+      for (let i = 5; i >= 0; i--) {
+        let m = last - i, y = filterYear;
+        while (m <= 0) { m += 12; y--; }
+        const closed = getMonthClosed(m, y, filterRep);
+        data.push({
+          name: `${MONTHS[m-1].slice(0,3)}/${String(y).slice(2)}`,
+          Faturamento: Math.round(closed.reduce((s,d)=>s+d.base_price,0)*100)/100,
+          "Lucro Líquido": Math.round(closed.reduce((s,d)=>s+d.net_profit,0)*100)/100,
+          Vendas: closed.length,
+        });
+      }
+      return data;
+    } catch(e) { console.error("evolutionData error:", e); return []; }
   }, [deals, activeMonths, filterYear, filterRep]);
 
   // ── formatting ──
@@ -233,11 +241,13 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
   // When a specific rep is selected, use their individual meta; otherwise sum all
   const totalMetaQtd = useMemo(() => {
-    if (filterRep !== "all") {
-      const rep = repRanking.find(r => r.id === filterRep);
-      return rep ? rep.metaQtd : 0;
-    }
-    return repRanking.reduce((s, r) => s + r.metaQtd, 0);
+    try {
+      if (filterRep !== "all") {
+        const rep = (repRanking || []).find(r => r.id === filterRep);
+        return rep ? rep.metaQtd : 0;
+      }
+      return (repRanking || []).reduce((s, r) => s + (r.metaQtd || 0), 0);
+    } catch(e) { console.error("totalMetaQtd error:", e); return 0; }
   }, [repRanking, filterRep]);
 
 
@@ -277,28 +287,30 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
   // ── 6) RESUMO EXECUTIVO ──
   const resumoExecutivo = (() => {
-    const lines: string[] = [];
-    if (pctAtingido >= 100) {
-      lines.push(`🏆 Meta superada! Equipe atingiu ${formatPct(pctAtingido)} da meta com ${totalSold} máquinas vendidas.`);
-    } else if (pctAtingido >= 70) {
-      lines.push(`📊 Equipe vendeu ${totalSold} de ${totalMetaQtd} máquinas (${formatPct(pctAtingido)}). Faltam ${faltam} para bater a meta.`);
-    } else {
-      lines.push(`⚠️ Atenção: equipe vendeu apenas ${totalSold} de ${totalMetaQtd} máquinas (${formatPct(pctAtingido)}). Ritmo precisa acelerar.`);
-    }
-    const positivos: string[] = [];
-    if (topPerformer && topPerformer.pctQtd >= 100) positivos.push(`${topPerformer.nome} já bateu a meta individual`);
-    if (vendasVar > 10) positivos.push(`vendas ${vendasVar.toFixed(0)}% acima do período anterior`);
-    if (margemMedia > 15) positivos.push(`margem média saudável de ${formatPct(margemMedia)}`);
-    if (noRitmo && faltam > 0) positivos.push(`ritmo atual é suficiente para bater a meta`);
-    if (positivos.length > 0) lines.push(`✅ Destaques: ${positivos.join("; ")}.`);
-    const alertas: string[] = [];
-    const repsAbaixo = repRanking.filter(r => r.metaQtd > 0 && r.pctQtd < 70);
-    if (repsAbaixo.length > 0) alertas.push(`${repsAbaixo.length} representante${repsAbaixo.length > 1 ? "s" : ""} abaixo de 70% da meta`);
-    if (!noRitmo && diasRestantes > 0) alertas.push(`ritmo atual (${ritmoAtual.toFixed(1)}/sem) abaixo do necessário (${ritmoNecessario.toFixed(1)}/sem)`);
-    if (margemMedia < 5 && cur.count > 0) alertas.push(`margem média baixa (${formatPct(margemMedia)})`);
-    if (trend3m.icon === "down") alertas.push(`tendência de queda nos últimos 3 meses`);
-    if (alertas.length > 0) lines.push(`🔴 Alertas: ${alertas.join("; ")}.`);
-    return lines;
+    try {
+      const lines: string[] = [];
+      if (pctAtingido >= 100) {
+        lines.push(`🏆 Meta superada! Equipe atingiu ${formatPct(pctAtingido)} da meta com ${totalSold} máquinas vendidas.`);
+      } else if (pctAtingido >= 70) {
+        lines.push(`📊 Equipe vendeu ${totalSold} de ${totalMetaQtd} máquinas (${formatPct(pctAtingido)}). Faltam ${faltam} para bater a meta.`);
+      } else {
+        lines.push(`⚠️ Atenção: equipe vendeu apenas ${totalSold} de ${totalMetaQtd} máquinas (${formatPct(pctAtingido)}). Ritmo precisa acelerar.`);
+      }
+      const positivos: string[] = [];
+      if (topPerformer && topPerformer.pctQtd >= 100) positivos.push(`${topPerformer.nome} já bateu a meta individual`);
+      if (vendasVar > 10) positivos.push(`vendas ${vendasVar.toFixed(0)}% acima do período anterior`);
+      if (margemMedia > 15) positivos.push(`margem média saudável de ${formatPct(margemMedia)}`);
+      if (noRitmo && faltam > 0) positivos.push(`ritmo atual é suficiente para bater a meta`);
+      if (positivos.length > 0) lines.push(`✅ Destaques: ${positivos.join("; ")}.`);
+      const alertas: string[] = [];
+      const repsAbaixo = (repRanking || []).filter(r => r.metaQtd > 0 && r.pctQtd < 70);
+      if (repsAbaixo.length > 0) alertas.push(`${repsAbaixo.length} representante${repsAbaixo.length > 1 ? "s" : ""} abaixo de 70% da meta`);
+      if (!noRitmo && diasRestantes > 0) alertas.push(`ritmo atual (${ritmoAtual.toFixed(1)}/sem) abaixo do necessário (${ritmoNecessario.toFixed(1)}/sem)`);
+      if (margemMedia < 5 && cur.count > 0) alertas.push(`margem média baixa (${formatPct(margemMedia)})`);
+      if (trend3m.icon === "down") alertas.push(`tendência de queda nos últimos 3 meses`);
+      if (alertas.length > 0) lines.push(`🔴 Alertas: ${alertas.join("; ")}.`);
+      return lines;
+    } catch(e) { console.error("resumoExecutivo error:", e); return ["Não foi possível gerar o resumo."]; }
   })();
 
   return (
