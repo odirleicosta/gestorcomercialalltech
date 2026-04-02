@@ -765,7 +765,7 @@ const RepKPIs = ({ userId }: Props) => {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </Card>
+      </Card>}
 
 
       {/* Negociação Dialog */}
