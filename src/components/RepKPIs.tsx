@@ -214,7 +214,7 @@ const RepKPIs = ({ userId }: Props) => {
   const loadLostDeals = useCallback(async () => {
     const { data } = await supabase
       .from("negociacoes_perdidas" as any)
-      .select("id, representative_id, client_name, machine_name, machine_type, deal_value, motivo_perda, motivo_perda_detalhe, data_perda, notes, created_at, updated_at")
+      .select("id, representative_id, client_name, machine_name, machine_type, deal_value, motivo_perda, motivo_perda_detalhe, data_perda, notes, quantidade, created_at, updated_at")
       .eq("user_id", userId)
       .order("data_perda", { ascending: false });
     setLostDeals((data as any) || []);
@@ -1203,20 +1203,20 @@ const RepKPIs = ({ userId }: Props) => {
           return true;
         });
 
-        const total = filtered.length;
+        const total = filtered.reduce((s, d) => s + ((d as any).quantidade || 1), 0);
         const totalValor = filtered.reduce((s, d) => s + (d.deal_value || 0), 0);
 
         const byRep: Record<string, number> = {};
         filtered.forEach(d => {
           const repName = reps.find(r => r.id === d.representative_id)?.nome || "Sem Rep";
-          byRep[repName] = (byRep[repName] || 0) + 1;
+          byRep[repName] = (byRep[repName] || 0) + ((d as any).quantidade || 1);
         });
         const repData = Object.entries(byRep).sort((a, b) => b[1] - a[1]).map(([nome, count]) => ({ nome, count }));
 
         const byMotivo: Record<string, number> = {};
         filtered.forEach(d => {
           const motivo = d.motivo_perda || "Não informado";
-          byMotivo[motivo] = (byMotivo[motivo] || 0) + 1;
+          byMotivo[motivo] = (byMotivo[motivo] || 0) + ((d as any).quantidade || 1);
         });
         const motivoData = Object.entries(byMotivo).sort((a, b) => b[1] - a[1]).map(([motivo, count]) => ({
           motivo, count, pct: total > 0 ? (count / total * 100) : 0,
@@ -1225,7 +1225,7 @@ const RepKPIs = ({ userId }: Props) => {
         const bySubmotivo: Record<string, number> = {};
         filtered.forEach(d => {
           const sub = d.motivo_perda_detalhe || "Não informado";
-          bySubmotivo[sub] = (bySubmotivo[sub] || 0) + 1;
+          bySubmotivo[sub] = (bySubmotivo[sub] || 0) + ((d as any).quantidade || 1);
         });
         const submotivoData = Object.entries(bySubmotivo).sort((a, b) => b[1] - a[1]).map(([submotivo, count]) => ({ submotivo, count }));
 
@@ -1386,6 +1386,7 @@ const RepKPIs = ({ userId }: Props) => {
                       <TableHead className="font-semibold">Máquina</TableHead>
                       <TableHead className="font-semibold">Rep</TableHead>
                       <TableHead className="font-semibold">Motivo</TableHead>
+                      <TableHead className="text-center font-semibold w-14">Qtd</TableHead>
                       <TableHead className="text-right font-semibold">Valor</TableHead>
                       <TableHead className="w-20" />
                     </TableRow>
@@ -1398,6 +1399,7 @@ const RepKPIs = ({ userId }: Props) => {
                         <TableCell className="text-sm">{d.machine_type ? `${d.machine_type} — ` : ""}{d.machine_name}</TableCell>
                         <TableCell className="text-sm">{reps.find(r => r.id === d.representative_id)?.nome || "—"}</TableCell>
                         <TableCell className="text-sm">{d.motivo_perda || "—"}</TableCell>
+                        <TableCell className="text-sm text-center font-mono">{(d as any).quantidade || 1}</TableCell>
                         <TableCell className="text-sm text-right font-mono tabular-nums">{formatBrlFull(d.deal_value)}</TableCell>
                         <TableCell>
                           <div className="flex gap-1">
@@ -1413,7 +1415,7 @@ const RepKPIs = ({ userId }: Props) => {
                     ))}
                     {filtered.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma negociação perdida no período.</TableCell>
+                        <TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhuma negociação perdida no período.</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
