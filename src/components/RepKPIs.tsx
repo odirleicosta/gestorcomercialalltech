@@ -45,7 +45,7 @@ const currentYear = new Date().getFullYear();
 const currentWeek = getWeekNumber(new Date());
 
 const RepKPIs = ({ userId }: Props) => {
-  const [subTab, setSubTab] = useState<"visitas" | "oportunidades" | "metas" | "desempenho">("visitas");
+  const [subTab, setSubTab] = useState<"visitas" | "oportunidades" | "metas" | "desempenho">("desempenho");
   const [filterRep, setFilterRep] = useState<string>("all");
   const [reps, setReps] = useState<Rep[]>([]);
   const [filterYear, setFilterYear] = useState(currentYear);
@@ -431,6 +431,13 @@ const RepKPIs = ({ userId }: Props) => {
       {/* Sub-tabs */}
       <div className="flex items-center gap-2">
         <button
+          onClick={() => setSubTab("desempenho")}
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "desempenho" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+        >
+          <Activity className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+          Desempenho
+        </button>
+        <button
           onClick={() => setSubTab("visitas")}
           className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "visitas" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
         >
@@ -450,13 +457,6 @@ const RepKPIs = ({ userId }: Props) => {
         >
           <Flag className="inline h-4 w-4 mr-1.5 -mt-0.5" />
           Metas
-        </button>
-        <button
-          onClick={() => setSubTab("desempenho")}
-          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "desempenho" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
-        >
-          <Activity className="inline h-4 w-4 mr-1.5 -mt-0.5" />
-          Desempenho
         </button>
       </div>
 
