@@ -236,20 +236,20 @@ const RepKPIs = ({ userId }: Props) => {
   };
 
   const handleSaveLost = async () => {
-    if (!lostForm.client_name.trim()) { toast.error("Informe o nome do cliente"); return; }
+    if (!lostForm.representative_id) { toast.error("Selecione o representante"); return; }
     if (!lostForm.motivo_perda) { toast.error("Selecione o motivo da perda"); return; }
     setSavingLost(true);
     const payload = {
       user_id: userId,
       representative_id: lostForm.representative_id || null,
-      client_name: lostForm.client_name.trim(),
-      machine_name: lostForm.machine_name.trim(),
-      machine_type: lostForm.machine_type.trim(),
-      deal_value: parseFloat(lostForm.deal_value) || 0,
+      client_name: reps.find(r => r.id === lostForm.representative_id)?.nome || "",
+      machine_name: "",
+      machine_type: "",
+      deal_value: 0,
       motivo_perda: lostForm.motivo_perda,
-      motivo_perda_detalhe: lostForm.motivo_perda_detalhe.trim() || null,
+      motivo_perda_detalhe: null,
       data_perda: lostForm.data_perda,
-      notes: lostForm.notes.trim() || null,
+      notes: null,
     };
     let error;
     if (editingLostId) {
