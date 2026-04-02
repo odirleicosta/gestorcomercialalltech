@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Eye, Users, Target, TrendingUp, Save, Calendar, BarChart3, Lightbulb, Flag, Filter, Activity, XCircle, AlertTriangle, Plus, Trash2, Edit2 } from "lucide-react";
+import { Eye, Users, Target, TrendingUp, Save, Calendar, BarChart3, Lightbulb, Flag, Filter, Activity, XCircle, AlertTriangle, Plus, Trash2, Edit2, SlidersHorizontal, ChevronDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ReferenceLine, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, PieChart, Pie } from "recharts";
@@ -423,66 +424,14 @@ const RepKPIs = ({ userId }: Props) => {
 
   const formatBrl = (v: number) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `${(v / 1_000).toFixed(0)}k` : String(v);
 
-  const periodFilters = (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
-            {(["mes", "trimestre", "ano"] as PeriodMode[]).map((mode) => {
-              const labels: Record<PeriodMode, string> = { semana: "Semana", mes: "Mês", trimestre: "Trimestre", ano: "Ano" };
-              return (
-                <button
-                  key={mode}
-                  onClick={() => setPeriodMode(mode)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                    periodMode === mode
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-transparent text-muted-foreground hover:bg-secondary/80"
-                  }`}
-                >
-                  {labels[mode]}
-                </button>
-              );
-            })}
-          </div>
-          {periodMode === "trimestre" && (
-            <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
-              {["T1", "T2", "T3", "T4"].map((q) => (
-                <button
-                  key={q}
-                  onClick={() => setFilterQuarter(q)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                    filterQuarter === q
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-transparent text-muted-foreground hover:bg-secondary/80"
-                  }`}
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
-          )}
-          {periodMode === "mes" && (
-            <div className="flex items-center gap-1 flex-wrap">
-              {MONTHS.map((m, i) => (
-                <button
-                  key={m}
-                  onClick={() => setFilterMonth(i + 1)}
-                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                    filterMonth === i + 1
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "bg-transparent text-muted-foreground hover:bg-secondary/80"
-                  }`}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+  const desempenhoPeriodLabel = useMemo(() => {
+    if (periodMode === "ano") return `${filterYear}`;
+    if (periodMode === "trimestre") return `${filterQuarter} ${filterYear}`;
+    return `${MONTHS[filterMonth - 1]} ${filterYear}`;
+  }, [periodMode, filterMonth, filterYear, filterQuarter]);
+
+  const btnClass = (active: boolean) =>
+    `px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-medium transition-all ${active ? "bg-primary text-primary-foreground shadow-sm" : "bg-secondary text-muted-foreground hover:bg-secondary/80 border border-border"}`;
 
   return (
     <div className="space-y-6">
@@ -1032,29 +981,61 @@ const RepKPIs = ({ userId }: Props) => {
 
         return (
           <>
-            {/* Period filters - only visible in Desempenho */}
-            {periodFilters}
-
-            {/* Inline filters */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <Select value={filterRep} onValueChange={setFilterRep}>
-                <SelectTrigger className="w-[140px] text-xs h-8"><Users className="h-3.5 w-3.5 mr-1" /><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Equipe</SelectItem>
-                  {reps.map((r) => (<SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>))}
-                </SelectContent>
-              </Select>
-              <Select value={String(filterYear)} onValueChange={(v) => setFilterYear(Number(v))}>
-                <SelectTrigger className="w-24 text-xs h-8"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[currentYear - 1, currentYear, currentYear + 1].map((y) => (<SelectItem key={y} value={String(y)}>{y}</SelectItem>))}
-                </SelectContent>
-              </Select>
-              {/* Period badge */}
-              <Badge variant="outline" className="text-xs px-3 py-1">
-                <Calendar className="h-3 w-3 mr-1.5" />{periodLabel}
-              </Badge>
-            </div>
+            {/* Popover filter - same style as Dashboard */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="inline-flex items-center gap-2 bg-primary/10 hover:bg-primary/15 text-primary border border-primary/20 rounded-full px-4 py-1.5 transition-all group">
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                  <span className="text-xs sm:text-sm font-semibold">{desempenhoPeriodLabel}{filterRep !== "all" ? ` · ${reps.find(r => r.id === filterRep)?.nome?.split(" ").slice(0,2).join(" ")}` : ""}</span>
+                  <ChevronDown className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 transition-opacity" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-auto max-w-[calc(100vw-2rem)] p-4 space-y-3">
+                {/* Ano */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0">Ano</span>
+                  <div className="flex gap-1">
+                    {[currentYear - 1, currentYear, currentYear + 1].map(y => (
+                      <button key={y} onClick={() => setFilterYear(y)} className={btnClass(filterYear === y)}>{y}</button>
+                    ))}
+                  </div>
+                </div>
+                {/* Visão */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0">Visão</span>
+                  <div className="flex gap-1 flex-wrap">
+                    <button onClick={() => setPeriodMode("mes")} className={btnClass(periodMode === "mes")}>Mês</button>
+                    {["T1", "T2", "T3", "T4"].map(q => (
+                      <button key={q} onClick={() => { setPeriodMode("trimestre"); setFilterQuarter(q); }} className={btnClass(periodMode === "trimestre" && filterQuarter === q)}>{q}</button>
+                    ))}
+                    <button onClick={() => setPeriodMode("ano")} className={btnClass(periodMode === "ano")}>Ano</button>
+                  </div>
+                </div>
+                {/* Mês */}
+                {periodMode === "mes" && (
+                  <div className="flex items-start gap-2">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0 mt-1">Mês</span>
+                    <div className="flex flex-wrap gap-1">
+                      {MONTHS.map((m, i) => (
+                        <button key={i} onClick={() => setFilterMonth(i + 1)} className={btnClass(filterMonth === i + 1)}>{m}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Rep */}
+                {reps.length > 0 && (
+                  <div className="flex items-start gap-2">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0 mt-1">Rep.</span>
+                    <div className="flex flex-wrap gap-1">
+                      <button onClick={() => setFilterRep("all")} className={btnClass(filterRep === "all")}>Todos</button>
+                      {reps.map(r => (
+                        <button key={r.id} onClick={() => setFilterRep(r.id)} className={btnClass(filterRep === r.id)}>{r.nome.split(" ").slice(0, 2).join(" ")}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
 
             {/* Summary KPIs */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
