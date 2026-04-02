@@ -1244,9 +1244,12 @@ const RepKPIs = ({ userId }: Props) => {
                   {[currentYear - 1, currentYear, currentYear + 1].map((y) => (<SelectItem key={y} value={String(y)}>{y}</SelectItem>))}
                 </SelectContent>
               </Select>
-              <Badge variant="outline" className="text-xs px-3 py-1">
-                <Calendar className="h-3 w-3 mr-1.5" />{periodLabel}
-              </Badge>
+              <Select value={String(filterMonth)} onValueChange={(v) => setFilterMonth(Number(v))}>
+                <SelectTrigger className="w-24 text-xs h-8"><Calendar className="h-3.5 w-3.5 mr-1" /><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {MONTHS.map((m, i) => (<SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>))}
+                </SelectContent>
+              </Select>
               <div className="ml-auto">
                 <Button size="sm" onClick={() => { resetLostForm(); setLostFormOpen(true); }} className="gap-1.5">
                   <Plus className="h-4 w-4" /> Registrar Perda
