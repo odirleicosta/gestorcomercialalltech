@@ -441,6 +441,13 @@ const RepKPIs = ({ userId }: Props) => {
           <Flag className="inline h-4 w-4 mr-1.5 -mt-0.5" />
           Metas
         </button>
+        <button
+          onClick={() => setSubTab("perdidas")}
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "perdidas" ? "bg-destructive text-destructive-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+        >
+          <XCircle className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+          Perdidas
+        </button>
       </div>
 
       {/* ═══ VISITAS ═══ */}
