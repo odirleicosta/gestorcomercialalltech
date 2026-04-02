@@ -5,6 +5,11 @@ import "./index.css";
 const resetAppCache = async () => {
   if (typeof window === "undefined") return;
 
+  const isPreviewEnvironment =
+    import.meta.env.DEV || window.location.hostname.includes("lovable.app");
+
+  if (!isPreviewEnvironment) return;
+
   if ("serviceWorker" in navigator) {
     const registrations = await navigator.serviceWorker.getRegistrations();
     await Promise.all(registrations.map((registration) => registration.unregister()));
