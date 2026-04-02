@@ -351,7 +351,52 @@ const RepKPIs = ({ userId }: Props) => {
         </Card>
       )}
 
-      {/* Weekly Evolution Line Chart */}
+      {/* Performance by Rep - % Atingimento */}
+      {visits.length > 0 && (
+        <Card className="p-4 sm:p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Target className="h-5 w-5 text-primary" />
+            <h3 className="font-semibold text-foreground">Desempenho por Representante</h3>
+          </div>
+          <div className="space-y-3">
+            {visits
+              .map((v) => ({ ...v, pct: v.meta > 0 ? (v.quantidade / v.meta) * 100 : 0 }))
+              .sort((a, b) => b.pct - a.pct)
+              .map((row) => {
+                const color =
+                  row.pct >= 100
+                    ? "bg-green-500"
+                    : row.pct >= 70
+                    ? "bg-yellow-500"
+                    : "bg-destructive";
+                const textColor =
+                  row.pct >= 100
+                    ? "text-green-600"
+                    : row.pct >= 70
+                    ? "text-yellow-600"
+                    : "text-destructive";
+                return (
+                  <div key={row.representative_id} className="flex items-center gap-3">
+                    <span className="text-sm font-medium w-40 truncate">{row.nome}</span>
+                    <div className="flex-1 h-5 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${color}`}
+                        style={{ width: `${Math.min(row.pct, 100)}%` }}
+                      />
+                    </div>
+                    <span className={`text-sm font-bold min-w-[4rem] text-right ${textColor}`}>
+                      {row.pct.toFixed(0)}%
+                    </span>
+                    <span className="text-xs text-muted-foreground min-w-[4.5rem]">
+                      {row.quantidade}/{row.meta}
+                    </span>
+                  </div>
+                );
+              })}
+          </div>
+        </Card>
+      )}
+
       {weeklyHistory.length > 1 && (
         <Card className="p-4 sm:p-6">
           <div className="flex items-center gap-2 mb-4">
