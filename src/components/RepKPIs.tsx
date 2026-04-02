@@ -45,6 +45,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [visits, setVisits] = useState<VisitRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [weeklyHistory, setWeeklyHistory] = useState<{ semana: number; total: number; meta: number }[]>([]);
 
   // Load reps
   useEffect(() => {
