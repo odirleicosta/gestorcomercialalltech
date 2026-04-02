@@ -8,7 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Eye, Users, Target, TrendingUp, Save, Calendar, BarChart3, Lightbulb, Flag, Filter, Activity, XCircle, AlertTriangle } from "lucide-react";
+import { Eye, Users, Target, TrendingUp, Save, Calendar, BarChart3, Lightbulb, Flag, Filter, Activity, XCircle, AlertTriangle, Plus, Trash2, Edit2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ReferenceLine, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, PieChart, Pie } from "recharts";
 
 interface Props {
@@ -63,7 +65,21 @@ const RepKPIs = ({ userId }: Props) => {
   const [allYearVisits, setAllYearVisits] = useState<{ representative_id: string; semana: number; quantidade: number; meta: number }[]>([]);
   const [allYearOpps, setAllYearOpps] = useState<{ representative_id: string; semana: number; qty_proprias: number; qty_sdr: number }[]>([]);
   const [allYearGoals, setAllYearGoals] = useState<{ representative_id: string; mes: number; meta_quantidade: number; machine_type: string }[]>([]);
-  const [lostDeals, setLostDeals] = useState<{ id: string; representative_id: string | null; client_name: string; machine_name: string; machine_type: string; deal_value: number; motivo_perda: string | null; motivo_perda_detalhe: string | null; created_at: string; updated_at: string }[]>([]);
+  const [lostDeals, setLostDeals] = useState<{ id: string; representative_id: string | null; client_name: string; machine_name: string; machine_type: string; deal_value: number; motivo_perda: string | null; motivo_perda_detalhe: string | null; data_perda: string; notes: string | null; created_at: string; updated_at: string }[]>([]);
+  const [lostFormOpen, setLostFormOpen] = useState(false);
+  const [editingLostId, setEditingLostId] = useState<string | null>(null);
+  const [savingLost, setSavingLost] = useState(false);
+  const [lostForm, setLostForm] = useState({
+    representative_id: "",
+    client_name: "",
+    machine_name: "",
+    machine_type: "",
+    deal_value: "",
+    motivo_perda: "",
+    motivo_perda_detalhe: "",
+    data_perda: new Date().toISOString().slice(0, 10),
+    notes: "",
+  });
 
   // Load reps
   useEffect(() => {
@@ -199,19 +215,77 @@ const RepKPIs = ({ userId }: Props) => {
     load();
   }, [reps, filterYear, userId]);
 
-  // Load lost deals
-  useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase
-        .from("closing_deals")
-        .select("id, representative_id, client_name, machine_name, machine_type, deal_value, motivo_perda, motivo_perda_detalhe, created_at, updated_at")
-        .eq("user_id", userId)
-        .eq("status", "perdida")
-        .order("updated_at", { ascending: false });
-      setLostDeals(data || []);
-    };
-    load();
+  // Load lost deals from independent table
+  const loadLostDeals = useCallback(async () => {
+    const { data } = await supabase
+      .from("negociacoes_perdidas" as any)
+      .select("id, representative_id, client_name, machine_name, machine_type, deal_value, motivo_perda, motivo_perda_detalhe, data_perda, notes, created_at, updated_at")
+      .eq("user_id", userId)
+      .order("data_perda", { ascending: false });
+    setLostDeals((data as any) || []);
   }, [userId]);
+
+  useEffect(() => { loadLostDeals(); }, [loadLostDeals]);
+
+  const MOTIVOS_PERDA = ["Preço", "Concorrência", "Cancelamento do Projeto", "Sem Investimento", "Cliente Curioso", "Postergação", "Outro"];
+
+  const resetLostForm = () => {
+    setLostForm({ representative_id: "", client_name: "", machine_name: "", machine_type: "", deal_value: "", motivo_perda: "", motivo_perda_detalhe: "", data_perda: new Date().toISOString().slice(0, 10), notes: "" });
+    setEditingLostId(null);
+  };
+
+  const handleSaveLost = async () => {
+    if (!lostForm.client_name.trim()) { toast.error("Informe o nome do cliente"); return; }
+    if (!lostForm.motivo_perda) { toast.error("Selecione o motivo da perda"); return; }
+    setSavingLost(true);
+    const payload = {
+      user_id: userId,
+      representative_id: lostForm.representative_id || null,
+      client_name: lostForm.client_name.trim(),
+      machine_name: lostForm.machine_name.trim(),
+      machine_type: lostForm.machine_type.trim(),
+      deal_value: parseFloat(lostForm.deal_value) || 0,
+      motivo_perda: lostForm.motivo_perda,
+      motivo_perda_detalhe: lostForm.motivo_perda_detalhe.trim() || null,
+      data_perda: lostForm.data_perda,
+      notes: lostForm.notes.trim() || null,
+    };
+    let error;
+    if (editingLostId) {
+      ({ error } = await supabase.from("negociacoes_perdidas" as any).update(payload as any).eq("id", editingLostId));
+    } else {
+      ({ error } = await supabase.from("negociacoes_perdidas" as any).insert(payload as any));
+    }
+    setSavingLost(false);
+    if (error) { toast.error("Erro ao salvar: " + error.message); return; }
+    toast.success(editingLostId ? "Registro atualizado" : "Negociação perdida registrada");
+    resetLostForm();
+    setLostFormOpen(false);
+    loadLostDeals();
+  };
+
+  const handleDeleteLost = async (id: string) => {
+    const { error } = await supabase.from("negociacoes_perdidas" as any).delete().eq("id", id);
+    if (error) { toast.error("Erro ao excluir"); return; }
+    toast.success("Registro excluído");
+    loadLostDeals();
+  };
+
+  const openEditLost = (deal: typeof lostDeals[0]) => {
+    setEditingLostId(deal.id);
+    setLostForm({
+      representative_id: deal.representative_id || "",
+      client_name: deal.client_name,
+      machine_name: deal.machine_name,
+      machine_type: deal.machine_type,
+      deal_value: String(deal.deal_value),
+      motivo_perda: deal.motivo_perda || "",
+      motivo_perda_detalhe: deal.motivo_perda_detalhe || "",
+      data_perda: deal.data_perda,
+      notes: deal.notes || "",
+    });
+    setLostFormOpen(true);
+  };
 
   const handleChange = useCallback((repId: string, value: string) => {
     const num = Math.max(0, parseInt(value) || 0);
@@ -1113,16 +1187,9 @@ const RepKPIs = ({ userId }: Props) => {
 
       {/* ═══ NEGOCIAÇÕES PERDIDAS ═══ */}
       {subTab === "perdidas" && (() => {
-        const COLORS_PIE = [
-          "hsl(var(--primary))", "hsl(var(--accent))", "hsl(var(--destructive))",
-          "hsl(var(--muted-foreground))", "hsl(210 80% 55%)", "hsl(30 90% 55%)",
-          "hsl(280 60% 55%)", "hsl(160 60% 45%)", "hsl(350 70% 55%)",
-        ];
-
-        // Filter by rep and year/month based on periodMode
         const filtered = lostDeals.filter(d => {
           if (filterRep !== "all" && d.representative_id !== filterRep) return false;
-          const dt = new Date(d.updated_at || d.created_at);
+          const dt = new Date(d.data_perda + "T00:00:00");
           if (dt.getFullYear() !== filterYear) return false;
           if (periodMode === "mes" && dt.getMonth() + 1 !== filterMonth) return false;
           if (periodMode === "trimestre") {
@@ -1135,7 +1202,6 @@ const RepKPIs = ({ userId }: Props) => {
         const total = filtered.length;
         const totalValor = filtered.reduce((s, d) => s + (d.deal_value || 0), 0);
 
-        // By rep
         const byRep: Record<string, number> = {};
         filtered.forEach(d => {
           const repName = reps.find(r => r.id === d.representative_id)?.nome || "Sem Rep";
@@ -1143,7 +1209,6 @@ const RepKPIs = ({ userId }: Props) => {
         });
         const repData = Object.entries(byRep).sort((a, b) => b[1] - a[1]).map(([nome, count]) => ({ nome, count }));
 
-        // By motivo
         const byMotivo: Record<string, number> = {};
         filtered.forEach(d => {
           const motivo = d.motivo_perda || "Não informado";
@@ -1153,7 +1218,6 @@ const RepKPIs = ({ userId }: Props) => {
           motivo, count, pct: total > 0 ? (count / total * 100) : 0,
         }));
 
-        // By submotivo
         const bySubmotivo: Record<string, number> = {};
         filtered.forEach(d => {
           const sub = d.motivo_perda_detalhe || "Não informado";
@@ -1162,13 +1226,12 @@ const RepKPIs = ({ userId }: Props) => {
         const submotivoData = Object.entries(bySubmotivo).sort((a, b) => b[1] - a[1]).map(([submotivo, count]) => ({ submotivo, count }));
 
         const formatBrlFull = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        const formatDate = (d: string) => new Date(d).toLocaleDateString("pt-BR");
-
+        const formatDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("pt-BR");
         const periodLabel = periodMode === "mes" ? `${MONTHS[filterMonth - 1]} ${filterYear}` : periodMode === "trimestre" ? `${filterQuarter} ${filterYear}` : `${filterYear}`;
 
         return (
           <>
-            {/* Filters */}
+            {/* Filters + Add Button */}
             <div className="flex items-center gap-2 flex-wrap">
               <Select value={filterRep} onValueChange={setFilterRep}>
                 <SelectTrigger className="w-[140px] text-xs h-8"><Users className="h-3.5 w-3.5 mr-1" /><SelectValue /></SelectTrigger>
@@ -1186,6 +1249,11 @@ const RepKPIs = ({ userId }: Props) => {
               <Badge variant="outline" className="text-xs px-3 py-1">
                 <Calendar className="h-3 w-3 mr-1.5" />{periodLabel}
               </Badge>
+              <div className="ml-auto">
+                <Button size="sm" onClick={() => { resetLostForm(); setLostFormOpen(true); }} className="gap-1.5">
+                  <Plus className="h-4 w-4" /> Registrar Perda
+                </Button>
+              </div>
             </div>
 
             {/* KPI Summary */}
@@ -1312,29 +1380,113 @@ const RepKPIs = ({ userId }: Props) => {
                       <TableHead className="font-semibold">Data</TableHead>
                       <TableHead className="font-semibold">Cliente</TableHead>
                       <TableHead className="font-semibold">Máquina</TableHead>
+                      <TableHead className="font-semibold">Rep</TableHead>
                       <TableHead className="font-semibold">Motivo</TableHead>
                       <TableHead className="text-right font-semibold">Valor</TableHead>
+                      <TableHead className="w-20" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filtered.map(d => (
                       <TableRow key={d.id}>
-                        <TableCell className="text-sm whitespace-nowrap">{formatDate(d.created_at)}</TableCell>
+                        <TableCell className="text-sm whitespace-nowrap">{formatDate(d.data_perda)}</TableCell>
                         <TableCell className="text-sm font-medium">{d.client_name}</TableCell>
-                        <TableCell className="text-sm">{d.machine_type} — {d.machine_name}</TableCell>
+                        <TableCell className="text-sm">{d.machine_type ? `${d.machine_type} — ` : ""}{d.machine_name}</TableCell>
+                        <TableCell className="text-sm">{reps.find(r => r.id === d.representative_id)?.nome || "—"}</TableCell>
                         <TableCell className="text-sm">{d.motivo_perda || "—"}</TableCell>
                         <TableCell className="text-sm text-right font-mono tabular-nums">{formatBrlFull(d.deal_value)}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditLost(d)}>
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteLost(d.id)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
                     {filtered.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhuma negociação perdida no período.</TableCell>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma negociação perdida no período.</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
                 </Table>
               </div>
             </Card>
+
+            {/* Dialog Form */}
+            <Dialog open={lostFormOpen} onOpenChange={(open) => { if (!open) { resetLostForm(); } setLostFormOpen(open); }}>
+              <DialogContent className="max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>{editingLostId ? "Editar" : "Registrar"} Negociação Perdida</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Cliente *</Label>
+                      <Input value={lostForm.client_name} onChange={e => setLostForm(f => ({ ...f, client_name: e.target.value }))} placeholder="Nome do cliente" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Data da Perda</Label>
+                      <Input type="date" value={lostForm.data_perda} onChange={e => setLostForm(f => ({ ...f, data_perda: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Tipo de Máquina</Label>
+                      <Input value={lostForm.machine_type} onChange={e => setLostForm(f => ({ ...f, machine_type: e.target.value }))} placeholder="Ex: Escavadeira" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Nome/Modelo</Label>
+                      <Input value={lostForm.machine_name} onChange={e => setLostForm(f => ({ ...f, machine_name: e.target.value }))} placeholder="Ex: CAT 320" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Valor (R$)</Label>
+                      <Input type="number" min="0" step="0.01" value={lostForm.deal_value} onChange={e => setLostForm(f => ({ ...f, deal_value: e.target.value }))} placeholder="0,00" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Representante</Label>
+                      <Select value={lostForm.representative_id} onValueChange={v => setLostForm(f => ({ ...f, representative_id: v }))}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          {reps.map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Motivo da Perda *</Label>
+                      <Select value={lostForm.motivo_perda} onValueChange={v => setLostForm(f => ({ ...f, motivo_perda: v }))}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          {MOTIVOS_PERDA.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-xs">Submotivo / Detalhe</Label>
+                      <Input value={lostForm.motivo_perda_detalhe} onChange={e => setLostForm(f => ({ ...f, motivo_perda_detalhe: e.target.value }))} placeholder="Detalhe opcional" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Observações</Label>
+                    <Input value={lostForm.notes} onChange={e => setLostForm(f => ({ ...f, notes: e.target.value }))} placeholder="Observações opcionais" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => { resetLostForm(); setLostFormOpen(false); }}>Cancelar</Button>
+                  <Button onClick={handleSaveLost} disabled={savingLost}>
+                    {savingLost ? "Salvando..." : editingLostId ? "Atualizar" : "Registrar"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </>
         );
       })()}
