@@ -433,15 +433,24 @@ const RepKPIs = ({ userId }: Props) => {
       {subTab === "visitas" && (<>
 
       {/* Week selector for Visitas */}
-      <div className="flex items-center gap-2">
-        <Select value={String(filterWeek)} onValueChange={(v) => setFilterWeek(Number(v))}>
-          <SelectTrigger className="w-40 text-xs h-8">
-            <Calendar className="h-4 w-4 mr-1" /><SelectValue />
-          </SelectTrigger>
+      <div className="flex items-center gap-2 flex-wrap">
+        <Select value={filterRep} onValueChange={setFilterRep}>
+          <SelectTrigger className="w-[140px] text-xs h-8"><Users className="h-3.5 w-3.5 mr-1" /><SelectValue /></SelectTrigger>
           <SelectContent>
-            {weekOptions.map((w) => (
-              <SelectItem key={w} value={String(w)}>Semana {w}</SelectItem>
-            ))}
+            <SelectItem value="all">Equipe</SelectItem>
+            {reps.map((r) => (<SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>))}
+          </SelectContent>
+        </Select>
+        <Select value={String(filterYear)} onValueChange={(v) => setFilterYear(Number(v))}>
+          <SelectTrigger className="w-24 text-xs h-8"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {[currentYear - 1, currentYear, currentYear + 1].map((y) => (<SelectItem key={y} value={String(y)}>{y}</SelectItem>))}
+          </SelectContent>
+        </Select>
+        <Select value={String(filterWeek)} onValueChange={(v) => setFilterWeek(Number(v))}>
+          <SelectTrigger className="w-40 text-xs h-8"><Calendar className="h-4 w-4 mr-1" /><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {weekOptions.map((w) => (<SelectItem key={w} value={String(w)}>Semana {w}</SelectItem>))}
           </SelectContent>
         </Select>
       </div>
