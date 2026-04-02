@@ -73,6 +73,7 @@ const RepKPIs = ({ userId }: Props) => {
     representative_id: "",
     motivo_perda: "",
     data_perda: new Date().toISOString().slice(0, 10),
+    quantidade: 1,
   });
 
   // Load reps
