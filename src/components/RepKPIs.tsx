@@ -212,14 +212,19 @@ const RepKPIs = ({ userId }: Props) => {
     }
   };
 
+  // Filtered data by rep
+  const filteredVisits = useMemo(() => filterRep === "all" ? visits : visits.filter(v => v.representative_id === filterRep), [visits, filterRep]);
+  const filteredOpportunities = useMemo(() => filterRep === "all" ? opportunities : opportunities.filter(o => o.representative_id === filterRep), [opportunities, filterRep]);
+  const filteredGoals = useMemo(() => filterRep === "all" ? goals : goals.filter(g => g.representative_id === filterRep), [goals, filterRep]);
+
   // KPIs
   const kpis = useMemo(() => {
-    const totalVisitas = visits.reduce((s, v) => s + v.quantidade, 0);
-    const totalMeta = visits.reduce((s, v) => s + v.meta, 0);
+    const totalVisitas = filteredVisits.reduce((s, v) => s + v.quantidade, 0);
+    const totalMeta = filteredVisits.reduce((s, v) => s + v.meta, 0);
     const pctEquipe = totalMeta > 0 ? (totalVisitas / totalMeta) * 100 : 0;
-    const media = visits.length > 0 ? totalVisitas / visits.length : 0;
+    const media = filteredVisits.length > 0 ? totalVisitas / filteredVisits.length : 0;
     return { totalVisitas, totalMeta, pctEquipe, media };
-  }, [visits]);
+  }, [filteredVisits]);
 
   // Chart data
   const chartData = useMemo(() =>
