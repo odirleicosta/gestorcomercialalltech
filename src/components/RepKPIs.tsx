@@ -1419,76 +1419,44 @@ const RepKPIs = ({ userId }: Props) => {
                   <DialogTitle>{editingLostId ? "Editar" : "Registrar"} Negociação Perdida</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-4 py-2">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs">Cliente *</Label>
-                      <Input value={lostForm.client_name} onChange={e => setLostForm(f => ({ ...f, client_name: e.target.value }))} placeholder="Nome do cliente" />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Data da Perda</Label>
-                      <Input type="date" value={lostForm.data_perda} onChange={e => setLostForm(f => ({ ...f, data_perda: e.target.value }))} />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs">Tipo de Máquina</Label>
-                      <Input value={lostForm.machine_type} onChange={e => setLostForm(f => ({ ...f, machine_type: e.target.value }))} placeholder="Ex: Escavadeira" />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Nome/Modelo</Label>
-                      <Input value={lostForm.machine_name} onChange={e => setLostForm(f => ({ ...f, machine_name: e.target.value }))} placeholder="Ex: CAT 320" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs">Valor (R$)</Label>
-                      <Input type="number" min="0" step="0.01" value={lostForm.deal_value} onChange={e => setLostForm(f => ({ ...f, deal_value: e.target.value }))} placeholder="0,00" />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Representante</Label>
-                      <Select value={lostForm.representative_id} onValueChange={v => setLostForm(f => ({ ...f, representative_id: v }))}>
-                        <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                        <SelectContent>
-                          {reps.map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs">Motivo da Perda *</Label>
-                      {addingCustomMotivo ? (
-                        <div className="flex gap-1">
-                          <Input value={customMotivo} onChange={e => setCustomMotivo(e.target.value)} placeholder="Novo motivo" className="h-9" autoFocus />
-                          <Button size="sm" className="h-9 px-2" onClick={() => {
-                            if (customMotivo.trim()) {
-                              setLostForm(f => ({ ...f, motivo_perda: customMotivo.trim() }));
-                              setCustomMotivo("");
-                              setAddingCustomMotivo(false);
-                            }
-                          }}>OK</Button>
-                          <Button size="sm" variant="ghost" className="h-9 px-2" onClick={() => { setAddingCustomMotivo(false); setCustomMotivo(""); }}>✕</Button>
-                        </div>
-                      ) : (
-                        <Select value={lostForm.motivo_perda} onValueChange={v => {
-                          if (v === "__novo__") { setAddingCustomMotivo(true); } else { setLostForm(f => ({ ...f, motivo_perda: v })); }
-                        }}>
-                          <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                          <SelectContent>
-                            {MOTIVOS_PERDA.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                            <SelectItem value="__novo__" className="text-primary font-medium">+ Adicionar novo motivo</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </div>
-                    <div>
-                      <Label className="text-xs">Submotivo / Detalhe</Label>
-                      <Input value={lostForm.motivo_perda_detalhe} onChange={e => setLostForm(f => ({ ...f, motivo_perda_detalhe: e.target.value }))} placeholder="Detalhe opcional" />
-                    </div>
+                  <div>
+                    <Label className="text-xs">Mês da Perda *</Label>
+                    <Input type="month" value={lostForm.data_perda.slice(0, 7)} onChange={e => setLostForm(f => ({ ...f, data_perda: e.target.value + "-01" }))} />
                   </div>
                   <div>
-                    <Label className="text-xs">Observações</Label>
-                    <Input value={lostForm.notes} onChange={e => setLostForm(f => ({ ...f, notes: e.target.value }))} placeholder="Observações opcionais" />
+                    <Label className="text-xs">Representante *</Label>
+                    <Select value={lostForm.representative_id} onValueChange={v => setLostForm(f => ({ ...f, representative_id: v }))}>
+                      <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                      <SelectContent>
+                        {reps.map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Motivo da Perda *</Label>
+                    {addingCustomMotivo ? (
+                      <div className="flex gap-1">
+                        <Input value={customMotivo} onChange={e => setCustomMotivo(e.target.value)} placeholder="Novo motivo" className="h-9" autoFocus />
+                        <Button size="sm" className="h-9 px-2" onClick={() => {
+                          if (customMotivo.trim()) {
+                            setLostForm(f => ({ ...f, motivo_perda: customMotivo.trim() }));
+                            setCustomMotivo("");
+                            setAddingCustomMotivo(false);
+                          }
+                        }}>OK</Button>
+                        <Button size="sm" variant="ghost" className="h-9 px-2" onClick={() => { setAddingCustomMotivo(false); setCustomMotivo(""); }}>✕</Button>
+                      </div>
+                    ) : (
+                      <Select value={lostForm.motivo_perda} onValueChange={v => {
+                        if (v === "__novo__") { setAddingCustomMotivo(true); } else { setLostForm(f => ({ ...f, motivo_perda: v })); }
+                      }}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          {MOTIVOS_PERDA.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                          <SelectItem value="__novo__" className="text-primary font-medium">+ Adicionar novo motivo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
                 </div>
                 <DialogFooter>
