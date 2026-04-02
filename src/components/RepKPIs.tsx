@@ -932,13 +932,24 @@ const RepKPIs = ({ userId }: Props) => {
 
         return (
           <>
-            {/* Period badge */}
-            <div className="flex items-center gap-2">
+            {/* Inline filters */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Select value={filterRep} onValueChange={setFilterRep}>
+                <SelectTrigger className="w-[140px] text-xs h-8"><Users className="h-3.5 w-3.5 mr-1" /><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Equipe</SelectItem>
+                  {reps.map((r) => (<SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              <Select value={String(filterYear)} onValueChange={(v) => setFilterYear(Number(v))}>
+                <SelectTrigger className="w-24 text-xs h-8"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[currentYear - 1, currentYear, currentYear + 1].map((y) => (<SelectItem key={y} value={String(y)}>{y}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              {/* Period badge */}
               <Badge variant="outline" className="text-xs px-3 py-1">
                 <Calendar className="h-3 w-3 mr-1.5" />{periodLabel}
-              </Badge>
-              <Badge variant="secondary" className="text-xs">
-                {filterRep === "all" ? "Equipe" : reps.find(r => r.id === filterRep)?.nome}
               </Badge>
             </div>
 
