@@ -298,38 +298,6 @@ const RepKPIs = ({ userId }: Props) => {
     }
   };
 
-  const handleGoalChange = useCallback((repId: string, field: "meta_valor" | "meta_quantidade", value: string) => {
-    const num = Math.max(0, parseFloat(value) || 0);
-    setGoals((prev) => prev.map((g) => (g.representative_id === repId ? { ...g, [field]: num } : g)));
-  }, []);
-
-  const handleSaveGoals = async () => {
-    setSavingGoals(true);
-    try {
-      for (const row of goals) {
-        const { error } = await supabase
-          .from("monthly_goals")
-          .upsert(
-            {
-              user_id: userId,
-              representative_id: row.representative_id,
-              ano: filterYear,
-              mes: filterMonth,
-              meta_valor: row.meta_valor,
-              meta_quantidade: row.meta_quantidade,
-              machine_type: "all",
-            },
-            { onConflict: "representative_id,mes,ano,machine_type" }
-          );
-        if (error) throw error;
-      }
-      toast.success("Metas salvas com sucesso!");
-    } catch (e: any) {
-      toast.error("Erro ao salvar: " + e.message);
-    } finally {
-      setSavingGoals(false);
-    }
-  };
 
   const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
