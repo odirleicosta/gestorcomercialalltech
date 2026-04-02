@@ -707,7 +707,7 @@ const RepKPIs = ({ userId }: Props) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {opportunities.map((row) => {
+              {filteredOpportunities.map((row) => {
                 const total = row.qty_proprias + row.qty_sdr;
                 const pct = total > 0 ? (row.qty_proprias / total) * 100 : 0;
                 return (
