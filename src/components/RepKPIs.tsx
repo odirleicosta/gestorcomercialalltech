@@ -244,12 +244,12 @@ const RepKPIs = ({ userId }: Props) => {
 
   // Opportunities KPIs
   const oppKpis = useMemo(() => {
-    const totalProprias = opportunities.reduce((s, o) => s + o.qty_proprias, 0);
-    const totalSdr = opportunities.reduce((s, o) => s + o.qty_sdr, 0);
+    const totalProprias = filteredOpportunities.reduce((s, o) => s + o.qty_proprias, 0);
+    const totalSdr = filteredOpportunities.reduce((s, o) => s + o.qty_sdr, 0);
     const totalAberto = totalProprias + totalSdr;
     const pctProprias = totalAberto > 0 ? (totalProprias / totalAberto) * 100 : 0;
     return { totalAberto, totalProprias, totalSdr, pctProprias };
-  }, [opportunities]);
+  }, [filteredOpportunities]);
 
   const oppChartData = useMemo(() =>
     opportunities
