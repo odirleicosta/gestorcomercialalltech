@@ -223,11 +223,12 @@ const RepKPIs = ({ userId }: Props) => {
   useEffect(() => { loadLostDeals(); }, [loadLostDeals]);
 
   const DEFAULT_MOTIVOS = ["Preço", "Concorrência", "Cancelamento do Projeto", "Sem Investimento", "Cliente Curioso", "Postergação", "Comprou máquina usada", "Relacionamento com o cliente"];
+  const [customMotivos, setCustomMotivos] = useState<string[]>([]);
   const MOTIVOS_PERDA = useMemo(() => {
     const fromDb = lostDeals.map(d => d.motivo_perda).filter(Boolean) as string[];
-    const all = new Set([...DEFAULT_MOTIVOS, ...fromDb]);
+    const all = new Set([...DEFAULT_MOTIVOS, ...customMotivos, ...fromDb]);
     return Array.from(all).sort();
-  }, [lostDeals]);
+  }, [customMotivos, lostDeals]);
   const [addingCustomMotivo, setAddingCustomMotivo] = useState(false);
   const [customMotivo, setCustomMotivo] = useState("");
 
