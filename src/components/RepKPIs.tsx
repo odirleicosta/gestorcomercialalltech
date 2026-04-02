@@ -59,8 +59,8 @@ const RepKPIs = ({ userId }: Props) => {
   const [weeklyHistory, setWeeklyHistory] = useState<{ semana: number; total: number; meta: number }[]>([]);
   const [opportunities, setOpportunities] = useState<{ representative_id: string; nome: string; qty_proprias: number; qty_sdr: number }[]>([]);
   const [savingOpp, setSavingOpp] = useState(false);
-  const [goals, setGoals] = useState<{ representative_id: string; nome: string; meta_valor: number; meta_quantidade: number }[]>([]);
-  const [savingGoals, setSavingGoals] = useState(false);
+  const [goals, setGoals] = useState<{ representative_id: string; nome: string; meta_quantidade: number; byType: Record<string, number> }[]>([]);
+  
 
   // Load reps
   useEffect(() => {
@@ -165,13 +165,14 @@ const RepKPIs = ({ userId }: Props) => {
 
       const rows = reps.map((r) => {
         const repGoals = (data || []).filter((d: any) => d.representative_id === r.id);
-        const meta_valor = repGoals.reduce((s: number, g: any) => s + (g.meta_valor || 0), 0);
         const meta_quantidade = repGoals.reduce((s: number, g: any) => s + (g.meta_quantidade || 0), 0);
+        const byType: Record<string, number> = {};
+        repGoals.forEach((g: any) => { if (g.machine_type && g.meta_quantidade > 0) byType[g.machine_type] = (byType[g.machine_type] || 0) + g.meta_quantidade; });
         return {
           representative_id: r.id,
           nome: r.nome,
-          meta_valor,
           meta_quantidade,
+          byType,
         };
       });
       setGoals(rows);
@@ -297,46 +298,20 @@ const RepKPIs = ({ userId }: Props) => {
     }
   };
 
-  const handleGoalChange = useCallback((repId: string, field: "meta_valor" | "meta_quantidade", value: string) => {
-    const num = Math.max(0, parseFloat(value) || 0);
-    setGoals((prev) => prev.map((g) => (g.representative_id === repId ? { ...g, [field]: num } : g)));
-  }, []);
-
-  const handleSaveGoals = async () => {
-    setSavingGoals(true);
-    try {
-      for (const row of goals) {
-        const { error } = await supabase
-          .from("monthly_goals")
-          .upsert(
-            {
-              user_id: userId,
-              representative_id: row.representative_id,
-              ano: filterYear,
-              mes: filterMonth,
-              meta_valor: row.meta_valor,
-              meta_quantidade: row.meta_quantidade,
-              machine_type: "all",
-            },
-            { onConflict: "representative_id,mes,ano,machine_type" }
-          );
-        if (error) throw error;
-      }
-      toast.success("Metas salvas com sucesso!");
-    } catch (e: any) {
-      toast.error("Erro ao salvar: " + e.message);
-    } finally {
-      setSavingGoals(false);
-    }
-  };
 
   const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
+  const MACHINE_TYPES = ["Centro de Usinagem", "Torno CNC", "Plu.go"];
+
   const goalsKpis = useMemo(() => {
-    const totalValor = filteredGoals.reduce((s, g) => s + g.meta_valor, 0);
     const totalQtd = filteredGoals.reduce((s, g) => s + g.meta_quantidade, 0);
-    const repsComMeta = filteredGoals.filter((g) => g.meta_valor > 0 || g.meta_quantidade > 0).length;
-    return { totalValor, totalQtd, repsComMeta };
+    const repsComMeta = filteredGoals.filter((g) => g.meta_quantidade > 0).length;
+    // Per machine type breakdown
+    const byType = MACHINE_TYPES.map(mt => ({
+      type: mt,
+      total: filteredGoals.reduce((s, g) => s + (g.byType?.[mt] || 0), 0),
+    }));
+    return { totalQtd, repsComMeta, byType };
   }, [filteredGoals]);
 
   const formatBrl = (v: number) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `${(v / 1_000).toFixed(0)}k` : String(v);
@@ -767,10 +742,12 @@ const RepKPIs = ({ userId }: Props) => {
       {subTab === "metas" && (<>
 
         {/* Goals KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <KpiCard icon={<Flag className="h-5 w-5" />} label="Meta Valor Total" value={`R$ ${formatBrl(goalsKpis.totalValor)}`} color="text-primary" />
-          <KpiCard icon={<Target className="h-5 w-5" />} label="Meta Qtd Total" value={String(goalsKpis.totalQtd)} color="text-primary" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <KpiCard icon={<Flag className="h-5 w-5" />} label="Meta Qtd Total" value={String(goalsKpis.totalQtd)} color="text-primary" />
           <KpiCard icon={<Users className="h-5 w-5" />} label="Reps com Meta" value={`${goalsKpis.repsComMeta}/${filteredGoals.length}`} color="text-muted-foreground" />
+          {goalsKpis.byType.map(bt => (
+            <KpiCard key={bt.type} icon={<Target className="h-5 w-5" />} label={bt.type} value={String(bt.total)} color="text-primary" />
+          ))}
         </div>
 
         <p className="text-xs text-muted-foreground">As metas são cadastradas na aba Representantes e exibidas aqui por mês.</p>
@@ -781,18 +758,22 @@ const RepKPIs = ({ userId }: Props) => {
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead className="font-semibold">Representante</TableHead>
-                <TableHead className="text-center font-semibold w-40">Meta Valor (R$)</TableHead>
-                <TableHead className="text-center font-semibold w-36">Meta Quantidade</TableHead>
+                {MACHINE_TYPES.map(mt => (
+                  <TableHead key={mt} className="text-center font-semibold w-28">{mt}</TableHead>
+                ))}
+                <TableHead className="text-center font-semibold w-24">Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredGoals.map((row) => (
                 <TableRow key={row.representative_id}>
                   <TableCell className="font-medium">{row.nome}</TableCell>
-                  <TableCell className="text-center font-medium">
-                    {row.meta_valor > 0 ? `R$ ${row.meta_valor.toLocaleString("pt-BR")}` : "—"}
-                  </TableCell>
-                  <TableCell className="text-center font-medium">
+                  {MACHINE_TYPES.map(mt => (
+                    <TableCell key={mt} className="text-center font-medium">
+                      {(row.byType[mt] || 0) > 0 ? row.byType[mt] : "—"}
+                    </TableCell>
+                  ))}
+                  <TableCell className="text-center font-bold">
                     {row.meta_quantidade > 0 ? row.meta_quantidade : "—"}
                   </TableCell>
                 </TableRow>
