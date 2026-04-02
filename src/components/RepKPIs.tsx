@@ -1047,62 +1047,6 @@ const RepKPIs = ({ userId }: Props) => {
 
         return (
           <>
-            {/* Popover filter - same style as Dashboard */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="inline-flex items-center gap-2 bg-primary/10 hover:bg-primary/15 text-primary border border-primary/20 rounded-full px-4 py-1.5 transition-all group">
-                  <SlidersHorizontal className="h-3.5 w-3.5" />
-                  <span className="text-xs sm:text-sm font-semibold">{desempenhoPeriodLabel}{filterRep !== "all" ? ` · ${reps.find(r => r.id === filterRep)?.nome?.split(" ").slice(0,2).join(" ")}` : ""}</span>
-                  <ChevronDown className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 transition-opacity" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-auto max-w-[calc(100vw-2rem)] p-4 space-y-3">
-                {/* Ano */}
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0">Ano</span>
-                  <div className="flex gap-1">
-                    {[currentYear - 1, currentYear, currentYear + 1].map(y => (
-                      <button key={y} onClick={() => setFilterYear(y)} className={btnClass(filterYear === y)}>{y}</button>
-                    ))}
-                  </div>
-                </div>
-                {/* Visão */}
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0">Visão</span>
-                  <div className="flex gap-1 flex-wrap">
-                    <button onClick={() => setPeriodMode("mes")} className={btnClass(periodMode === "mes")}>Mês</button>
-                    {["T1", "T2", "T3", "T4"].map(q => (
-                      <button key={q} onClick={() => { setPeriodMode("trimestre"); setFilterQuarter(q); }} className={btnClass(periodMode === "trimestre" && filterQuarter === q)}>{q}</button>
-                    ))}
-                    <button onClick={() => setPeriodMode("ano")} className={btnClass(periodMode === "ano")}>Ano</button>
-                  </div>
-                </div>
-                {/* Mês */}
-                {periodMode === "mes" && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0 mt-1">Mês</span>
-                    <div className="flex flex-wrap gap-1">
-                      {MONTHS.map((m, i) => (
-                        <button key={i} onClick={() => setFilterMonth(i + 1)} className={btnClass(filterMonth === i + 1)}>{m}</button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {/* Rep */}
-                {reps.length > 0 && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0 mt-1">Rep.</span>
-                    <div className="flex flex-wrap gap-1">
-                      <button onClick={() => setFilterRep("all")} className={btnClass(filterRep === "all")}>Todos</button>
-                      {reps.map(r => (
-                        <button key={r.id} onClick={() => setFilterRep(r.id)} className={btnClass(filterRep === r.id)}>{r.nome.split(" ").slice(0, 2).join(" ")}</button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </PopoverContent>
-            </Popover>
-
             {/* Summary KPIs */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <KpiCard icon={<Eye className="h-5 w-5" />} label="Visitas Realizadas" value={String(totalVisitas)} color="text-primary" />
