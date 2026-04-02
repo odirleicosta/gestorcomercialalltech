@@ -199,7 +199,21 @@ const RepKPIs = ({ userId }: Props) => {
     load();
   }, [reps, filterYear, userId]);
 
-  const handleChange = useCallback((repId: string, value: string) => {
+  // Load lost deals
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from("closing_deals")
+        .select("id, representative_id, client_name, machine_name, machine_type, deal_value, motivo_perda, motivo_perda_detalhe, created_at, updated_at")
+        .eq("user_id", userId)
+        .eq("status", "perdida")
+        .order("updated_at", { ascending: false });
+      setLostDeals(data || []);
+    };
+    load();
+  }, [userId]);
+
+
     const num = Math.max(0, parseInt(value) || 0);
     setVisits((prev) =>
       prev.map((v) => (v.representative_id === repId ? { ...v, quantidade: num } : v))
