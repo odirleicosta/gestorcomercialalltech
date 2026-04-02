@@ -383,6 +383,62 @@ const RepKPIs = ({ userId }: Props) => {
         </div>
       </div>
 
+      {/* Period mode toggle */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
+          {(["semana", "mes", "trimestre", "ano"] as PeriodMode[]).map((mode) => {
+            const labels: Record<PeriodMode, string> = { semana: "Semana", mes: "Mês", trimestre: "Trimestre", ano: "Ano" };
+            return (
+              <button
+                key={mode}
+                onClick={() => setPeriodMode(mode)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                  periodMode === mode
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-transparent text-muted-foreground hover:bg-secondary/80"
+                }`}
+              >
+                {labels[mode]}
+              </button>
+            );
+          })}
+        </div>
+        {periodMode === "trimestre" && (
+          <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
+            {["T1", "T2", "T3", "T4"].map((q) => (
+              <button
+                key={q}
+                onClick={() => setFilterQuarter(q)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                  filterQuarter === q
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-transparent text-muted-foreground hover:bg-secondary/80"
+                }`}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
+        {periodMode === "mes" && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {MONTHS.map((m, i) => (
+              <button
+                key={m}
+                onClick={() => setFilterMonth(i + 1)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                  filterMonth === i + 1
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-transparent text-muted-foreground hover:bg-secondary/80"
+                }`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* ═══ VISITAS ═══ */}
       {subTab === "visitas" && (<>
 
