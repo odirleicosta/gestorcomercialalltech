@@ -342,7 +342,7 @@ const RepKPIs = ({ userId }: Props) => {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
-              {(["semana", "mes", "trimestre", "ano"] as PeriodMode[]).map((mode) => {
+              {(["mes", "trimestre", "ano"] as PeriodMode[]).map((mode) => {
                 const labels: Record<PeriodMode, string> = { semana: "Semana", mes: "Mês", trimestre: "Trimestre", ano: "Ano" };
                 return (
                   <button
