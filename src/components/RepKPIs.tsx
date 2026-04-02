@@ -1004,8 +1004,8 @@ const RepKPIs = ({ userId }: Props) => {
           const sortedWeeks = [...uniqueWeeks].sort((a, b) => a - b);
           evolutionData = sortedWeeks.map(w => {
             const wV = allYearVisits.filter(v => v.semana === w && (filterRep === "all" || v.representative_id === filterRep));
-            const wO = allYearOpps.filter(o => o.semana === w && (filterRep === "all" || o.representative_id === filterRep));
-            return { label: `S${w}`, visitas: wV.reduce((s, v) => s + v.quantidade, 0), meta: wV.reduce((s, v) => s + v.meta, 0), opp: wO.reduce((s, o) => s + o.qty_proprias + o.qty_sdr, 0) };
+            const wO = allYearOpps.filter(o => relevantMonths.includes(o.mes) && (filterRep === "all" || o.representative_id === filterRep));
+            return { label: `S${w}`, visitas: wV.reduce((s, v) => s + v.quantidade, 0), meta: wV.reduce((s, v) => s + v.meta, 0), opp: wO.reduce((s, o) => s + o.qty_proprias + o.qty_sdr, 0) / Math.max(sortedWeeks.length, 1) };
           });
         } else {
           const mList = periodMode === "trimestre" ? relevantMonths : Array.from({ length: 12 }, (_, i) => i + 1);
