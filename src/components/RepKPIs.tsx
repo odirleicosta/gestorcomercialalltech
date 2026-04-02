@@ -1447,8 +1447,10 @@ const RepKPIs = ({ userId }: Props) => {
                       <div className="flex gap-1">
                         <Input value={customMotivo} onChange={e => setCustomMotivo(e.target.value)} placeholder="Novo motivo" className="h-9" autoFocus />
                         <Button size="sm" className="h-9 px-2" onClick={() => {
-                          if (customMotivo.trim()) {
-                            setLostForm(f => ({ ...f, motivo_perda: customMotivo.trim() }));
+                          const novoMotivo = customMotivo.trim();
+                          if (novoMotivo) {
+                            setCustomMotivos(prev => prev.includes(novoMotivo) ? prev : [...prev, novoMotivo]);
+                            setLostForm(f => ({ ...f, motivo_perda: novoMotivo }));
                             setCustomMotivo("");
                             setAddingCustomMotivo(false);
                           }
