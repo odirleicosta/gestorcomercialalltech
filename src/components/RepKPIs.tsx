@@ -1073,8 +1073,6 @@ const KpiCard = ({ icon, label, value, color }: { icon: React.ReactNode; label: 
 );
 
 export default RepKPIs;
-        // Consolidate per-rep performance data
-        const perfData = reps.map((r) => {
           const v = visits.find(x => x.representative_id === r.id);
           const o = opportunities.find(x => x.representative_id === r.id);
           const g = goals.find(x => x.representative_id === r.id);
