@@ -252,14 +252,14 @@ const RepKPIs = ({ userId }: Props) => {
   }, [filteredOpportunities]);
 
   const oppChartData = useMemo(() =>
-    opportunities
+    filteredOpportunities
       .filter((o) => o.qty_proprias + o.qty_sdr > 0)
       .map((o) => ({
         nome: o.nome.split(" ").slice(0, 2).join(" "),
         proprias: o.qty_proprias,
         sdr: o.qty_sdr,
       })),
-    [opportunities]
+    [filteredOpportunities]
   );
 
   const handleOppChange = useCallback((repId: string, field: "qty_proprias" | "qty_sdr", value: string) => {
