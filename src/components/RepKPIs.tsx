@@ -152,25 +152,26 @@ const RepKPIs = ({ userId }: Props) => {
     load();
   }, [reps, filterYear, filterWeek, userId]);
 
-  // Load monthly goals
+  // Load monthly goals (all machine_types from Representatives tab)
   useEffect(() => {
     if (!reps.length) return;
     const load = async () => {
       const { data } = await supabase
         .from("monthly_goals")
-        .select("representative_id, meta_valor, meta_quantidade")
+        .select("representative_id, meta_valor, meta_quantidade, machine_type")
         .eq("user_id", userId)
         .eq("ano", filterYear)
-        .eq("mes", filterMonth)
-        .eq("machine_type", "all");
+        .eq("mes", filterMonth);
 
       const rows = reps.map((r) => {
-        const existing = (data || []).find((d: any) => d.representative_id === r.id);
+        const repGoals = (data || []).filter((d: any) => d.representative_id === r.id);
+        const meta_valor = repGoals.reduce((s: number, g: any) => s + (g.meta_valor || 0), 0);
+        const meta_quantidade = repGoals.reduce((s: number, g: any) => s + (g.meta_quantidade || 0), 0);
         return {
           representative_id: r.id,
           nome: r.nome,
-          meta_valor: existing?.meta_valor ?? 0,
-          meta_quantidade: existing?.meta_quantidade ?? 0,
+          meta_valor,
+          meta_quantidade,
         };
       });
       setGoals(rows);
