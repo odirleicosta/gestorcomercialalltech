@@ -63,7 +63,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [savingOpp, setSavingOpp] = useState(false);
   const [goals, setGoals] = useState<{ representative_id: string; nome: string; meta_quantidade: number; byType: Record<string, number> }[]>([]);
   const [allYearVisits, setAllYearVisits] = useState<{ representative_id: string; semana: number; quantidade: number; meta: number }[]>([]);
-  const [allYearOpps, setAllYearOpps] = useState<{ representative_id: string; semana: number; qty_proprias: number; qty_sdr: number }[]>([]);
+  const [allYearOpps, setAllYearOpps] = useState<{ representative_id: string; mes: number; qty_proprias: number; qty_sdr: number }[]>([]);
   const [allYearGoals, setAllYearGoals] = useState<{ representative_id: string; mes: number; meta_quantidade: number; machine_type: string }[]>([]);
   const [lostDeals, setLostDeals] = useState<{ id: string; representative_id: string | null; client_name: string; machine_name: string; machine_type: string; deal_value: number; motivo_perda: string | null; motivo_perda_detalhe: string | null; data_perda: string; notes: string | null; created_at: string; updated_at: string }[]>([]);
   const [lostFormOpen, setLostFormOpen] = useState(false);
@@ -140,16 +140,16 @@ const RepKPIs = ({ userId }: Props) => {
     load();
   }, [userId, filterYear, visits]); // re-fetch when visits change (after edits)
 
-  // Load weekly opportunities for selected week
+  // Load monthly opportunities for selected month
   useEffect(() => {
     if (!reps.length) return;
     const load = async () => {
       const { data } = await supabase
-        .from("weekly_opportunities")
+        .from("monthly_opportunities")
         .select("representative_id, qty_proprias, qty_sdr")
         .eq("user_id", userId)
         .eq("ano", filterYear)
-        .eq("semana", filterWeek);
+        .eq("mes", filterMonth);
 
       const rows = reps.map((r) => {
         const existing = (data || []).find((d: any) => d.representative_id === r.id);
@@ -163,7 +163,7 @@ const RepKPIs = ({ userId }: Props) => {
       setOpportunities(rows);
     };
     load();
-  }, [reps, filterYear, filterWeek, userId]);
+  }, [reps, filterYear, filterMonth, userId]);
 
   // Load monthly goals (all machine_types from Representatives tab)
   useEffect(() => {
@@ -199,7 +199,7 @@ const RepKPIs = ({ userId }: Props) => {
     const load = async () => {
       const [visRes, oppRes, goalRes] = await Promise.all([
         supabase.from("weekly_visits").select("representative_id, semana, quantidade, meta").eq("user_id", userId).eq("ano", filterYear),
-        supabase.from("weekly_opportunities").select("representative_id, semana, qty_proprias, qty_sdr").eq("user_id", userId).eq("ano", filterYear),
+        supabase.from("monthly_opportunities").select("representative_id, mes, qty_proprias, qty_sdr, quantidade").eq("user_id", userId).eq("ano", filterYear),
         supabase.from("monthly_goals").select("representative_id, mes, meta_quantidade, machine_type").eq("user_id", userId).eq("ano", filterYear),
       ]);
       setAllYearVisits(visRes.data || []);
@@ -378,17 +378,18 @@ const RepKPIs = ({ userId }: Props) => {
     try {
       for (const row of opportunities) {
         const { error } = await supabase
-          .from("weekly_opportunities")
+          .from("monthly_opportunities")
           .upsert(
             {
               user_id: userId,
               representative_id: row.representative_id,
               ano: filterYear,
-              semana: filterWeek,
+              mes: filterMonth,
+              quantidade: row.qty_proprias + row.qty_sdr,
               qty_proprias: row.qty_proprias,
               qty_sdr: row.qty_sdr,
-            },
-            { onConflict: "user_id,representative_id,ano,semana" }
+            } as any,
+            { onConflict: "user_id,representative_id,ano,mes" }
           );
         if (error) throw error;
       }
@@ -966,7 +967,7 @@ const RepKPIs = ({ userId }: Props) => {
             const effectiveMeta = visitasMeta > 0 ? visitasMeta : (periodMode === "semana" ? DEFAULT_META : 0);
             const pctVisitas = effectiveMeta > 0 ? (visitasRealizadas / effectiveMeta) * 100 : 0;
 
-            const repOpps = allYearOpps.filter(o => o.representative_id === r.id && uniqueWeeks.has(o.semana));
+            const repOpps = allYearOpps.filter(o => o.representative_id === r.id && relevantMonths.includes(o.mes));
             const oppProprias = repOpps.reduce((s, o) => s + o.qty_proprias, 0);
             const oppSdr = repOpps.reduce((s, o) => s + o.qty_sdr, 0);
             const totalOpp = oppProprias + oppSdr;
@@ -1003,15 +1004,15 @@ const RepKPIs = ({ userId }: Props) => {
           const sortedWeeks = [...uniqueWeeks].sort((a, b) => a - b);
           evolutionData = sortedWeeks.map(w => {
             const wV = allYearVisits.filter(v => v.semana === w && (filterRep === "all" || v.representative_id === filterRep));
-            const wO = allYearOpps.filter(o => o.semana === w && (filterRep === "all" || o.representative_id === filterRep));
-            return { label: `S${w}`, visitas: wV.reduce((s, v) => s + v.quantidade, 0), meta: wV.reduce((s, v) => s + v.meta, 0), opp: wO.reduce((s, o) => s + o.qty_proprias + o.qty_sdr, 0) };
+            const wO = allYearOpps.filter(o => relevantMonths.includes(o.mes) && (filterRep === "all" || o.representative_id === filterRep));
+            return { label: `S${w}`, visitas: wV.reduce((s, v) => s + v.quantidade, 0), meta: wV.reduce((s, v) => s + v.meta, 0), opp: wO.reduce((s, o) => s + o.qty_proprias + o.qty_sdr, 0) / Math.max(sortedWeeks.length, 1) };
           });
         } else {
           const mList = periodMode === "trimestre" ? relevantMonths : Array.from({ length: 12 }, (_, i) => i + 1);
           evolutionData = mList.map(m => {
             const mWeekSet = new Set(getWeeksForMonth(m, filterYear));
             const mV = allYearVisits.filter(v => mWeekSet.has(v.semana) && (filterRep === "all" || v.representative_id === filterRep));
-            const mO = allYearOpps.filter(o => mWeekSet.has(o.semana) && (filterRep === "all" || o.representative_id === filterRep));
+            const mO = allYearOpps.filter(o => o.mes === m && (filterRep === "all" || o.representative_id === filterRep));
             return { label: MONTHS[m - 1], visitas: mV.reduce((s, v) => s + v.quantidade, 0), meta: mV.reduce((s, v) => s + v.meta, 0), opp: mO.reduce((s, o) => s + o.qty_proprias + o.qty_sdr, 0) };
           });
         }
