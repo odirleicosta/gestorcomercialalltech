@@ -140,16 +140,16 @@ const RepKPIs = ({ userId }: Props) => {
     load();
   }, [userId, filterYear, visits]); // re-fetch when visits change (after edits)
 
-  // Load weekly opportunities for selected week
+  // Load monthly opportunities for selected month
   useEffect(() => {
     if (!reps.length) return;
     const load = async () => {
       const { data } = await supabase
-        .from("weekly_opportunities")
+        .from("monthly_opportunities")
         .select("representative_id, qty_proprias, qty_sdr")
         .eq("user_id", userId)
         .eq("ano", filterYear)
-        .eq("semana", filterWeek);
+        .eq("mes", filterMonth);
 
       const rows = reps.map((r) => {
         const existing = (data || []).find((d: any) => d.representative_id === r.id);
@@ -163,7 +163,7 @@ const RepKPIs = ({ userId }: Props) => {
       setOpportunities(rows);
     };
     load();
-  }, [reps, filterYear, filterWeek, userId]);
+  }, [reps, filterYear, filterMonth, userId]);
 
   // Load monthly goals (all machine_types from Representatives tab)
   useEffect(() => {
