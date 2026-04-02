@@ -586,7 +586,22 @@ const RepKPIs = ({ userId }: Props) => {
         <KpiCard icon={<FileText className="h-4 w-4" />} label={`Neg. Abertas (${periodLabel})`} value={String(openByRep.reduce((s, r) => s + r.total, 0))} sub={`Radar: ${openByRep.reduce((s, r) => s + r.radar, 0)} | Vendas: ${openByRep.reduce((s, r) => s + r.vendas, 0)}`} color="bg-primary/10 text-primary" />
         <KpiCard icon={<CheckCircle className="h-4 w-4" />} label="Win Rate" value={formatPct(globalKpis.globalWinRate)} sub={`${globalKpis.totalWon}W / ${globalKpis.totalLost}L`} color="bg-accent/10 text-accent" />
       </div>
+
+      {/* Sub-tab navigation */}
+      <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5 w-fit">
+        <PillButton active={viewTab === "equipe"} onClick={() => setViewTab("equipe")}>
+          <span className="flex items-center gap-1"><Users className="h-3 w-3" /> Equipe</span>
+        </PillButton>
+        <PillButton active={viewTab === "visitas"} onClick={() => setViewTab("visitas")}>
+          <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> Visitas</span>
+        </PillButton>
+        <PillButton active={viewTab === "dados"} onClick={() => setViewTab("dados")}>
+          <span className="flex items-center gap-1"><Database className="h-3 w-3" /> Dados</span>
+        </PillButton>
+      </div>
+
       {/* ===================== VISITAS ===================== */}
+      {viewTab === "visitas" && <>
       <Card className="p-4 border-border bg-card space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
@@ -752,6 +767,7 @@ const RepKPIs = ({ userId }: Props) => {
           </ResponsiveContainer>
         </div>
       </Card>
+      </>}
 
 
       {/* Negociação Dialog */}
