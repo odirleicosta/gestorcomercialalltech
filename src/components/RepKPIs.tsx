@@ -50,7 +50,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [reps, setReps] = useState<Rep[]>([]);
   const [filterYear, setFilterYear] = useState(currentYear);
   const [filterWeek, setFilterWeek] = useState(currentWeek);
-  const [periodMode, setPeriodMode] = useState<PeriodMode>("semana");
+  const [periodMode, setPeriodMode] = useState<PeriodMode>("mes");
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
   const [filterQuarter, setFilterQuarter] = useState<string>(`T${Math.ceil((new Date().getMonth() + 1) / 3)}`);
   const [visits, setVisits] = useState<VisitRow[]>([]);
@@ -342,7 +342,7 @@ const RepKPIs = ({ userId }: Props) => {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
-              {(["semana", "mes", "trimestre", "ano"] as PeriodMode[]).map((mode) => {
+              {(["mes", "trimestre", "ano"] as PeriodMode[]).map((mode) => {
                 const labels: Record<PeriodMode, string> = { semana: "Semana", mes: "Mês", trimestre: "Trimestre", ano: "Ano" };
                 return (
                   <button
@@ -414,16 +414,6 @@ const RepKPIs = ({ userId }: Props) => {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={String(filterWeek)} onValueChange={(v) => setFilterWeek(Number(v))}>
-              <SelectTrigger className="w-36 text-xs h-8">
-                <Calendar className="h-4 w-4 mr-1" /><SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {weekOptions.map((w) => (
-                  <SelectItem key={w} value={String(w)}>Semana {w}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </div>
       </div>
@@ -463,6 +453,19 @@ const RepKPIs = ({ userId }: Props) => {
       {/* ═══ VISITAS ═══ */}
       {subTab === "visitas" && (<>
 
+      {/* Week selector for Visitas */}
+      <div className="flex items-center gap-2">
+        <Select value={String(filterWeek)} onValueChange={(v) => setFilterWeek(Number(v))}>
+          <SelectTrigger className="w-40 text-xs h-8">
+            <Calendar className="h-4 w-4 mr-1" /><SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {weekOptions.map((w) => (
+              <SelectItem key={w} value={String(w)}>Semana {w}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard
