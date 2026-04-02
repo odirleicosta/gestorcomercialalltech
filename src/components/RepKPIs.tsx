@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Eye, Users, Target, TrendingUp, Save, Calendar } from "lucide-react";
+import { Eye, Users, Target, TrendingUp, Save, Calendar, BarChart3 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from "recharts";
 
 interface Props {
   userId: string;
@@ -127,6 +128,16 @@ const RepKPIs = ({ userId }: Props) => {
     const media = visits.length > 0 ? totalVisitas / visits.length : 0;
     return { totalVisitas, totalMeta, pctEquipe, media };
   }, [visits]);
+
+  // Chart data
+  const chartData = useMemo(() =>
+    visits.map((v) => ({
+      nome: v.nome.split(" ").slice(0, 2).join(" "),
+      quantidade: v.quantidade,
+      meta: v.meta,
+    })),
+    [visits]
+  );
 
   // Week options (1-52)
   const weekOptions = useMemo(() => {
@@ -266,6 +277,53 @@ const RepKPIs = ({ userId }: Props) => {
           </TableBody>
         </Table>
       </Card>
+
+      {/* Chart */}
+      {visits.length > 0 && (
+        <Card className="p-4 sm:p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart3 className="h-5 w-5 text-primary" />
+            <h3 className="font-semibold text-foreground">Visitas por Representante</h3>
+          </div>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart
+              data={chartData}
+              margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <XAxis
+                dataKey="nome"
+                tick={{ fontSize: 11 }}
+                className="fill-muted-foreground"
+                interval={0}
+                angle={-25}
+                textAnchor="end"
+                height={60}
+              />
+              <YAxis allowDecimals={false} className="fill-muted-foreground" tick={{ fontSize: 12 }} />
+              <Tooltip
+                contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }}
+                formatter={(value: number) => [value, "Visitas"]}
+              />
+              <ReferenceLine y={DEFAULT_META} stroke="hsl(var(--muted-foreground))" strokeDasharray="4 4" label={{ value: `Meta ${DEFAULT_META}`, position: "right", fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+              <Bar dataKey="quantidade" radius={[6, 6, 0, 0]} maxBarSize={48}>
+                {chartData.map((entry, idx) => (
+                  <Cell
+                    key={idx}
+                    fill={
+                      entry.quantidade >= entry.meta
+                        ? "hsl(142 71% 45%)"
+                        : entry.quantidade >= entry.meta * 0.5
+                        ? "hsl(48 96% 53%)"
+                        : "hsl(var(--destructive))"
+                    }
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+      )}
 
       {/* Save button */}
       {visits.length > 0 && (
