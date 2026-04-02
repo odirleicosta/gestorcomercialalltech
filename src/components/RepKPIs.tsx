@@ -678,6 +678,66 @@ const RepKPIs = ({ userId }: Props) => {
           </div>
         )}
       </>)}
+
+      {/* ═══ METAS ═══ */}
+      {subTab === "metas" && (<>
+        {/* Month selector for goals */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground">Mês:</span>
+          {MONTHS.map((m, i) => (
+            <button
+              key={i}
+              onClick={() => setFilterMonth(i + 1)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${filterMonth === i + 1 ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+
+        {/* Goals KPI Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <KpiCard icon={<Flag className="h-5 w-5" />} label="Meta Valor Total" value={`R$ ${formatBrl(goalsKpis.totalValor)}`} color="text-primary" />
+          <KpiCard icon={<Target className="h-5 w-5" />} label="Meta Qtd Total" value={String(goalsKpis.totalQtd)} color="text-primary" />
+          <KpiCard icon={<Users className="h-5 w-5" />} label="Reps com Meta" value={`${goalsKpis.repsComMeta}/${goals.length}`} color="text-muted-foreground" />
+        </div>
+
+        {/* Goals Table */}
+        <Card className="overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="font-semibold">Representante</TableHead>
+                <TableHead className="text-center font-semibold w-40">Meta Valor (R$)</TableHead>
+                <TableHead className="text-center font-semibold w-36">Meta Quantidade</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {goals.map((row) => (
+                <TableRow key={row.representative_id}>
+                  <TableCell className="font-medium">{row.nome}</TableCell>
+                  <TableCell className="text-center">
+                    <Input type="number" min={0} className="w-28 mx-auto text-center h-9" value={row.meta_valor || ""} onChange={(e) => handleGoalChange(row.representative_id, "meta_valor", e.target.value)} placeholder="0" />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Input type="number" min={0} className="w-20 mx-auto text-center h-9" value={row.meta_quantidade || ""} onChange={(e) => handleGoalChange(row.representative_id, "meta_quantidade", e.target.value)} placeholder="0" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+
+        {/* Save Goals button */}
+        {goals.length > 0 && (
+          <div className="flex justify-end">
+            <Button onClick={handleSaveGoals} disabled={savingGoals} size="lg">
+              <Save className="h-4 w-4 mr-2" />
+              {savingGoals ? "Salvando..." : "Salvar Metas"}
+            </Button>
+          </div>
+        )}
+      </>)}
     </div>
   );
 };
