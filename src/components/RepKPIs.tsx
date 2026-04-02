@@ -1230,7 +1230,8 @@ const RepKPIs = ({ userId }: Props) => {
         const submotivoData = Object.entries(bySubmotivo).sort((a, b) => b[1] - a[1]).map(([submotivo, count]) => ({ submotivo, count }));
 
         const formatBrlFull = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        const formatDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("pt-BR");
+        const SHORT_MONTH_NAMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        const formatDate = (d: string) => { const dt = new Date(d + "T00:00:00"); return `${SHORT_MONTH_NAMES[dt.getMonth()]} ${dt.getFullYear()}`; };
         const periodLabel = periodMode === "mes" ? `${MONTHS[filterMonth - 1]} ${filterYear}` : periodMode === "trimestre" ? `${filterQuarter} ${filterYear}` : `${filterYear}`;
 
         return (
