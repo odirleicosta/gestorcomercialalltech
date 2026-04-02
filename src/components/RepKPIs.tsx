@@ -129,6 +129,16 @@ const RepKPIs = ({ userId }: Props) => {
     return { totalVisitas, totalMeta, pctEquipe, media };
   }, [visits]);
 
+  // Chart data
+  const chartData = useMemo(() =>
+    visits.map((v) => ({
+      nome: v.nome.split(" ").slice(0, 2).join(" "),
+      quantidade: v.quantidade,
+      meta: v.meta,
+    })),
+    [visits]
+  );
+
   // Week options (1-52)
   const weekOptions = useMemo(() => {
     const maxWeek = filterYear === currentYear ? currentWeek : 52;
