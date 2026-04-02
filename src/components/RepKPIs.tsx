@@ -1400,7 +1400,6 @@ const RepKPIs = ({ userId }: Props) => {
                         <TableCell className="text-sm">{reps.find(r => r.id === d.representative_id)?.nome || "—"}</TableCell>
                         <TableCell className="text-sm">{d.motivo_perda || "—"}</TableCell>
                         <TableCell className="text-sm text-center font-mono">{(d as any).quantidade || 1}</TableCell>
-                        <TableCell className="text-sm text-right font-mono tabular-nums">{formatBrlFull(d.deal_value)}</TableCell>
                         <TableCell>
                           <div className="flex gap-1">
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditLost(d)}>
