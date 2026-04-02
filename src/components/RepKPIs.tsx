@@ -255,45 +255,48 @@ const RepKPIs = ({ userId }: Props) => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with sub-tabs and filters */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-            <Eye className="h-5 w-5 text-primary" />
-            Visitas da Semana
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Controle semanal de visitas por representante
-          </p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSubTab("visitas")}
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "visitas" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+          >
+            <Eye className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+            Visitas
+          </button>
+          <button
+            onClick={() => setSubTab("oportunidades")}
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "oportunidades" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+          >
+            <Lightbulb className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+            Oportunidades
+          </button>
         </div>
         <div className="flex items-center gap-2">
           <Select value={String(filterYear)} onValueChange={(v) => setFilterYear(Number(v))}>
-            <SelectTrigger className="w-24">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
             <SelectContent>
               {[currentYear - 1, currentYear, currentYear + 1].map((y) => (
-                <SelectItem key={y} value={String(y)}>
-                  {y}
-                </SelectItem>
+                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
               ))}
             </SelectContent>
           </Select>
           <Select value={String(filterWeek)} onValueChange={(v) => setFilterWeek(Number(v))}>
             <SelectTrigger className="w-36">
-              <Calendar className="h-4 w-4 mr-1" />
-              <SelectValue />
+              <Calendar className="h-4 w-4 mr-1" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
               {weekOptions.map((w) => (
-                <SelectItem key={w} value={String(w)}>
-                  Semana {w}
-                </SelectItem>
+                <SelectItem key={w} value={String(w)}>Semana {w}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
       </div>
+
+      {/* ═══ VISITAS ═══ */}
+      {subTab === "visitas" && (<>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
