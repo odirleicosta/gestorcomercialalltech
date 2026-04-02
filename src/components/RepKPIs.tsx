@@ -8,8 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Eye, Users, Target, TrendingUp, Save, Calendar, BarChart3, Lightbulb, Flag, Filter, Activity } from "lucide-react";
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ReferenceLine, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
+import { Eye, Users, Target, TrendingUp, Save, Calendar, BarChart3, Lightbulb, Flag, Filter, Activity, XCircle, AlertTriangle } from "lucide-react";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ReferenceLine, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, PieChart, Pie } from "recharts";
 
 interface Props {
   userId: string;
@@ -45,7 +45,7 @@ const currentYear = new Date().getFullYear();
 const currentWeek = getWeekNumber(new Date());
 
 const RepKPIs = ({ userId }: Props) => {
-  const [subTab, setSubTab] = useState<"visitas" | "oportunidades" | "metas" | "desempenho">("desempenho");
+  const [subTab, setSubTab] = useState<"visitas" | "oportunidades" | "metas" | "desempenho" | "perdidas">("desempenho");
   const [filterRep, setFilterRep] = useState<string>("all");
   const [reps, setReps] = useState<Rep[]>([]);
   const [filterYear, setFilterYear] = useState(currentYear);
@@ -63,7 +63,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [allYearVisits, setAllYearVisits] = useState<{ representative_id: string; semana: number; quantidade: number; meta: number }[]>([]);
   const [allYearOpps, setAllYearOpps] = useState<{ representative_id: string; semana: number; qty_proprias: number; qty_sdr: number }[]>([]);
   const [allYearGoals, setAllYearGoals] = useState<{ representative_id: string; mes: number; meta_quantidade: number; machine_type: string }[]>([]);
-
+  const [lostDeals, setLostDeals] = useState<{ id: string; representative_id: string | null; client_name: string; machine_name: string; machine_type: string; deal_value: number; motivo_perda: string | null; motivo_perda_detalhe: string | null; created_at: string; updated_at: string }[]>([]);
 
   // Load reps
   useEffect(() => {
@@ -198,6 +198,20 @@ const RepKPIs = ({ userId }: Props) => {
     };
     load();
   }, [reps, filterYear, userId]);
+
+  // Load lost deals
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from("closing_deals")
+        .select("id, representative_id, client_name, machine_name, machine_type, deal_value, motivo_perda, motivo_perda_detalhe, created_at, updated_at")
+        .eq("user_id", userId)
+        .eq("status", "perdida")
+        .order("updated_at", { ascending: false });
+      setLostDeals(data || []);
+    };
+    load();
+  }, [userId]);
 
   const handleChange = useCallback((repId: string, value: string) => {
     const num = Math.max(0, parseInt(value) || 0);
@@ -426,6 +440,13 @@ const RepKPIs = ({ userId }: Props) => {
         >
           <Flag className="inline h-4 w-4 mr-1.5 -mt-0.5" />
           Metas
+        </button>
+        <button
+          onClick={() => setSubTab("perdidas")}
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "perdidas" ? "bg-destructive text-destructive-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+        >
+          <XCircle className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+          Perdidas
         </button>
       </div>
 
@@ -1086,6 +1107,234 @@ const RepKPIs = ({ userId }: Props) => {
                 </ResponsiveContainer>
               </Card>
             )}
+          </>
+        );
+      })()}
+
+      {/* ═══ NEGOCIAÇÕES PERDIDAS ═══ */}
+      {subTab === "perdidas" && (() => {
+        const COLORS_PIE = [
+          "hsl(var(--primary))", "hsl(var(--accent))", "hsl(var(--destructive))",
+          "hsl(var(--muted-foreground))", "hsl(210 80% 55%)", "hsl(30 90% 55%)",
+          "hsl(280 60% 55%)", "hsl(160 60% 45%)", "hsl(350 70% 55%)",
+        ];
+
+        // Filter by rep and year/month based on periodMode
+        const filtered = lostDeals.filter(d => {
+          if (filterRep !== "all" && d.representative_id !== filterRep) return false;
+          const dt = new Date(d.updated_at || d.created_at);
+          if (dt.getFullYear() !== filterYear) return false;
+          if (periodMode === "mes" && dt.getMonth() + 1 !== filterMonth) return false;
+          if (periodMode === "trimestre") {
+            const qMonths = QUARTER_MONTHS[filterQuarter] || [];
+            if (!qMonths.includes(dt.getMonth() + 1)) return false;
+          }
+          return true;
+        });
+
+        const total = filtered.length;
+        const totalValor = filtered.reduce((s, d) => s + (d.deal_value || 0), 0);
+
+        // By rep
+        const byRep: Record<string, number> = {};
+        filtered.forEach(d => {
+          const repName = reps.find(r => r.id === d.representative_id)?.nome || "Sem Rep";
+          byRep[repName] = (byRep[repName] || 0) + 1;
+        });
+        const repData = Object.entries(byRep).sort((a, b) => b[1] - a[1]).map(([nome, count]) => ({ nome, count }));
+
+        // By motivo
+        const byMotivo: Record<string, number> = {};
+        filtered.forEach(d => {
+          const motivo = d.motivo_perda || "Não informado";
+          byMotivo[motivo] = (byMotivo[motivo] || 0) + 1;
+        });
+        const motivoData = Object.entries(byMotivo).sort((a, b) => b[1] - a[1]).map(([motivo, count]) => ({
+          motivo, count, pct: total > 0 ? (count / total * 100) : 0,
+        }));
+
+        // By submotivo
+        const bySubmotivo: Record<string, number> = {};
+        filtered.forEach(d => {
+          const sub = d.motivo_perda_detalhe || "Não informado";
+          bySubmotivo[sub] = (bySubmotivo[sub] || 0) + 1;
+        });
+        const submotivoData = Object.entries(bySubmotivo).sort((a, b) => b[1] - a[1]).map(([submotivo, count]) => ({ submotivo, count }));
+
+        const formatBrlFull = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        const formatDate = (d: string) => new Date(d).toLocaleDateString("pt-BR");
+
+        const periodLabel = periodMode === "mes" ? `${MONTHS[filterMonth - 1]} ${filterYear}` : periodMode === "trimestre" ? `${filterQuarter} ${filterYear}` : `${filterYear}`;
+
+        return (
+          <>
+            {/* Filters */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Select value={filterRep} onValueChange={setFilterRep}>
+                <SelectTrigger className="w-[140px] text-xs h-8"><Users className="h-3.5 w-3.5 mr-1" /><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Equipe</SelectItem>
+                  {reps.map((r) => (<SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              <Select value={String(filterYear)} onValueChange={(v) => setFilterYear(Number(v))}>
+                <SelectTrigger className="w-24 text-xs h-8"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {[currentYear - 1, currentYear, currentYear + 1].map((y) => (<SelectItem key={y} value={String(y)}>{y}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              <Badge variant="outline" className="text-xs px-3 py-1">
+                <Calendar className="h-3 w-3 mr-1.5" />{periodLabel}
+              </Badge>
+            </div>
+
+            {/* KPI Summary */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <KpiCard icon={<XCircle className="h-5 w-5" />} label="Total Perdidas" value={String(total)} color="text-destructive" />
+              <KpiCard icon={<AlertTriangle className="h-5 w-5" />} label="Valor Perdido" value={totalValor >= 1000 ? `R$ ${(totalValor / 1000).toFixed(0)}k` : formatBrlFull(totalValor)} color="text-destructive" />
+              <KpiCard icon={<Users className="h-5 w-5" />} label="Reps Envolvidos" value={String(Object.keys(byRep).length)} color="text-muted-foreground" />
+              <KpiCard icon={<Flag className="h-5 w-5" />} label="Motivos Distintos" value={String(Object.keys(byMotivo).length)} color="text-muted-foreground" />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Por Representante */}
+              <Card className="p-4">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" /> Por Representante
+                </h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="font-semibold">Representante</TableHead>
+                      <TableHead className="text-center font-semibold w-20">Qtd</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {repData.map(r => (
+                      <TableRow key={r.nome}>
+                        <TableCell className="font-medium">{r.nome}</TableCell>
+                        <TableCell className="text-center font-bold">{r.count}</TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow className="bg-muted/30 font-bold">
+                      <TableCell>Total</TableCell>
+                      <TableCell className="text-center font-bold">{total}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </Card>
+
+              {/* Motivo da Perda */}
+              <Card className="p-4">
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-destructive" /> Motivo da Perda
+                </h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="font-semibold">Motivo</TableHead>
+                      <TableHead className="text-center font-semibold w-16">Qtd</TableHead>
+                      <TableHead className="text-right font-semibold w-16">%</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {motivoData.map(m => (
+                      <TableRow key={m.motivo}>
+                        <TableCell className="font-medium text-sm">{m.motivo}</TableCell>
+                        <TableCell className="text-center">{m.count}</TableCell>
+                        <TableCell className="text-right">{m.pct.toFixed(1)}%</TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow className="bg-muted/30 font-bold">
+                      <TableCell>Total</TableCell>
+                      <TableCell className="text-center font-bold">{total}</TableCell>
+                      <TableCell className="text-right font-bold">100%</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </Card>
+            </div>
+
+            {/* Motivo Chart */}
+            {motivoData.length > 0 && (
+              <Card className="p-4 sm:p-6">
+                <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-destructive" /> Motivos de Perda
+                </h3>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={motivoData} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis dataKey="motivo" type="category" width={180} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
+                    <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} formatter={(v: number) => [v, "Qtd"]} />
+                    <Bar dataKey="count" name="Qtd" fill="hsl(var(--destructive))" radius={[0, 6, 6, 0]} maxBarSize={32} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Card>
+            )}
+
+            {/* Submotivo */}
+            {submotivoData.length > 0 && submotivoData[0].submotivo !== "Não informado" && (
+              <Card className="p-4">
+                <h3 className="text-sm font-semibold text-foreground mb-3">Submotivo da Perda</h3>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="font-semibold">Submotivo</TableHead>
+                      <TableHead className="text-center font-semibold w-16">Qtd</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {submotivoData.map(s => (
+                      <TableRow key={s.submotivo}>
+                        <TableCell className="font-medium text-sm">{s.submotivo}</TableCell>
+                        <TableCell className="text-center">{s.count}</TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow className="bg-muted/30 font-bold">
+                      <TableCell>Total</TableCell>
+                      <TableCell className="text-center font-bold">{total}</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </Card>
+            )}
+
+            {/* Detail Table */}
+            <Card className="p-4 overflow-hidden">
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <XCircle className="h-4 w-4 text-destructive" /> Detalhamento
+              </h3>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="font-semibold">Data</TableHead>
+                      <TableHead className="font-semibold">Cliente</TableHead>
+                      <TableHead className="font-semibold">Máquina</TableHead>
+                      <TableHead className="font-semibold">Motivo</TableHead>
+                      <TableHead className="text-right font-semibold">Valor</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map(d => (
+                      <TableRow key={d.id}>
+                        <TableCell className="text-sm whitespace-nowrap">{formatDate(d.created_at)}</TableCell>
+                        <TableCell className="text-sm font-medium">{d.client_name}</TableCell>
+                        <TableCell className="text-sm">{d.machine_type} — {d.machine_name}</TableCell>
+                        <TableCell className="text-sm">{d.motivo_perda || "—"}</TableCell>
+                        <TableCell className="text-sm text-right font-mono tabular-nums">{formatBrlFull(d.deal_value)}</TableCell>
+                      </TableRow>
+                    ))}
+                    {filtered.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhuma negociação perdida no período.</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </Card>
           </>
         );
       })()}
