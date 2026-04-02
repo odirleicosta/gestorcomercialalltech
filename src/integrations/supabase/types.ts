@@ -879,6 +879,42 @@ export type Database = {
           },
         ]
       }
+      weekly_opportunities: {
+        Row: {
+          ano: number
+          created_at: string
+          id: string
+          qty_proprias: number
+          qty_sdr: number
+          representative_id: string
+          semana: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          id?: string
+          qty_proprias?: number
+          qty_sdr?: number
+          representative_id: string
+          semana: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          id?: string
+          qty_proprias?: number
+          qty_sdr?: number
+          representative_id?: string
+          semana?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       weekly_visits: {
         Row: {
           ano: number
