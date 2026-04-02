@@ -202,7 +202,26 @@ const RepKPIs = ({ userId }: Props) => {
     return Array.from({ length: maxWeek }, (_, i) => i + 1);
   }, [filterYear]);
 
-  return (
+  // Opportunities KPIs
+  const oppKpis = useMemo(() => {
+    const totalAberto = opportunities.reduce((s, o) => s + o.total, 0);
+    const totalProprias = opportunities.reduce((s, o) => s + o.proprias, 0);
+    const totalSdr = opportunities.reduce((s, o) => s + o.sdr, 0);
+    const pctProprias = totalAberto > 0 ? (totalProprias / totalAberto) * 100 : 0;
+    return { totalAberto, totalProprias, totalSdr, pctProprias };
+  }, [opportunities]);
+
+  const oppChartData = useMemo(() =>
+    opportunities
+      .filter((o) => o.total > 0)
+      .map((o) => ({
+        nome: o.nome.split(" ").slice(0, 2).join(" "),
+        proprias: o.proprias,
+        sdr: o.sdr,
+      })),
+    [opportunities]
+  );
+
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
