@@ -1,0 +1,1 @@
+ALTER TABLE public.closing_deals ADD COLUMN IF NOT EXISTS origem text NOT NULL DEFAULT 'Própria do representante';

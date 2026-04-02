@@ -145,6 +145,7 @@ export type Database = {
           motivo_perda_detalhe: string | null
           next_step: string | null
           notes: string | null
+          origem: string
           probability: Database["public"]["Enums"]["closing_deal_probability"]
           quantity: number
           representative_id: string | null
@@ -175,6 +176,7 @@ export type Database = {
           motivo_perda_detalhe?: string | null
           next_step?: string | null
           notes?: string | null
+          origem?: string
           probability?: Database["public"]["Enums"]["closing_deal_probability"]
           quantity?: number
           representative_id?: string | null
@@ -205,6 +207,7 @@ export type Database = {
           motivo_perda_detalhe?: string | null
           next_step?: string | null
           notes?: string | null
+          origem?: string
           probability?: Database["public"]["Enums"]["closing_deal_probability"]
           quantity?: number
           representative_id?: string | null
