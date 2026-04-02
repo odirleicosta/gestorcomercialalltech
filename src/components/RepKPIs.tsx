@@ -783,7 +783,7 @@ const RepKPIs = ({ userId }: Props) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {goals.map((row) => (
+              {filteredGoals.map((row) => (
                 <TableRow key={row.representative_id}>
                   <TableCell className="font-medium">{row.nome}</TableCell>
                   <TableCell className="text-center">
