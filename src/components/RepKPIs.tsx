@@ -60,7 +60,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [opportunities, setOpportunities] = useState<{ representative_id: string; nome: string; qty_proprias: number; qty_sdr: number }[]>([]);
   const [savingOpp, setSavingOpp] = useState(false);
   const [goals, setGoals] = useState<{ representative_id: string; nome: string; meta_quantidade: number; byType: Record<string, number> }[]>([]);
-  const [savingGoals, setSavingGoals] = useState(false);
+  
 
   // Load reps
   useEffect(() => {
