@@ -8,12 +8,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Eye, Users, Target, TrendingUp, Save, Calendar, BarChart3, Lightbulb, Flag } from "lucide-react";
+import { Eye, Users, Target, TrendingUp, Save, Calendar, BarChart3, Lightbulb, Flag, Filter } from "lucide-react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ReferenceLine } from "recharts";
 
 interface Props {
   userId: string;
 }
+
+type PeriodMode = "semana" | "mes" | "trimestre" | "ano";
 
 interface Rep {
   id: string;
@@ -26,6 +28,10 @@ interface VisitRow {
   meta: number;
   quantidade: number;
 }
+
+const QUARTER_MONTHS: Record<string, number[]> = {
+  T1: [1, 2, 3], T2: [4, 5, 6], T3: [7, 8, 9], T4: [10, 11, 12],
+};
 
 const DEFAULT_META = 16;
 
@@ -43,13 +49,15 @@ const RepKPIs = ({ userId }: Props) => {
   const [reps, setReps] = useState<Rep[]>([]);
   const [filterYear, setFilterYear] = useState(currentYear);
   const [filterWeek, setFilterWeek] = useState(currentWeek);
+  const [periodMode, setPeriodMode] = useState<PeriodMode>("semana");
+  const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
+  const [filterQuarter, setFilterQuarter] = useState<string>(`T${Math.ceil((new Date().getMonth() + 1) / 3)}`);
   const [visits, setVisits] = useState<VisitRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [weeklyHistory, setWeeklyHistory] = useState<{ semana: number; total: number; meta: number }[]>([]);
   const [opportunities, setOpportunities] = useState<{ representative_id: string; nome: string; qty_proprias: number; qty_sdr: number }[]>([]);
   const [savingOpp, setSavingOpp] = useState(false);
-  const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
   const [goals, setGoals] = useState<{ representative_id: string; nome: string; meta_valor: number; meta_quantidade: number }[]>([]);
   const [savingGoals, setSavingGoals] = useState(false);
 
@@ -375,6 +383,62 @@ const RepKPIs = ({ userId }: Props) => {
         </div>
       </div>
 
+      {/* Period mode toggle */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
+          {(["semana", "mes", "trimestre", "ano"] as PeriodMode[]).map((mode) => {
+            const labels: Record<PeriodMode, string> = { semana: "Semana", mes: "Mês", trimestre: "Trimestre", ano: "Ano" };
+            return (
+              <button
+                key={mode}
+                onClick={() => setPeriodMode(mode)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                  periodMode === mode
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-transparent text-muted-foreground hover:bg-secondary/80"
+                }`}
+              >
+                {labels[mode]}
+              </button>
+            );
+          })}
+        </div>
+        {periodMode === "trimestre" && (
+          <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
+            {["T1", "T2", "T3", "T4"].map((q) => (
+              <button
+                key={q}
+                onClick={() => setFilterQuarter(q)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                  filterQuarter === q
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-transparent text-muted-foreground hover:bg-secondary/80"
+                }`}
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        )}
+        {periodMode === "mes" && (
+          <div className="flex items-center gap-1 flex-wrap">
+            {MONTHS.map((m, i) => (
+              <button
+                key={m}
+                onClick={() => setFilterMonth(i + 1)}
+                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                  filterMonth === i + 1
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "bg-transparent text-muted-foreground hover:bg-secondary/80"
+                }`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* ═══ VISITAS ═══ */}
       {subTab === "visitas" && (<>
 
@@ -681,19 +745,6 @@ const RepKPIs = ({ userId }: Props) => {
 
       {/* ═══ METAS ═══ */}
       {subTab === "metas" && (<>
-        {/* Month selector for goals */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-muted-foreground">Mês:</span>
-          {MONTHS.map((m, i) => (
-            <button
-              key={i}
-              onClick={() => setFilterMonth(i + 1)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${filterMonth === i + 1 ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
-            >
-              {m}
-            </button>
-          ))}
-        </div>
 
         {/* Goals KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
