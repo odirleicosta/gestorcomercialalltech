@@ -423,68 +423,69 @@ const RepKPIs = ({ userId }: Props) => {
 
   const formatBrl = (v: number) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `${(v / 1_000).toFixed(0)}k` : String(v);
 
-  return (
-    <div className="space-y-6">
-      {/* Top row: Period mode + Year/Week + Rep filter */}
-      <div className="flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
-              {(["mes", "trimestre", "ano"] as PeriodMode[]).map((mode) => {
-                const labels: Record<PeriodMode, string> = { semana: "Semana", mes: "Mês", trimestre: "Trimestre", ano: "Ano" };
-                return (
-                  <button
-                    key={mode}
-                    onClick={() => setPeriodMode(mode)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                      periodMode === mode
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "bg-transparent text-muted-foreground hover:bg-secondary/80"
-                    }`}
-                  >
-                    {labels[mode]}
-                  </button>
-                );
-              })}
-            </div>
-            {periodMode === "trimestre" && (
-              <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
-                {["T1", "T2", "T3", "T4"].map((q) => (
-                  <button
-                    key={q}
-                    onClick={() => setFilterQuarter(q)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                      filterQuarter === q
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "bg-transparent text-muted-foreground hover:bg-secondary/80"
-                    }`}
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            )}
-            {periodMode === "mes" && (
-              <div className="flex items-center gap-1 flex-wrap">
-                {MONTHS.map((m, i) => (
-                  <button
-                    key={m}
-                    onClick={() => setFilterMonth(i + 1)}
-                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                      filterMonth === i + 1
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "bg-transparent text-muted-foreground hover:bg-secondary/80"
-                    }`}
-                  >
-                    {m}
-                  </button>
-                ))}
-              </div>
-            )}
+  const periodFilters = (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
+            {(["mes", "trimestre", "ano"] as PeriodMode[]).map((mode) => {
+              const labels: Record<PeriodMode, string> = { semana: "Semana", mes: "Mês", trimestre: "Trimestre", ano: "Ano" };
+              return (
+                <button
+                  key={mode}
+                  onClick={() => setPeriodMode(mode)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                    periodMode === mode
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-transparent text-muted-foreground hover:bg-secondary/80"
+                  }`}
+                >
+                  {labels[mode]}
+                </button>
+              );
+            })}
           </div>
+          {periodMode === "trimestre" && (
+            <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
+              {["T1", "T2", "T3", "T4"].map((q) => (
+                <button
+                  key={q}
+                  onClick={() => setFilterQuarter(q)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                    filterQuarter === q
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-transparent text-muted-foreground hover:bg-secondary/80"
+                  }`}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
+          {periodMode === "mes" && (
+            <div className="flex items-center gap-1 flex-wrap">
+              {MONTHS.map((m, i) => (
+                <button
+                  key={m}
+                  onClick={() => setFilterMonth(i + 1)}
+                  className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                    filterMonth === i + 1
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "bg-transparent text-muted-foreground hover:bg-secondary/80"
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
+    </div>
+  );
 
+  return (
+    <div className="space-y-6">
       {/* Sub-tabs */}
       <div className="flex items-center gap-2">
         <button
@@ -1031,6 +1032,9 @@ const RepKPIs = ({ userId }: Props) => {
 
         return (
           <>
+            {/* Period filters - only visible in Desempenho */}
+            {periodFilters}
+
             {/* Inline filters */}
             <div className="flex items-center gap-2 flex-wrap">
               <Select value={filterRep} onValueChange={setFilterRep}>
