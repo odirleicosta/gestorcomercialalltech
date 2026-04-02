@@ -199,7 +199,7 @@ const RepKPIs = ({ userId }: Props) => {
     const load = async () => {
       const [visRes, oppRes, goalRes] = await Promise.all([
         supabase.from("weekly_visits").select("representative_id, semana, quantidade, meta").eq("user_id", userId).eq("ano", filterYear),
-        supabase.from("weekly_opportunities").select("representative_id, semana, qty_proprias, qty_sdr").eq("user_id", userId).eq("ano", filterYear),
+        supabase.from("monthly_opportunities").select("representative_id, mes, qty_proprias, qty_sdr, quantidade").eq("user_id", userId).eq("ano", filterYear),
         supabase.from("monthly_goals").select("representative_id, mes, meta_quantidade, machine_type").eq("user_id", userId).eq("ano", filterYear),
       ]);
       setAllYearVisits(visRes.data || []);
