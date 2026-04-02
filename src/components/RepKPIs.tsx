@@ -1414,7 +1414,7 @@ const RepKPIs = ({ userId }: Props) => {
                     ))}
                     {filtered.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhuma negociação perdida no período.</TableCell>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma negociação perdida no período.</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
