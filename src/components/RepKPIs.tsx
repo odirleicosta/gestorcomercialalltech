@@ -46,6 +46,7 @@ const currentWeek = getWeekNumber(new Date());
 
 const RepKPIs = ({ userId }: Props) => {
   const [subTab, setSubTab] = useState<"visitas" | "oportunidades" | "metas">("visitas");
+  const [filterRep, setFilterRep] = useState<string>("all");
   const [reps, setReps] = useState<Rep[]>([]);
   const [filterYear, setFilterYear] = useState(currentYear);
   const [filterWeek, setFilterWeek] = useState(currentWeek);
@@ -211,23 +212,28 @@ const RepKPIs = ({ userId }: Props) => {
     }
   };
 
+  // Filtered data by rep
+  const filteredVisits = useMemo(() => filterRep === "all" ? visits : visits.filter(v => v.representative_id === filterRep), [visits, filterRep]);
+  const filteredOpportunities = useMemo(() => filterRep === "all" ? opportunities : opportunities.filter(o => o.representative_id === filterRep), [opportunities, filterRep]);
+  const filteredGoals = useMemo(() => filterRep === "all" ? goals : goals.filter(g => g.representative_id === filterRep), [goals, filterRep]);
+
   // KPIs
   const kpis = useMemo(() => {
-    const totalVisitas = visits.reduce((s, v) => s + v.quantidade, 0);
-    const totalMeta = visits.reduce((s, v) => s + v.meta, 0);
+    const totalVisitas = filteredVisits.reduce((s, v) => s + v.quantidade, 0);
+    const totalMeta = filteredVisits.reduce((s, v) => s + v.meta, 0);
     const pctEquipe = totalMeta > 0 ? (totalVisitas / totalMeta) * 100 : 0;
-    const media = visits.length > 0 ? totalVisitas / visits.length : 0;
+    const media = filteredVisits.length > 0 ? totalVisitas / filteredVisits.length : 0;
     return { totalVisitas, totalMeta, pctEquipe, media };
-  }, [visits]);
+  }, [filteredVisits]);
 
   // Chart data
   const chartData = useMemo(() =>
-    visits.map((v) => ({
+    filteredVisits.map((v) => ({
       nome: v.nome.split(" ").slice(0, 2).join(" "),
       quantidade: v.quantidade,
       meta: v.meta,
     })),
-    [visits]
+    [filteredVisits]
   );
 
   // Week options (1-52)
@@ -238,22 +244,22 @@ const RepKPIs = ({ userId }: Props) => {
 
   // Opportunities KPIs
   const oppKpis = useMemo(() => {
-    const totalProprias = opportunities.reduce((s, o) => s + o.qty_proprias, 0);
-    const totalSdr = opportunities.reduce((s, o) => s + o.qty_sdr, 0);
+    const totalProprias = filteredOpportunities.reduce((s, o) => s + o.qty_proprias, 0);
+    const totalSdr = filteredOpportunities.reduce((s, o) => s + o.qty_sdr, 0);
     const totalAberto = totalProprias + totalSdr;
     const pctProprias = totalAberto > 0 ? (totalProprias / totalAberto) * 100 : 0;
     return { totalAberto, totalProprias, totalSdr, pctProprias };
-  }, [opportunities]);
+  }, [filteredOpportunities]);
 
   const oppChartData = useMemo(() =>
-    opportunities
+    filteredOpportunities
       .filter((o) => o.qty_proprias + o.qty_sdr > 0)
       .map((o) => ({
         nome: o.nome.split(" ").slice(0, 2).join(" "),
         proprias: o.qty_proprias,
         sdr: o.qty_sdr,
       })),
-    [opportunities]
+    [filteredOpportunities]
   );
 
   const handleOppChange = useCallback((repId: string, field: "qty_proprias" | "qty_sdr", value: string) => {
@@ -326,117 +332,130 @@ const RepKPIs = ({ userId }: Props) => {
   const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
   const goalsKpis = useMemo(() => {
-    const totalValor = goals.reduce((s, g) => s + g.meta_valor, 0);
-    const totalQtd = goals.reduce((s, g) => s + g.meta_quantidade, 0);
-    const repsComMeta = goals.filter((g) => g.meta_valor > 0 || g.meta_quantidade > 0).length;
+    const totalValor = filteredGoals.reduce((s, g) => s + g.meta_valor, 0);
+    const totalQtd = filteredGoals.reduce((s, g) => s + g.meta_quantidade, 0);
+    const repsComMeta = filteredGoals.filter((g) => g.meta_valor > 0 || g.meta_quantidade > 0).length;
     return { totalValor, totalQtd, repsComMeta };
-  }, [goals]);
+  }, [filteredGoals]);
 
   const formatBrl = (v: number) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `${(v / 1_000).toFixed(0)}k` : String(v);
 
   return (
     <div className="space-y-6">
-      {/* Header with sub-tabs and filters */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setSubTab("visitas")}
-            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "visitas" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
-          >
-            <Eye className="inline h-4 w-4 mr-1.5 -mt-0.5" />
-            Visitas
-          </button>
-          <button
-            onClick={() => setSubTab("oportunidades")}
-            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "oportunidades" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
-          >
-            <Lightbulb className="inline h-4 w-4 mr-1.5 -mt-0.5" />
-            Oportunidades
-          </button>
-          <button
-            onClick={() => setSubTab("metas")}
-            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "metas" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
-          >
-            <Flag className="inline h-4 w-4 mr-1.5 -mt-0.5" />
-            Metas
-          </button>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select value={String(filterYear)} onValueChange={(v) => setFilterYear(Number(v))}>
-            <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {[currentYear - 1, currentYear, currentYear + 1].map((y) => (
-                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={String(filterWeek)} onValueChange={(v) => setFilterWeek(Number(v))}>
-            <SelectTrigger className="w-36">
-              <Calendar className="h-4 w-4 mr-1" /><SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {weekOptions.map((w) => (
-                <SelectItem key={w} value={String(w)}>Semana {w}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {/* Top row: Period mode + Year/Week + Rep filter */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
+              {(["semana", "mes", "trimestre", "ano"] as PeriodMode[]).map((mode) => {
+                const labels: Record<PeriodMode, string> = { semana: "Semana", mes: "Mês", trimestre: "Trimestre", ano: "Ano" };
+                return (
+                  <button
+                    key={mode}
+                    onClick={() => setPeriodMode(mode)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                      periodMode === mode
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-transparent text-muted-foreground hover:bg-secondary/80"
+                    }`}
+                  >
+                    {labels[mode]}
+                  </button>
+                );
+              })}
+            </div>
+            {periodMode === "trimestre" && (
+              <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
+                {["T1", "T2", "T3", "T4"].map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => setFilterQuarter(q)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                      filterQuarter === q
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-transparent text-muted-foreground hover:bg-secondary/80"
+                    }`}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
+            {periodMode === "mes" && (
+              <div className="flex items-center gap-1 flex-wrap">
+                {MONTHS.map((m, i) => (
+                  <button
+                    key={m}
+                    onClick={() => setFilterMonth(i + 1)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                      filterMonth === i + 1
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-transparent text-muted-foreground hover:bg-secondary/80"
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={filterRep} onValueChange={setFilterRep}>
+              <SelectTrigger className="w-[140px] text-xs h-8">
+                <Users className="h-3.5 w-3.5 mr-1" /><SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Equipe</SelectItem>
+                {reps.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={String(filterYear)} onValueChange={(v) => setFilterYear(Number(v))}>
+              <SelectTrigger className="w-24 text-xs h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[currentYear - 1, currentYear, currentYear + 1].map((y) => (
+                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={String(filterWeek)} onValueChange={(v) => setFilterWeek(Number(v))}>
+              <SelectTrigger className="w-36 text-xs h-8">
+                <Calendar className="h-4 w-4 mr-1" /><SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {weekOptions.map((w) => (
+                  <SelectItem key={w} value={String(w)}>Semana {w}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
-      {/* Period mode toggle */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
-          {(["semana", "mes", "trimestre", "ano"] as PeriodMode[]).map((mode) => {
-            const labels: Record<PeriodMode, string> = { semana: "Semana", mes: "Mês", trimestre: "Trimestre", ano: "Ano" };
-            return (
-              <button
-                key={mode}
-                onClick={() => setPeriodMode(mode)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                  periodMode === mode
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-transparent text-muted-foreground hover:bg-secondary/80"
-                }`}
-              >
-                {labels[mode]}
-              </button>
-            );
-          })}
-        </div>
-        {periodMode === "trimestre" && (
-          <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
-            {["T1", "T2", "T3", "T4"].map((q) => (
-              <button
-                key={q}
-                onClick={() => setFilterQuarter(q)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                  filterQuarter === q
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-transparent text-muted-foreground hover:bg-secondary/80"
-                }`}
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-        )}
-        {periodMode === "mes" && (
-          <div className="flex items-center gap-1 flex-wrap">
-            {MONTHS.map((m, i) => (
-              <button
-                key={m}
-                onClick={() => setFilterMonth(i + 1)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                  filterMonth === i + 1
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-transparent text-muted-foreground hover:bg-secondary/80"
-                }`}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
-        )}
+      {/* Sub-tabs */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setSubTab("visitas")}
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "visitas" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+        >
+          <Eye className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+          Visitas
+        </button>
+        <button
+          onClick={() => setSubTab("oportunidades")}
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "oportunidades" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+        >
+          <Lightbulb className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+          Oportunidades
+        </button>
+        <button
+          onClick={() => setSubTab("metas")}
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "metas" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+        >
+          <Flag className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+          Metas
+        </button>
       </div>
 
       {/* ═══ VISITAS ═══ */}
@@ -482,7 +501,7 @@ const RepKPIs = ({ userId }: Props) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {visits.map((row) => {
+            {filteredVisits.map((row) => {
               const pct = row.meta > 0 ? (row.quantidade / row.meta) * 100 : 0;
               return (
                 <TableRow key={row.representative_id}>
@@ -688,7 +707,7 @@ const RepKPIs = ({ userId }: Props) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {opportunities.map((row) => {
+              {filteredOpportunities.map((row) => {
                 const total = row.qty_proprias + row.qty_sdr;
                 const pct = total > 0 ? (row.qty_proprias / total) * 100 : 0;
                 return (
@@ -764,7 +783,7 @@ const RepKPIs = ({ userId }: Props) => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {goals.map((row) => (
+              {filteredGoals.map((row) => (
                 <TableRow key={row.representative_id}>
                   <TableCell className="font-medium">{row.nome}</TableCell>
                   <TableCell className="text-center">
