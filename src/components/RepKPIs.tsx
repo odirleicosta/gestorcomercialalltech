@@ -476,7 +476,82 @@ const RepKPIs = ({ userId }: Props) => {
         </Card>
       )}
 
-      {/* Save button */}
+      {/* ── Oportunidades por Criação ── */}
+      <div className="border-t border-border pt-6 mt-2">
+        <div className="flex items-center gap-2 mb-4">
+          <Lightbulb className="h-5 w-5 text-primary" />
+          <h2 className="text-xl font-bold text-foreground">Oportunidades por Criação</h2>
+          <Badge variant="outline" className="ml-auto">{filterYear}</Badge>
+        </div>
+
+        {/* Opp KPI Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <KpiCard icon={<Lightbulb className="h-5 w-5" />} label="Total Abertas" value={String(oppKpis.totalAberto)} color="text-primary" />
+          <KpiCard icon={<Users className="h-5 w-5" />} label="Próprias Rep." value={String(oppKpis.totalProprias)} color="text-green-500" />
+          <KpiCard icon={<Target className="h-5 w-5" />} label="SDR / Interno" value={String(oppKpis.totalSdr)} color="text-yellow-500" />
+          <KpiCard icon={<TrendingUp className="h-5 w-5" />} label="% Geração Própria" value={`${oppKpis.pctProprias.toFixed(1)}%`} color={oppKpis.pctProprias >= 50 ? "text-green-500" : "text-yellow-500"} />
+        </div>
+
+        {/* Opp Table */}
+        <Card className="overflow-hidden mb-6">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="font-semibold">Representante</TableHead>
+                <TableHead className="text-center font-semibold">Abertas</TableHead>
+                <TableHead className="text-center font-semibold">Próprias</TableHead>
+                <TableHead className="text-center font-semibold">SDR/Interno</TableHead>
+                <TableHead className="text-center font-semibold">% Próprias</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {opportunities.map((row) => {
+                const pct = row.total > 0 ? (row.proprias / row.total) * 100 : 0;
+                return (
+                  <TableRow key={row.representative_id}>
+                    <TableCell className="font-medium">{row.nome}</TableCell>
+                    <TableCell className="text-center font-semibold">{row.total}</TableCell>
+                    <TableCell className="text-center text-green-600 font-semibold">{row.proprias}</TableCell>
+                    <TableCell className="text-center text-yellow-600 font-semibold">{row.sdr}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={pct >= 50 ? "default" : "secondary"}>{pct.toFixed(1)}%</Badge>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              {opportunities.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                    Nenhuma oportunidade registrada no período.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </Card>
+
+        {/* Opp Stacked Bar Chart */}
+        {oppChartData.length > 0 && (
+          <Card className="p-4 sm:p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-foreground">Origem das Oportunidades por Representante</h3>
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={oppChartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <XAxis dataKey="nome" tick={{ fontSize: 11 }} className="fill-muted-foreground" interval={0} angle={-25} textAnchor="end" height={60} />
+                <YAxis allowDecimals={false} className="fill-muted-foreground" tick={{ fontSize: 12 }} />
+                <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} />
+                <Legend />
+                <Bar dataKey="proprias" name="Próprias" stackId="a" fill="hsl(142 71% 45%)" radius={[0, 0, 0, 0]} maxBarSize={48} />
+                <Bar dataKey="sdr" name="SDR / Interno" stackId="a" fill="hsl(48 96% 53%)" radius={[6, 6, 0, 0]} maxBarSize={48} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        )}
+      </div>
+
       {visits.length > 0 && (
         <div className="flex justify-end">
           <Button onClick={handleSave} disabled={saving} size="lg">
