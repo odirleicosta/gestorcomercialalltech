@@ -586,10 +586,173 @@ const RepKPIs = ({ userId }: Props) => {
         <KpiCard icon={<FileText className="h-4 w-4" />} label={`Neg. Abertas (${periodLabel})`} value={String(openByRep.reduce((s, r) => s + r.total, 0))} sub={`Radar: ${openByRep.reduce((s, r) => s + r.radar, 0)} | Vendas: ${openByRep.reduce((s, r) => s + r.vendas, 0)}`} color="bg-primary/10 text-primary" />
         <KpiCard icon={<CheckCircle className="h-4 w-4" />} label="Win Rate" value={formatPct(globalKpis.globalWinRate)} sub={`${globalKpis.totalWon}W / ${globalKpis.totalLost}L`} color="bg-accent/10 text-accent" />
       </div>
+      {/* ===================== VISITAS ===================== */}
+      <Card className="p-4 border-border bg-card space-y-4">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Eye className="h-4 w-4 text-primary" /> Registro de Visitas Semanais — {filterYear}
+          </h3>
+          <div className="flex items-center gap-2">
+            <Select value={visitRepFilter} onValueChange={setVisitRepFilter}>
+              <SelectTrigger className="h-8 text-xs w-[160px] bg-secondary/50 border-border">
+                <SelectValue placeholder="Filtrar..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Toda a Equipe</SelectItem>
+                {reps.map(r => <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Label className="text-xs text-muted-foreground">Semana:</Label>
+            <Select value={String(visitEditWeek)} onValueChange={v => setVisitEditWeek(parseInt(v))}>
+              <SelectTrigger className="w-[100px] bg-secondary/50 border-border text-xs h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 52 }, (_, i) => i + 1).map(w => (
+                  <SelectItem key={w} value={String(w)}>Sem {w}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
 
+        {/* Editable table */}
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="text-xs">Representante</TableHead>
+                <TableHead className="text-xs text-center">Meta</TableHead>
+                <TableHead className="text-xs text-center">Realizadas</TableHead>
+                <TableHead className="text-xs text-center">%</TableHead>
+                <TableHead className="text-xs text-center">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(visitRepFilter === "all" ? reps : reps.filter(r => r.id === visitRepFilter)).map(rep => {
+                const existing = allVisits.find(v => v.representative_id === rep.id && v.semana === visitEditWeek && v.ano === filterYear);
+                const inlineKey = `${rep.id}-${visitEditWeek}`;
+                const inlineEntry = visitInlineEntries[inlineKey];
+                const meta = inlineEntry?.meta ?? existing?.meta ?? 16;
+                const qtd = inlineEntry?.quantidade ?? existing?.quantidade ?? 0;
+                const pct = meta > 0 ? (qtd / meta) * 100 : 0;
+                const statusColor = pct >= 100 ? "text-accent" : pct >= 75 ? "text-foreground" : "text-destructive";
+                return (
+                  <TableRow key={rep.id}>
+                    <TableCell className="text-xs font-medium">{rep.nome}</TableCell>
+                    <TableCell className="text-center">
+                      <Input
+                        type="number"
+                        value={meta}
+                        onChange={e => {
+                          setVisitInlineEntries(prev => ({
+                            ...prev,
+                            [inlineKey]: { meta: Number(e.target.value), quantidade: prev[inlineKey]?.quantidade ?? qtd },
+                          }));
+                        }}
+                        className="h-8 w-16 text-xs text-center mx-auto"
+                      />
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Input
+                        type="number"
+                        value={qtd}
+                        onChange={e => {
+                          setVisitInlineEntries(prev => ({
+                            ...prev,
+                            [inlineKey]: { meta: prev[inlineKey]?.meta ?? meta, quantidade: Number(e.target.value) },
+                          }));
+                        }}
+                        className="h-8 w-16 text-xs text-center mx-auto"
+                      />
+                    </TableCell>
+                    <TableCell className={`text-xs text-center font-semibold ${statusColor}`}>{formatPct(pct)}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={pct >= 100 ? "default" : pct >= 75 ? "secondary" : "destructive"} className="text-[10px]">
+                        {pct >= 100 ? "✅ Atingiu" : pct >= 75 ? "⚠️ Parcial" : "❌ Abaixo"}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+        <Button
+          className="w-full h-9 text-sm gap-2"
+          disabled={visitSaving}
+          onClick={async () => {
+            setVisitSaving(true);
+            const targetReps = visitRepFilter === "all" ? reps : reps.filter(r => r.id === visitRepFilter);
+            for (const rep of targetReps) {
+              const key = `${rep.id}-${visitEditWeek}`;
+              const existing = allVisits.find(v => v.representative_id === rep.id && v.semana === visitEditWeek && v.ano === filterYear);
+              const entry = visitInlineEntries[key];
+              const meta = entry?.meta ?? existing?.meta ?? 16;
+              const qtd = entry?.quantidade ?? existing?.quantidade ?? 0;
+              await supabase.from("weekly_visits" as any).upsert({
+                user_id: userId,
+                representative_id: rep.id,
+                ano: filterYear,
+                semana: visitEditWeek,
+                meta,
+                quantidade: qtd,
+              } as any, { onConflict: "representative_id,ano,semana" });
+            }
+            const { data } = await supabase.from("weekly_visits" as any).select("representative_id, semana, quantidade, meta, ano").eq("ano", filterYear);
+            if (data) { setVisits(data as any); setAllVisits(data as any); }
+            setVisitInlineEntries({});
+            setVisitSaving(false);
+            toast.success("Visitas salvas!");
+          }}
+        >
+          <Save className="h-4 w-4" />
+          {visitSaving ? "Salvando..." : "Salvar Visitas"}
+        </Button>
+      </Card>
 
+      {/* Evolução de Visitas - Chart */}
+      <Card className="p-4 border-border bg-card">
+        <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-primary" /> Evolução de Visitas — {filterYear}
+          {visitRepFilter !== "all" && (
+            <Badge variant="outline" className="text-[10px]">
+              {reps.find(r => r.id === visitRepFilter)?.nome || ""}
+            </Badge>
+          )}
+        </h3>
+        <div className="h-[250px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={(() => {
+              const currentWeek = getWeekNumber(now);
+              const weeks: { semana: string; realizadas: number; meta: number }[] = [];
+              for (let w = Math.max(1, currentWeek - 11); w <= currentWeek; w++) {
+                const weekVisits = allVisits.filter(v => {
+                  if (v.semana !== w || v.ano !== filterYear) return false;
+                  if (visitRepFilter !== "all") return v.representative_id === visitRepFilter;
+                  return true;
+                });
+                const totalRealizadas = weekVisits.reduce((s, v) => s + (v.quantidade || 0), 0);
+                const totalMeta = weekVisits.reduce((s, v) => s + (v.meta || 0), 0) || (visitRepFilter === "all" ? reps.length * 16 : 16);
+                weeks.push({ semana: `S${w}`, realizadas: totalRealizadas, meta: totalMeta });
+              }
+              return weeks;
+            })()}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="semana" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+              <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
+                labelStyle={{ color: "hsl(var(--foreground))" }}
+              />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="meta" name="Meta" fill="hsl(var(--muted-foreground))" opacity={0.3} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="realizadas" name="Realizadas" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
 
-      {/* ===================== DIALOGS ===================== */}
 
       {/* Negociação Dialog */}
       <Dialog open={negDialogOpen} onOpenChange={(v) => { setNegDialogOpen(v); if (!v) resetNegForm(); }}>
