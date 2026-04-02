@@ -598,6 +598,7 @@ const RepKPIs = ({ userId }: Props) => {
           </div>
         )}
       </>)}
+    </div>
   );
 };
 
