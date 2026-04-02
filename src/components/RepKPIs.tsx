@@ -15,6 +15,8 @@ interface Props {
   userId: string;
 }
 
+type PeriodMode = "semana" | "mes" | "trimestre" | "ano";
+
 interface Rep {
   id: string;
   nome: string;
@@ -26,6 +28,10 @@ interface VisitRow {
   meta: number;
   quantidade: number;
 }
+
+const QUARTER_MONTHS: Record<string, number[]> = {
+  T1: [1, 2, 3], T2: [4, 5, 6], T3: [7, 8, 9], T4: [10, 11, 12],
+};
 
 const DEFAULT_META = 16;
 
