@@ -165,13 +165,14 @@ const RepKPIs = ({ userId }: Props) => {
 
       const rows = reps.map((r) => {
         const repGoals = (data || []).filter((d: any) => d.representative_id === r.id);
-        const meta_valor = repGoals.reduce((s: number, g: any) => s + (g.meta_valor || 0), 0);
         const meta_quantidade = repGoals.reduce((s: number, g: any) => s + (g.meta_quantidade || 0), 0);
+        const byType: Record<string, number> = {};
+        repGoals.forEach((g: any) => { if (g.machine_type && g.meta_quantidade > 0) byType[g.machine_type] = (byType[g.machine_type] || 0) + g.meta_quantidade; });
         return {
           representative_id: r.id,
           nome: r.nome,
-          meta_valor,
           meta_quantidade,
+          byType,
         };
       });
       setGoals(rows);
