@@ -49,13 +49,15 @@ const RepKPIs = ({ userId }: Props) => {
   const [reps, setReps] = useState<Rep[]>([]);
   const [filterYear, setFilterYear] = useState(currentYear);
   const [filterWeek, setFilterWeek] = useState(currentWeek);
+  const [periodMode, setPeriodMode] = useState<PeriodMode>("semana");
+  const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
+  const [filterQuarter, setFilterQuarter] = useState<string>(`T${Math.ceil((new Date().getMonth() + 1) / 3)}`);
   const [visits, setVisits] = useState<VisitRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [weeklyHistory, setWeeklyHistory] = useState<{ semana: number; total: number; meta: number }[]>([]);
   const [opportunities, setOpportunities] = useState<{ representative_id: string; nome: string; qty_proprias: number; qty_sdr: number }[]>([]);
   const [savingOpp, setSavingOpp] = useState(false);
-  const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
   const [goals, setGoals] = useState<{ representative_id: string; nome: string; meta_valor: number; meta_quantidade: number }[]>([]);
   const [savingGoals, setSavingGoals] = useState(false);
 
