@@ -228,12 +228,12 @@ const RepKPIs = ({ userId }: Props) => {
 
   // Chart data
   const chartData = useMemo(() =>
-    visits.map((v) => ({
+    filteredVisits.map((v) => ({
       nome: v.nome.split(" ").slice(0, 2).join(" "),
       quantidade: v.quantidade,
       meta: v.meta,
     })),
-    [visits]
+    [filteredVisits]
   );
 
   // Week options (1-52)
