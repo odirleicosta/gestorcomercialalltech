@@ -1230,7 +1230,8 @@ const RepKPIs = ({ userId }: Props) => {
         const submotivoData = Object.entries(bySubmotivo).sort((a, b) => b[1] - a[1]).map(([submotivo, count]) => ({ submotivo, count }));
 
         const formatBrlFull = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-        const formatDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("pt-BR");
+        const SHORT_MONTH_NAMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+        const formatDate = (d: string) => { const dt = new Date(d + "T00:00:00"); return `${SHORT_MONTH_NAMES[dt.getMonth()]} ${dt.getFullYear()}`; };
         const periodLabel = periodMode === "mes" ? `${MONTHS[filterMonth - 1]} ${filterYear}` : periodMode === "trimestre" ? `${filterQuarter} ${filterYear}` : `${filterYear}`;
 
         return (
@@ -1387,7 +1388,6 @@ const RepKPIs = ({ userId }: Props) => {
                       <TableHead className="font-semibold">Rep</TableHead>
                       <TableHead className="font-semibold">Motivo</TableHead>
                       <TableHead className="text-center font-semibold w-14">Qtd</TableHead>
-                      <TableHead className="text-right font-semibold">Valor</TableHead>
                       <TableHead className="w-20" />
                     </TableRow>
                   </TableHeader>
@@ -1400,7 +1400,6 @@ const RepKPIs = ({ userId }: Props) => {
                         <TableCell className="text-sm">{reps.find(r => r.id === d.representative_id)?.nome || "—"}</TableCell>
                         <TableCell className="text-sm">{d.motivo_perda || "—"}</TableCell>
                         <TableCell className="text-sm text-center font-mono">{(d as any).quantidade || 1}</TableCell>
-                        <TableCell className="text-sm text-right font-mono tabular-nums">{formatBrlFull(d.deal_value)}</TableCell>
                         <TableCell>
                           <div className="flex gap-1">
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditLost(d)}>
@@ -1415,7 +1414,7 @@ const RepKPIs = ({ userId }: Props) => {
                     ))}
                     {filtered.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhuma negociação perdida no período.</TableCell>
+                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma negociação perdida no período.</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
