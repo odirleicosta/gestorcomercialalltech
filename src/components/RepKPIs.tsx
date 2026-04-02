@@ -351,6 +351,35 @@ const RepKPIs = ({ userId }: Props) => {
         </Card>
       )}
 
+      {/* Weekly Evolution Line Chart */}
+      {weeklyHistory.length > 1 && (
+        <Card className="p-4 sm:p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            <h3 className="font-semibold text-foreground">Evolução Semanal — Equipe {filterYear}</h3>
+          </div>
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={weeklyHistory} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <XAxis
+                dataKey="semana"
+                tickFormatter={(v) => `S${v}`}
+                className="fill-muted-foreground"
+                tick={{ fontSize: 11 }}
+              />
+              <YAxis allowDecimals={false} className="fill-muted-foreground" tick={{ fontSize: 12 }} />
+              <Tooltip
+                contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }}
+                labelFormatter={(v) => `Semana ${v}`}
+                formatter={(value: number, name: string) => [value, name === "total" ? "Visitas" : "Meta"]}
+              />
+              <Line type="monotone" dataKey="total" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} name="total" />
+              <Line type="monotone" dataKey="meta" stroke="hsl(var(--muted-foreground))" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="meta" />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+      )}
+
       {/* Save button */}
       {visits.length > 0 && (
         <div className="flex justify-end">
