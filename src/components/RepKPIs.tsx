@@ -227,7 +227,14 @@ const RepKPIs = ({ userId }: Props) => {
 
   useEffect(() => { loadLostDeals(); }, [loadLostDeals]);
 
-  const MOTIVOS_PERDA = ["Preço", "Concorrência", "Cancelamento do Projeto", "Sem Investimento", "Cliente Curioso", "Postergação", "Outro"];
+  const DEFAULT_MOTIVOS = ["Preço", "Concorrência", "Cancelamento do Projeto", "Sem Investimento", "Cliente Curioso", "Postergação", "Comprou máquina usada", "Relacionamento com o cliente"];
+  const MOTIVOS_PERDA = useMemo(() => {
+    const fromDb = lostDeals.map(d => d.motivo_perda).filter(Boolean) as string[];
+    const all = new Set([...DEFAULT_MOTIVOS, ...fromDb]);
+    return Array.from(all).sort();
+  }, [lostDeals]);
+  const [addingCustomMotivo, setAddingCustomMotivo] = useState(false);
+  const [customMotivo, setCustomMotivo] = useState("");
 
   const resetLostForm = () => {
     setLostForm({ representative_id: "", client_name: "", machine_name: "", machine_type: "", deal_value: "", motivo_perda: "", motivo_perda_detalhe: "", data_perda: new Date().toISOString().slice(0, 10), notes: "" });
@@ -1462,12 +1469,29 @@ const RepKPIs = ({ userId }: Props) => {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs">Motivo da Perda *</Label>
-                      <Select value={lostForm.motivo_perda} onValueChange={v => setLostForm(f => ({ ...f, motivo_perda: v }))}>
-                        <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                        <SelectContent>
-                          {MOTIVOS_PERDA.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                      {addingCustomMotivo ? (
+                        <div className="flex gap-1">
+                          <Input value={customMotivo} onChange={e => setCustomMotivo(e.target.value)} placeholder="Novo motivo" className="h-9" autoFocus />
+                          <Button size="sm" className="h-9 px-2" onClick={() => {
+                            if (customMotivo.trim()) {
+                              setLostForm(f => ({ ...f, motivo_perda: customMotivo.trim() }));
+                              setCustomMotivo("");
+                              setAddingCustomMotivo(false);
+                            }
+                          }}>OK</Button>
+                          <Button size="sm" variant="ghost" className="h-9 px-2" onClick={() => { setAddingCustomMotivo(false); setCustomMotivo(""); }}>✕</Button>
+                        </div>
+                      ) : (
+                        <Select value={lostForm.motivo_perda} onValueChange={v => {
+                          if (v === "__novo__") { setAddingCustomMotivo(true); } else { setLostForm(f => ({ ...f, motivo_perda: v })); }
+                        }}>
+                          <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                          <SelectContent>
+                            {MOTIVOS_PERDA.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                            <SelectItem value="__novo__" className="text-primary font-medium">+ Adicionar novo motivo</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
                     <div>
                       <Label className="text-xs">Submotivo / Detalhe</Label>
