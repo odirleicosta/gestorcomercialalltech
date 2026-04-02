@@ -745,19 +745,6 @@ const RepKPIs = ({ userId }: Props) => {
 
       {/* ═══ METAS ═══ */}
       {subTab === "metas" && (<>
-        {/* Month selector for goals */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-muted-foreground">Mês:</span>
-          {MONTHS.map((m, i) => (
-            <button
-              key={i}
-              onClick={() => setFilterMonth(i + 1)}
-              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${filterMonth === i + 1 ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
-            >
-              {m}
-            </button>
-          ))}
-        </div>
 
         {/* Goals KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
