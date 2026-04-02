@@ -223,11 +223,12 @@ const RepKPIs = ({ userId }: Props) => {
   useEffect(() => { loadLostDeals(); }, [loadLostDeals]);
 
   const DEFAULT_MOTIVOS = ["Preço", "Concorrência", "Cancelamento do Projeto", "Sem Investimento", "Cliente Curioso", "Postergação", "Comprou máquina usada", "Relacionamento com o cliente"];
+  const [customMotivos, setCustomMotivos] = useState<string[]>([]);
   const MOTIVOS_PERDA = useMemo(() => {
     const fromDb = lostDeals.map(d => d.motivo_perda).filter(Boolean) as string[];
-    const all = new Set([...DEFAULT_MOTIVOS, ...fromDb]);
+    const all = new Set([...DEFAULT_MOTIVOS, ...customMotivos, ...fromDb]);
     return Array.from(all).sort();
-  }, [lostDeals]);
+  }, [customMotivos, lostDeals]);
   const [addingCustomMotivo, setAddingCustomMotivo] = useState(false);
   const [customMotivo, setCustomMotivo] = useState("");
 
@@ -1446,8 +1447,10 @@ const RepKPIs = ({ userId }: Props) => {
                       <div className="flex gap-1">
                         <Input value={customMotivo} onChange={e => setCustomMotivo(e.target.value)} placeholder="Novo motivo" className="h-9" autoFocus />
                         <Button size="sm" className="h-9 px-2" onClick={() => {
-                          if (customMotivo.trim()) {
-                            setLostForm(f => ({ ...f, motivo_perda: customMotivo.trim() }));
+                          const novoMotivo = customMotivo.trim();
+                          if (novoMotivo) {
+                            setCustomMotivos(prev => prev.includes(novoMotivo) ? prev : [...prev, novoMotivo]);
+                            setLostForm(f => ({ ...f, motivo_perda: novoMotivo }));
                             setCustomMotivo("");
                             setAddingCustomMotivo(false);
                           }
