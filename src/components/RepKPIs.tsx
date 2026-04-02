@@ -71,14 +71,8 @@ const RepKPIs = ({ userId }: Props) => {
   const [savingLost, setSavingLost] = useState(false);
   const [lostForm, setLostForm] = useState({
     representative_id: "",
-    client_name: "",
-    machine_name: "",
-    machine_type: "",
-    deal_value: "",
     motivo_perda: "",
-    motivo_perda_detalhe: "",
     data_perda: new Date().toISOString().slice(0, 10),
-    notes: "",
   });
 
   // Load reps
