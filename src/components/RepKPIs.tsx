@@ -251,6 +251,7 @@ const RepKPIs = ({ userId }: Props) => {
       motivo_perda_detalhe: null,
       data_perda: lostForm.data_perda,
       notes: null,
+      quantidade: lostForm.quantidade,
     };
     let error;
     if (editingLostId) {

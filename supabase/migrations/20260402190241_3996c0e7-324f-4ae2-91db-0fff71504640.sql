@@ -1,0 +1,1 @@
+ALTER TABLE public.negociacoes_perdidas ADD COLUMN quantidade integer NOT NULL DEFAULT 1;
