@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Eye, Users, Target, TrendingUp, Save, Calendar, BarChart3, Lightbulb } from "lucide-react";
+import { Eye, Users, Target, TrendingUp, Save, Calendar, BarChart3, Lightbulb, Flag } from "lucide-react";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, ReferenceLine } from "recharts";
 
 interface Props {
@@ -39,7 +39,7 @@ const currentYear = new Date().getFullYear();
 const currentWeek = getWeekNumber(new Date());
 
 const RepKPIs = ({ userId }: Props) => {
-  const [subTab, setSubTab] = useState<"visitas" | "oportunidades">("visitas");
+  const [subTab, setSubTab] = useState<"visitas" | "oportunidades" | "metas">("visitas");
   const [reps, setReps] = useState<Rep[]>([]);
   const [filterYear, setFilterYear] = useState(currentYear);
   const [filterWeek, setFilterWeek] = useState(currentWeek);
@@ -49,6 +49,9 @@ const RepKPIs = ({ userId }: Props) => {
   const [weeklyHistory, setWeeklyHistory] = useState<{ semana: number; total: number; meta: number }[]>([]);
   const [opportunities, setOpportunities] = useState<{ representative_id: string; nome: string; qty_proprias: number; qty_sdr: number }[]>([]);
   const [savingOpp, setSavingOpp] = useState(false);
+  const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
+  const [goals, setGoals] = useState<{ representative_id: string; nome: string; meta_valor: number; meta_quantidade: number }[]>([]);
+  const [savingGoals, setSavingGoals] = useState(false);
 
   // Load reps
   useEffect(() => {
@@ -139,6 +142,32 @@ const RepKPIs = ({ userId }: Props) => {
     };
     load();
   }, [reps, filterYear, filterWeek, userId]);
+
+  // Load monthly goals
+  useEffect(() => {
+    if (!reps.length) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from("monthly_goals")
+        .select("representative_id, meta_valor, meta_quantidade")
+        .eq("user_id", userId)
+        .eq("ano", filterYear)
+        .eq("mes", filterMonth)
+        .eq("machine_type", "all");
+
+      const rows = reps.map((r) => {
+        const existing = (data || []).find((d: any) => d.representative_id === r.id);
+        return {
+          representative_id: r.id,
+          nome: r.nome,
+          meta_valor: existing?.meta_valor ?? 0,
+          meta_quantidade: existing?.meta_quantidade ?? 0,
+        };
+      });
+      setGoals(rows);
+    };
+    load();
+  }, [reps, filterYear, filterMonth, userId]);
 
   const handleChange = useCallback((repId: string, value: string) => {
     const num = Math.max(0, parseInt(value) || 0);
@@ -253,6 +282,50 @@ const RepKPIs = ({ userId }: Props) => {
     }
   };
 
+  const handleGoalChange = useCallback((repId: string, field: "meta_valor" | "meta_quantidade", value: string) => {
+    const num = Math.max(0, parseFloat(value) || 0);
+    setGoals((prev) => prev.map((g) => (g.representative_id === repId ? { ...g, [field]: num } : g)));
+  }, []);
+
+  const handleSaveGoals = async () => {
+    setSavingGoals(true);
+    try {
+      for (const row of goals) {
+        const { error } = await supabase
+          .from("monthly_goals")
+          .upsert(
+            {
+              user_id: userId,
+              representative_id: row.representative_id,
+              ano: filterYear,
+              mes: filterMonth,
+              meta_valor: row.meta_valor,
+              meta_quantidade: row.meta_quantidade,
+              machine_type: "all",
+            },
+            { onConflict: "representative_id,mes,ano,machine_type" }
+          );
+        if (error) throw error;
+      }
+      toast.success("Metas salvas com sucesso!");
+    } catch (e: any) {
+      toast.error("Erro ao salvar: " + e.message);
+    } finally {
+      setSavingGoals(false);
+    }
+  };
+
+  const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+  const goalsKpis = useMemo(() => {
+    const totalValor = goals.reduce((s, g) => s + g.meta_valor, 0);
+    const totalQtd = goals.reduce((s, g) => s + g.meta_quantidade, 0);
+    const repsComMeta = goals.filter((g) => g.meta_valor > 0 || g.meta_quantidade > 0).length;
+    return { totalValor, totalQtd, repsComMeta };
+  }, [goals]);
+
+  const formatBrl = (v: number) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `${(v / 1_000).toFixed(0)}k` : String(v);
+
   return (
     <div className="space-y-6">
       {/* Header with sub-tabs and filters */}
@@ -271,6 +344,13 @@ const RepKPIs = ({ userId }: Props) => {
           >
             <Lightbulb className="inline h-4 w-4 mr-1.5 -mt-0.5" />
             Oportunidades
+          </button>
+          <button
+            onClick={() => setSubTab("metas")}
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "metas" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+          >
+            <Flag className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+            Metas
           </button>
         </div>
         <div className="flex items-center gap-2">
@@ -594,6 +674,66 @@ const RepKPIs = ({ userId }: Props) => {
             <Button onClick={handleSaveOpp} disabled={savingOpp} size="lg">
               <Save className="h-4 w-4 mr-2" />
               {savingOpp ? "Salvando..." : "Salvar Oportunidades"}
+            </Button>
+          </div>
+        )}
+      </>)}
+
+      {/* ═══ METAS ═══ */}
+      {subTab === "metas" && (<>
+        {/* Month selector for goals */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-muted-foreground">Mês:</span>
+          {MONTHS.map((m, i) => (
+            <button
+              key={i}
+              onClick={() => setFilterMonth(i + 1)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${filterMonth === i + 1 ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+            >
+              {m}
+            </button>
+          ))}
+        </div>
+
+        {/* Goals KPI Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <KpiCard icon={<Flag className="h-5 w-5" />} label="Meta Valor Total" value={`R$ ${formatBrl(goalsKpis.totalValor)}`} color="text-primary" />
+          <KpiCard icon={<Target className="h-5 w-5" />} label="Meta Qtd Total" value={String(goalsKpis.totalQtd)} color="text-primary" />
+          <KpiCard icon={<Users className="h-5 w-5" />} label="Reps com Meta" value={`${goalsKpis.repsComMeta}/${goals.length}`} color="text-muted-foreground" />
+        </div>
+
+        {/* Goals Table */}
+        <Card className="overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="font-semibold">Representante</TableHead>
+                <TableHead className="text-center font-semibold w-40">Meta Valor (R$)</TableHead>
+                <TableHead className="text-center font-semibold w-36">Meta Quantidade</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {goals.map((row) => (
+                <TableRow key={row.representative_id}>
+                  <TableCell className="font-medium">{row.nome}</TableCell>
+                  <TableCell className="text-center">
+                    <Input type="number" min={0} className="w-28 mx-auto text-center h-9" value={row.meta_valor || ""} onChange={(e) => handleGoalChange(row.representative_id, "meta_valor", e.target.value)} placeholder="0" />
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Input type="number" min={0} className="w-20 mx-auto text-center h-9" value={row.meta_quantidade || ""} onChange={(e) => handleGoalChange(row.representative_id, "meta_quantidade", e.target.value)} placeholder="0" />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+
+        {/* Save Goals button */}
+        {goals.length > 0 && (
+          <div className="flex justify-end">
+            <Button onClick={handleSaveGoals} disabled={savingGoals} size="lg">
+              <Save className="h-4 w-4 mr-2" />
+              {savingGoals ? "Salvando..." : "Salvar Metas"}
             </Button>
           </div>
         )}
