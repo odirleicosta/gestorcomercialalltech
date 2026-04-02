@@ -65,7 +65,21 @@ const RepKPIs = ({ userId }: Props) => {
   const [allYearVisits, setAllYearVisits] = useState<{ representative_id: string; semana: number; quantidade: number; meta: number }[]>([]);
   const [allYearOpps, setAllYearOpps] = useState<{ representative_id: string; semana: number; qty_proprias: number; qty_sdr: number }[]>([]);
   const [allYearGoals, setAllYearGoals] = useState<{ representative_id: string; mes: number; meta_quantidade: number; machine_type: string }[]>([]);
-  const [lostDeals, setLostDeals] = useState<{ id: string; representative_id: string | null; client_name: string; machine_name: string; machine_type: string; deal_value: number; motivo_perda: string | null; motivo_perda_detalhe: string | null; created_at: string; updated_at: string }[]>([]);
+  const [lostDeals, setLostDeals] = useState<{ id: string; representative_id: string | null; client_name: string; machine_name: string; machine_type: string; deal_value: number; motivo_perda: string | null; motivo_perda_detalhe: string | null; data_perda: string; notes: string | null; created_at: string; updated_at: string }[]>([]);
+  const [lostFormOpen, setLostFormOpen] = useState(false);
+  const [editingLostId, setEditingLostId] = useState<string | null>(null);
+  const [savingLost, setSavingLost] = useState(false);
+  const [lostForm, setLostForm] = useState({
+    representative_id: "",
+    client_name: "",
+    machine_name: "",
+    machine_type: "",
+    deal_value: "",
+    motivo_perda: "",
+    motivo_perda_detalhe: "",
+    data_perda: new Date().toISOString().slice(0, 10),
+    notes: "",
+  });
 
   // Load reps
   useEffect(() => {
