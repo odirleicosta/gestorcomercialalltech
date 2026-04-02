@@ -11,17 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Target, Eye, TrendingUp, TrendingDown, XCircle, CheckCircle, BarChart3, Users, Calendar, Plus, FileText, Trash2, Edit2, PieChart, ChevronDown, ChevronUp, AlertTriangle, ClipboardList, Database } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, Legend, PieChart as RechartsPie, Pie, LineChart, Line, CartesianGrid } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import SalesFunnel from "@/components/kpis/SalesFunnel";
-import FollowUps from "@/components/kpis/FollowUps";
-import PipelineValue from "@/components/kpis/PipelineValue";
-import MonthlyTrend from "@/components/kpis/MonthlyTrend";
-import RepRanking from "@/components/kpis/RepRanking";
-import RegionHeatmap from "@/components/kpis/RegionHeatmap";
-import SmartAlerts from "@/components/kpis/SmartAlerts";
-import AdvancedMetrics from "@/components/kpis/AdvancedMetrics";
 
 interface Props { userId: string; }
 interface Rep { id: string; nome: string; meta_mensal_padrao: number; meta_quantidade: number; }
@@ -636,26 +627,6 @@ const RepKPIs = ({ userId }: Props) => {
             </div>
           </Card>
 
-          {/* Weekly visits chart */}
-          {periodMode === "week" && weeklyChartData.length > 0 && (
-            <Card className="p-4 border-border bg-card">
-              <h3 className="text-sm font-semibold text-foreground mb-3">Evolução de Visitas Semanais</h3>
-              <div className="h-[220px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={weeklyChartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="semana" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                    <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
-                    <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-                    <Legend />
-                    <Line type="monotone" dataKey="realizadas" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4, fill: "hsl(var(--primary))" }} name="Realizadas" />
-                    <Line type="monotone" dataKey="meta" stroke="hsl(var(--muted-foreground))" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Meta" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-          )}
-
           {/* Negociações Abertas por Representante */}
           <Card className="p-4 border-border bg-card">
             <div className="flex items-center justify-between mb-3">
@@ -664,25 +635,6 @@ const RepKPIs = ({ userId }: Props) => {
                 <Plus className="h-3 w-3" /> Nova Negociação
               </Button>
             </div>
-            {openByRep.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-6">Nenhuma negociação aberta neste período</p>
-            ) : (
-              <div className="h-[220px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={openByRep} barGap={2}>
-                    <XAxis dataKey="nome" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                    <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
-                    <Tooltip
-                      formatter={(value: number, name: string) => [value, name === "radar" ? "Radar" : "Vendas Abertas"]}
-                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-                    />
-                    <Legend formatter={(value) => value === "radar" ? "Radar" : "Vendas Abertas"} />
-                    <Bar dataKey="radar" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="vendas" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} opacity={0.7} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            )}
 
             {/* Active negotiations list */}
             {(() => {
@@ -712,82 +664,6 @@ const RepKPIs = ({ userId }: Props) => {
             })()}
           </Card>
 
-          {/* Chart: Meta vs Realizado by Rep */}
-          {chartData.length > 0 && (
-            <Card className="p-4 border-border bg-card">
-              <h3 className="text-sm font-semibold text-foreground mb-3">Meta vs Realizado por Representante — {periodLabel}</h3>
-              <div className="h-[250px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} barGap={2}>
-                    <XAxis dataKey="nome" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                    <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickFormatter={v => v >= 1000000 ? `${(v/1000000).toFixed(1)}M` : v >= 1000 ? `${(v/1000).toFixed(0)}k` : String(v)} />
-                    <Tooltip
-                      formatter={(value: number, name: string) => [formatBrl(value), name === "meta" ? "Meta" : "Realizado"]}
-                      contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }}
-                    />
-                    <Legend formatter={(value) => value === "meta" ? "Meta" : "Realizado"} />
-                    <Bar dataKey="meta" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} opacity={0.4} />
-                    <Bar dataKey="realizado" radius={[4, 4, 0, 0]}>
-                      {chartData.map((entry, i) => (
-                        <Cell key={i} fill={entry.realizado >= entry.meta ? "hsl(var(--accent))" : "hsl(var(--primary))"} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </Card>
-          )}
-
-          {/* ===== NEW SECTIONS ===== */}
-          {/* Smart Alerts */}
-          <SmartAlerts
-            deals={deals as any}
-            closingDeals={closingDeals as any}
-            visits={allVisits}
-            reps={reps}
-            filterYear={filterYear}
-            activeMonths={activeMonths}
-          />
-
-          {/* Advanced Metrics */}
-          <AdvancedMetrics
-            deals={deals as any}
-            closingDeals={closingDeals as any}
-            filterYear={filterYear}
-            activeMonths={activeMonths}
-          />
-
-          {/* Monthly Trend */}
-          <MonthlyTrend deals={deals as any} filterYear={filterYear} />
-
-          {/* Gamified Ranking */}
-          <RepRanking repMetrics={repMetrics} periodLabel={periodLabel} />
-
-          <SalesFunnel
-            visits={funnelData.visits}
-            opportunities={funnelData.opportunities}
-            proposals={funnelData.proposals}
-            won={funnelData.won}
-            lost={funnelData.lost}
-          />
-
-          <FollowUps
-            negotiations={closingDeals as any}
-            reps={reps}
-          />
-
-          <PipelineValue
-            negotiations={closingDeals as any}
-            reps={reps}
-          />
-
-          {/* Region Heatmap */}
-          <RegionHeatmap
-            deals={deals as any}
-            reps={reps as any}
-            filterYear={filterYear}
-            activeMonths={activeMonths}
-          />
         </>
       )}
 
@@ -950,22 +826,6 @@ const RepKPIs = ({ userId }: Props) => {
                     )}
 
                     {/* Monthly Trend Mini Chart */}
-                    <div>
-                      <h5 className="text-xs font-semibold text-muted-foreground mb-2">Tendência (6 meses)</h5>
-                      <div className="h-[100px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={repMonthlyTrend} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                            <XAxis dataKey="mes" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
-                            <YAxis hide />
-                            <Tooltip
-                              formatter={(value: number) => [formatBrl(value), "FOB BRL"]}
-                              contentStyle={{ fontSize: 11, borderRadius: 8 }}
-                            />
-                            <Bar dataKey="fob" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
 
                     {/* Active Negotiations */}
                     <div>
@@ -1151,22 +1011,6 @@ const RepKPIs = ({ userId }: Props) => {
                     })}
                   </div>
                 )}
-              </Card>
-
-              {/* Monthly loss chart */}
-              <Card className="p-4 border-border bg-card">
-                <h4 className="text-xs font-semibold text-foreground mb-3">Perdas por Mês</h4>
-                <div className="h-[200px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={lossAnalysis.monthlyLoss}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="mes" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                      <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
-                      <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-                      <Bar dataKey="perdas" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} name="Perdas" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
               </Card>
 
               {/* Detailed loss table */}
@@ -1374,35 +1218,6 @@ const RepKPIs = ({ userId }: Props) => {
             </div>
           </Card>
 
-          {/* Evolução semanal chart */}
-          {(() => {
-            const weeks: { semana: string; realizadas: number; meta: number }[] = [];
-            for (let w = Math.max(1, visitEditWeek - 7); w <= visitEditWeek; w++) {
-              const wVisits = allVisits.filter(v => v.semana === w && v.ano === filterYear);
-              const totalR = wVisits.reduce((s, v) => s + v.quantidade, 0);
-              const totalM = wVisits.reduce((s, v) => s + v.meta, 0) || reps.length * 16;
-              weeks.push({ semana: `S${w}`, realizadas: totalR, meta: totalM });
-            }
-            if (weeks.length === 0) return null;
-            return (
-              <Card className="p-4 border-border bg-card">
-                <h4 className="text-xs font-semibold text-foreground mb-3">Evolução Semanal</h4>
-                <div className="h-[220px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={weeks}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="semana" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                      <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
-                      <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, fontSize: 12 }} />
-                      <Legend />
-                      <Line type="monotone" dataKey="realizadas" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 4, fill: "hsl(var(--primary))" }} name="Realizadas" />
-                      <Line type="monotone" dataKey="meta" stroke="hsl(var(--muted-foreground))" strokeWidth={2} strokeDasharray="5 5" dot={false} name="Meta" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </Card>
-            );
-          })()}
         </div>
       )}
 
