@@ -39,6 +39,7 @@ const currentYear = new Date().getFullYear();
 const currentWeek = getWeekNumber(new Date());
 
 const RepKPIs = ({ userId }: Props) => {
+  const [subTab, setSubTab] = useState<"visitas" | "oportunidades">("visitas");
   const [reps, setReps] = useState<Rep[]>([]);
   const [filterYear, setFilterYear] = useState(currentYear);
   const [filterWeek, setFilterWeek] = useState(currentWeek);
@@ -254,45 +255,48 @@ const RepKPIs = ({ userId }: Props) => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with sub-tabs and filters */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-            <Eye className="h-5 w-5 text-primary" />
-            Visitas da Semana
-          </h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            Controle semanal de visitas por representante
-          </p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSubTab("visitas")}
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "visitas" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+          >
+            <Eye className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+            Visitas
+          </button>
+          <button
+            onClick={() => setSubTab("oportunidades")}
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "oportunidades" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+          >
+            <Lightbulb className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+            Oportunidades
+          </button>
         </div>
         <div className="flex items-center gap-2">
           <Select value={String(filterYear)} onValueChange={(v) => setFilterYear(Number(v))}>
-            <SelectTrigger className="w-24">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
             <SelectContent>
               {[currentYear - 1, currentYear, currentYear + 1].map((y) => (
-                <SelectItem key={y} value={String(y)}>
-                  {y}
-                </SelectItem>
+                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
               ))}
             </SelectContent>
           </Select>
           <Select value={String(filterWeek)} onValueChange={(v) => setFilterWeek(Number(v))}>
             <SelectTrigger className="w-36">
-              <Calendar className="h-4 w-4 mr-1" />
-              <SelectValue />
+              <Calendar className="h-4 w-4 mr-1" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
               {weekOptions.map((w) => (
-                <SelectItem key={w} value={String(w)}>
-                  Semana {w}
-                </SelectItem>
+                <SelectItem key={w} value={String(w)}>Semana {w}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
       </div>
+
+      {/* ═══ VISITAS ═══ */}
+      {subTab === "visitas" && (<>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -506,16 +510,21 @@ const RepKPIs = ({ userId }: Props) => {
         </Card>
       )}
 
-      {/* ── Oportunidades por Criação ── */}
-      <div className="border-t border-border pt-6 mt-2">
-        <div className="flex items-center gap-2 mb-4">
-          <Lightbulb className="h-5 w-5 text-primary" />
-          <h2 className="text-xl font-bold text-foreground">Oportunidades da Semana</h2>
-          <Badge variant="outline" className="ml-auto">Semana {filterWeek} · {filterYear}</Badge>
+      {/* Save Visits button */}
+      {visits.length > 0 && (
+        <div className="flex justify-end">
+          <Button onClick={handleSave} disabled={saving} size="lg">
+            <Save className="h-4 w-4 mr-2" />
+            {saving ? "Salvando..." : "Salvar Visitas"}
+          </Button>
         </div>
+      )}
+      </>)}
 
+      {/* ═══ OPORTUNIDADES ═══ */}
+      {subTab === "oportunidades" && (<>
         {/* Opp KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <KpiCard icon={<Lightbulb className="h-5 w-5" />} label="Total Abertas" value={String(oppKpis.totalAberto)} color="text-primary" />
           <KpiCard icon={<Users className="h-5 w-5" />} label="Próprias Rep." value={String(oppKpis.totalProprias)} color="text-green-500" />
           <KpiCard icon={<Target className="h-5 w-5" />} label="SDR / Interno" value={String(oppKpis.totalSdr)} color="text-yellow-500" />
@@ -523,7 +532,7 @@ const RepKPIs = ({ userId }: Props) => {
         </div>
 
         {/* Opp Editable Table */}
-        <Card className="overflow-hidden mb-6">
+        <Card className="overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
@@ -542,24 +551,10 @@ const RepKPIs = ({ userId }: Props) => {
                   <TableRow key={row.representative_id}>
                     <TableCell className="font-medium">{row.nome}</TableCell>
                     <TableCell className="text-center">
-                      <Input
-                        type="number"
-                        min={0}
-                        className="w-20 mx-auto text-center h-9"
-                        value={row.qty_proprias || ""}
-                        onChange={(e) => handleOppChange(row.representative_id, "qty_proprias", e.target.value)}
-                        placeholder="0"
-                      />
+                      <Input type="number" min={0} className="w-20 mx-auto text-center h-9" value={row.qty_proprias || ""} onChange={(e) => handleOppChange(row.representative_id, "qty_proprias", e.target.value)} placeholder="0" />
                     </TableCell>
                     <TableCell className="text-center">
-                      <Input
-                        type="number"
-                        min={0}
-                        className="w-20 mx-auto text-center h-9"
-                        value={row.qty_sdr || ""}
-                        onChange={(e) => handleOppChange(row.representative_id, "qty_sdr", e.target.value)}
-                        placeholder="0"
-                      />
+                      <Input type="number" min={0} className="w-20 mx-auto text-center h-9" value={row.qty_sdr || ""} onChange={(e) => handleOppChange(row.representative_id, "qty_sdr", e.target.value)} placeholder="0" />
                     </TableCell>
                     <TableCell className="text-center font-semibold">{total}</TableCell>
                     <TableCell className="text-center">
@@ -568,13 +563,6 @@ const RepKPIs = ({ userId }: Props) => {
                   </TableRow>
                 );
               })}
-              {opportunities.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    Nenhum representante cadastrado.
-                  </TableCell>
-                </TableRow>
-              )}
             </TableBody>
           </Table>
         </Card>
@@ -602,24 +590,14 @@ const RepKPIs = ({ userId }: Props) => {
 
         {/* Save Opp button */}
         {opportunities.length > 0 && (
-          <div className="flex justify-end mt-4">
-            <Button onClick={handleSaveOpp} disabled={savingOpp} size="lg" variant="outline">
+          <div className="flex justify-end">
+            <Button onClick={handleSaveOpp} disabled={savingOpp} size="lg">
               <Save className="h-4 w-4 mr-2" />
               {savingOpp ? "Salvando..." : "Salvar Oportunidades"}
             </Button>
           </div>
         )}
-      </div>
-
-      {/* Save Visits button */}
-      {visits.length > 0 && (
-        <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={saving} size="lg">
-            <Save className="h-4 w-4 mr-2" />
-            {saving ? "Salvando..." : "Salvar Visitas"}
-          </Button>
-        </div>
-      )}
+      </>)}
     </div>
   );
 };
