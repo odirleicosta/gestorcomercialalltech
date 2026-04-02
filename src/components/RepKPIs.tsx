@@ -214,7 +214,7 @@ const RepKPIs = ({ userId }: Props) => {
   const loadLostDeals = useCallback(async () => {
     const { data } = await supabase
       .from("negociacoes_perdidas" as any)
-      .select("id, representative_id, client_name, machine_name, machine_type, deal_value, motivo_perda, motivo_perda_detalhe, data_perda, notes, created_at, updated_at")
+      .select("id, representative_id, client_name, machine_name, machine_type, deal_value, motivo_perda, motivo_perda_detalhe, data_perda, notes, quantidade, created_at, updated_at")
       .eq("user_id", userId)
       .order("data_perda", { ascending: false });
     setLostDeals((data as any) || []);
