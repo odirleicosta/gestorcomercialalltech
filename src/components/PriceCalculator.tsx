@@ -296,15 +296,15 @@ const PriceCalculator = () => {
   return (
     <div className="min-h-screen bg-background flex">
       {/* Sidebar vertical premium */}
-      <aside className={`hidden md:flex shrink-0 flex-col sidebar-premium p-5 gap-2 transition-all duration-300 sticky top-0 h-screen ${sidebarCollapsed ? "w-[72px] items-center" : "w-60"}`}>
+      <aside className={`hidden md:flex shrink-0 flex-col sidebar-premium overflow-hidden p-3 gap-1.5 transition-all duration-300 sticky top-0 h-screen ${sidebarCollapsed ? "w-[72px] items-center" : "w-60"}`}>
         <div className={`flex items-center ${sidebarCollapsed ? "justify-center" : "justify-between"}`}>
           <div className={`flex items-center ${sidebarCollapsed ? "justify-center" : "gap-3"}`}>
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl gradient-accent shadow-lg shadow-accent/20 shrink-0">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-accent shadow-lg shadow-accent/20 shrink-0">
               <TrendingUp className="h-5 w-5 text-accent-foreground" />
             </div>
             {!sidebarCollapsed && (
               <div>
-                <h1 className="font-heading text-base font-bold tracking-tight text-sidebar-primary">Gestão Comercial</h1>
+                <h1 className="font-heading text-[15px] font-bold tracking-tight text-sidebar-primary">Gestão Comercial</h1>
                 <p className="text-[11px] text-sidebar-muted font-medium tracking-wide uppercase">Máquinas Industriais</p>
               </div>
             )}
@@ -313,14 +313,14 @@ const PriceCalculator = () => {
             {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
           </Button>
         </div>
-        <div className="mb-2" />
-        <nav className="flex flex-col gap-0.5 flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(var(--sidebar-muted)) transparent' }}>
+        <div className="mb-1" />
+        <nav className="sidebar-scrollbar flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(var(--sidebar-muted)) transparent' }}>
           {ALL_APP_TABS.map(({ value, icon: Icon, label }) => (
             <button
               key={value}
               onClick={() => handleTabChange(value)}
               title={sidebarCollapsed ? label : undefined}
-              className={`group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200 ${
+              className={`group flex items-center gap-3 rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-all duration-200 ${
                 sidebarCollapsed ? "justify-center px-2" : ""
               } ${
                 activeTab === value
@@ -328,7 +328,7 @@ const PriceCalculator = () => {
                   : "text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
               }`}
             >
-              <div className={`flex h-8 w-8 items-center justify-center rounded-lg transition-all duration-200 shrink-0 ${
+                <div className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-200 shrink-0 ${
                 activeTab === value
                   ? "gradient-accent shadow-sm text-accent-foreground"
                   : "bg-sidebar-accent/30 text-sidebar-muted group-hover:text-sidebar-foreground"
@@ -339,7 +339,7 @@ const PriceCalculator = () => {
             </button>
           ))}
         </nav>
-        <div className="border-t border-sidebar-border pt-3 mt-2 space-y-1 shrink-0">
+        <div className="border-t border-sidebar-border pt-2 mt-1 space-y-1 shrink-0">
           <Button variant="ghost" size="sm" onClick={toggleTheme} className={`text-sidebar-muted hover:text-sidebar-foreground w-full ${sidebarCollapsed ? "justify-center" : "justify-start"}`} title={sidebarCollapsed ? (theme === "dark" ? "Modo Claro" : "Modo Escuro") : undefined}>
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             {!sidebarCollapsed && <span className="ml-2">{theme === "dark" ? "Modo Claro" : "Modo Escuro"}</span>}
