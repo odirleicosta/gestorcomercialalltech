@@ -789,6 +789,177 @@ const RepKPIs = ({ userId }: Props) => {
           </Table>
         </Card>
       </>)}
+
+      {/* ═══ DESEMPENHO ═══ */}
+      {subTab === "desempenho" && (() => {
+        // Consolidate per-rep performance data
+        const perfData = reps.map((r) => {
+          const v = visits.find(x => x.representative_id === r.id);
+          const o = opportunities.find(x => x.representative_id === r.id);
+          const g = goals.find(x => x.representative_id === r.id);
+          const visitasRealizadas = v?.quantidade ?? 0;
+          const visitasMeta = v?.meta ?? 0;
+          const pctVisitas = visitasMeta > 0 ? (visitasRealizadas / visitasMeta) * 100 : 0;
+          const totalOpp = (o?.qty_proprias ?? 0) + (o?.qty_sdr ?? 0);
+          const metaQtd = g?.meta_quantidade ?? 0;
+          return {
+            id: r.id,
+            nome: r.nome,
+            shortName: r.nome.split(" ").slice(0, 2).join(" "),
+            visitasRealizadas,
+            visitasMeta,
+            pctVisitas,
+            oppProprias: o?.qty_proprias ?? 0,
+            oppSdr: o?.qty_sdr ?? 0,
+            totalOpp,
+            metaQtd,
+          };
+        }).filter(x => filterRep === "all" || x.id === filterRep);
+
+        const totalVisitas = perfData.reduce((s, r) => s + r.visitasRealizadas, 0);
+        const totalMeta = perfData.reduce((s, r) => s + r.visitasMeta, 0);
+        const totalOpp = perfData.reduce((s, r) => s + r.totalOpp, 0);
+        const totalMetaQtd = perfData.reduce((s, r) => s + r.metaQtd, 0);
+        const pctGeral = totalMeta > 0 ? (totalVisitas / totalMeta) * 100 : 0;
+
+        // Radar data for team overview
+        const radarData = perfData.map(r => ({
+          nome: r.shortName,
+          visitas: r.pctVisitas,
+          oportunidades: r.totalOpp * 10, // scale for visibility
+          metas: r.metaQtd,
+        }));
+
+        // Comparative bar chart
+        const compData = perfData.map(r => ({
+          nome: r.shortName,
+          visitas: r.visitasRealizadas,
+          meta: r.visitasMeta,
+          oportunidades: r.totalOpp,
+          metaQtd: r.metaQtd,
+        }));
+
+        // Performance ranking sorted by % visitas
+        const ranking = [...perfData].sort((a, b) => b.pctVisitas - a.pctVisitas);
+
+        return (
+          <>
+            {/* Summary KPIs */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <KpiCard icon={<Eye className="h-5 w-5" />} label="Visitas Realizadas" value={String(totalVisitas)} color="text-primary" />
+              <KpiCard icon={<Lightbulb className="h-5 w-5" />} label="Oportunidades Abertas" value={String(totalOpp)} color="text-green-500" />
+              <KpiCard icon={<Flag className="h-5 w-5" />} label="Meta Qtd Máquinas" value={String(totalMetaQtd)} color="text-yellow-500" />
+              <KpiCard icon={<TrendingUp className="h-5 w-5" />} label="% Ating. Visitas" value={`${pctGeral.toFixed(0)}%`} color={pctGeral >= 80 ? "text-green-500" : pctGeral >= 50 ? "text-yellow-500" : "text-destructive"} />
+            </div>
+
+            {/* Comparative: Visitas x Meta */}
+            <Card className="p-4 sm:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold text-foreground">Visitas vs Meta por Representante</h3>
+              </div>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={compData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="nome" tick={{ fontSize: 11 }} className="fill-muted-foreground" interval={0} angle={-25} textAnchor="end" height={60} />
+                  <YAxis allowDecimals={false} className="fill-muted-foreground" tick={{ fontSize: 12 }} />
+                  <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} />
+                  <Legend />
+                  <Bar dataKey="visitas" name="Visitas" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                  <Bar dataKey="meta" name="Meta" fill="hsl(var(--muted-foreground))" radius={[6, 6, 0, 0]} maxBarSize={40} opacity={0.5} />
+                </BarChart>
+              </ResponsiveContainer>
+            </Card>
+
+            {/* Oportunidades por Rep */}
+            <Card className="p-4 sm:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Lightbulb className="h-5 w-5 text-green-500" />
+                <h3 className="font-semibold text-foreground">Oportunidades por Representante</h3>
+              </div>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={compData.filter(c => c.oportunidades > 0)} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="nome" tick={{ fontSize: 11 }} className="fill-muted-foreground" interval={0} angle={-25} textAnchor="end" height={60} />
+                  <YAxis allowDecimals={false} className="fill-muted-foreground" tick={{ fontSize: 12 }} />
+                  <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} />
+                  <Legend />
+                  <Bar dataKey="oportunidades" name="Oportunidades" fill="hsl(142 71% 45%)" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            </Card>
+
+            {/* Metas por Rep */}
+            {perfData.some(r => r.metaQtd > 0) && (
+              <Card className="p-4 sm:p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Flag className="h-5 w-5 text-yellow-500" />
+                  <h3 className="font-semibold text-foreground">Metas de Máquinas por Representante</h3>
+                </div>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={compData.filter(c => c.metaQtd > 0)} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="nome" tick={{ fontSize: 11 }} className="fill-muted-foreground" interval={0} angle={-25} textAnchor="end" height={60} />
+                    <YAxis allowDecimals={false} className="fill-muted-foreground" tick={{ fontSize: 12 }} />
+                    <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} />
+                    <Bar dataKey="metaQtd" name="Meta Qtd" fill="hsl(48 96% 53%)" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </Card>
+            )}
+
+            {/* Ranking de Desempenho */}
+            <Card className="p-4 sm:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Activity className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold text-foreground">Ranking de Desempenho</h3>
+              </div>
+              <div className="space-y-3">
+                {ranking.map((row, i) => {
+                  const color = row.pctVisitas >= 100 ? "bg-green-500" : row.pctVisitas >= 70 ? "bg-yellow-500" : "bg-destructive";
+                  const textColor = row.pctVisitas >= 100 ? "text-green-600" : row.pctVisitas >= 70 ? "text-yellow-600" : "text-destructive";
+                  const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`;
+                  return (
+                    <div key={row.id} className="flex items-center gap-3">
+                      <span className="text-sm font-bold w-8">{medal}</span>
+                      <span className="text-sm font-medium w-36 truncate">{row.nome}</span>
+                      <div className="flex-1 h-5 rounded-full bg-muted overflow-hidden">
+                        <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${Math.min(row.pctVisitas, 100)}%` }} />
+                      </div>
+                      <span className={`text-sm font-bold min-w-[3.5rem] text-right ${textColor}`}>{row.pctVisitas.toFixed(0)}%</span>
+                      <div className="flex gap-2 text-xs text-muted-foreground">
+                        <span title="Visitas">{row.visitasRealizadas}v</span>
+                        <span title="Oportunidades">{row.totalOpp}o</span>
+                        <span title="Meta Máq">{row.metaQtd}m</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+
+            {/* Evolução Semanal */}
+            {weeklyHistory.length > 1 && (
+              <Card className="p-4 sm:p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-foreground">Evolução Semanal — Equipe {filterYear}</h3>
+                </div>
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={weeklyHistory} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="semana" tickFormatter={(v) => `S${v}`} className="fill-muted-foreground" tick={{ fontSize: 11 }} />
+                    <YAxis allowDecimals={false} className="fill-muted-foreground" tick={{ fontSize: 12 }} />
+                    <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} labelFormatter={(v) => `Semana ${v}`} formatter={(value: number, name: string) => [value, name === "total" ? "Visitas" : "Meta"]} />
+                    <Line type="monotone" dataKey="total" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} name="total" />
+                    <Line type="monotone" dataKey="meta" stroke="hsl(var(--muted-foreground))" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="meta" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </Card>
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 };
