@@ -1203,20 +1203,20 @@ const RepKPIs = ({ userId }: Props) => {
           return true;
         });
 
-        const total = filtered.length;
+        const total = filtered.reduce((s, d) => s + ((d as any).quantidade || 1), 0);
         const totalValor = filtered.reduce((s, d) => s + (d.deal_value || 0), 0);
 
         const byRep: Record<string, number> = {};
         filtered.forEach(d => {
           const repName = reps.find(r => r.id === d.representative_id)?.nome || "Sem Rep";
-          byRep[repName] = (byRep[repName] || 0) + 1;
+          byRep[repName] = (byRep[repName] || 0) + ((d as any).quantidade || 1);
         });
         const repData = Object.entries(byRep).sort((a, b) => b[1] - a[1]).map(([nome, count]) => ({ nome, count }));
 
         const byMotivo: Record<string, number> = {};
         filtered.forEach(d => {
           const motivo = d.motivo_perda || "Não informado";
-          byMotivo[motivo] = (byMotivo[motivo] || 0) + 1;
+          byMotivo[motivo] = (byMotivo[motivo] || 0) + ((d as any).quantidade || 1);
         });
         const motivoData = Object.entries(byMotivo).sort((a, b) => b[1] - a[1]).map(([motivo, count]) => ({
           motivo, count, pct: total > 0 ? (count / total * 100) : 0,
@@ -1225,7 +1225,7 @@ const RepKPIs = ({ userId }: Props) => {
         const bySubmotivo: Record<string, number> = {};
         filtered.forEach(d => {
           const sub = d.motivo_perda_detalhe || "Não informado";
-          bySubmotivo[sub] = (bySubmotivo[sub] || 0) + 1;
+          bySubmotivo[sub] = (bySubmotivo[sub] || 0) + ((d as any).quantidade || 1);
         });
         const submotivoData = Object.entries(bySubmotivo).sort((a, b) => b[1] - a[1]).map(([submotivo, count]) => ({ submotivo, count }));
 
