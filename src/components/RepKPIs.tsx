@@ -183,6 +183,22 @@ const RepKPIs = ({ userId }: Props) => {
     load();
   }, [reps, filterYear, filterMonth, userId]);
 
+  // Load ALL year data for Desempenho aggregation
+  useEffect(() => {
+    if (!reps.length) return;
+    const load = async () => {
+      const [visRes, oppRes, goalRes] = await Promise.all([
+        supabase.from("weekly_visits").select("representative_id, semana, quantidade, meta").eq("user_id", userId).eq("ano", filterYear),
+        supabase.from("weekly_opportunities").select("representative_id, semana, qty_proprias, qty_sdr").eq("user_id", userId).eq("ano", filterYear),
+        supabase.from("monthly_goals").select("representative_id, mes, meta_quantidade, machine_type").eq("user_id", userId).eq("ano", filterYear),
+      ]);
+      setAllYearVisits(visRes.data || []);
+      setAllYearOpps(oppRes.data || []);
+      setAllYearGoals(goalRes.data || []);
+    };
+    load();
+  }, [reps, filterYear, userId]);
+
   const handleChange = useCallback((repId: string, value: string) => {
     const num = Math.max(0, parseInt(value) || 0);
     setVisits((prev) =>
