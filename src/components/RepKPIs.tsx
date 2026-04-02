@@ -276,14 +276,8 @@ const RepKPIs = ({ userId }: Props) => {
     setEditingLostId(deal.id);
     setLostForm({
       representative_id: deal.representative_id || "",
-      client_name: deal.client_name,
-      machine_name: deal.machine_name,
-      machine_type: deal.machine_type,
-      deal_value: String(deal.deal_value),
       motivo_perda: deal.motivo_perda || "",
-      motivo_perda_detalhe: deal.motivo_perda_detalhe || "",
       data_perda: deal.data_perda,
-      notes: deal.notes || "",
     });
     setLostFormOpen(true);
   };
