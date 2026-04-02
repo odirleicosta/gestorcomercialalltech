@@ -378,17 +378,18 @@ const RepKPIs = ({ userId }: Props) => {
     try {
       for (const row of opportunities) {
         const { error } = await supabase
-          .from("weekly_opportunities")
+          .from("monthly_opportunities")
           .upsert(
             {
               user_id: userId,
               representative_id: row.representative_id,
               ano: filterYear,
-              semana: filterWeek,
+              mes: filterMonth,
+              quantidade: row.qty_proprias + row.qty_sdr,
               qty_proprias: row.qty_proprias,
               qty_sdr: row.qty_sdr,
-            },
-            { onConflict: "user_id,representative_id,ano,semana" }
+            } as any,
+            { onConflict: "user_id,representative_id,ano,mes" }
           );
         if (error) throw error;
       }
