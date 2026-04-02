@@ -87,6 +87,31 @@ const RepKPIs = ({ userId }: Props) => {
     load();
   }, [reps, filterYear, filterWeek, userId]);
 
+  // Load weekly evolution for the year
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from("weekly_visits")
+        .select("semana, quantidade, meta")
+        .eq("user_id", userId)
+        .eq("ano", filterYear)
+        .order("semana");
+      if (!data) return;
+      const grouped: Record<number, { total: number; metaTotal: number }> = {};
+      for (const row of data) {
+        if (!grouped[row.semana]) grouped[row.semana] = { total: 0, metaTotal: 0 };
+        grouped[row.semana].total += row.quantidade;
+        grouped[row.semana].metaTotal += row.meta;
+      }
+      setWeeklyHistory(
+        Object.entries(grouped)
+          .map(([s, v]) => ({ semana: Number(s), total: v.total, meta: v.metaTotal }))
+          .sort((a, b) => a.semana - b.semana)
+      );
+    };
+    load();
+  }, [userId, filterYear, visits]); // re-fetch when visits change (after edits)
+
   const handleChange = useCallback((repId: string, value: string) => {
     const num = Math.max(0, parseInt(value) || 0);
     setVisits((prev) =>
