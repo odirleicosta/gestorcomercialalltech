@@ -169,6 +169,7 @@ const RepKPIs = ({ userId }: Props) => {
     load();
   }, [reps, filterYear, filterMonth, userId]);
 
+  const handleChange = useCallback((repId: string, value: string) => {
     const num = Math.max(0, parseInt(value) || 0);
     setVisits((prev) =>
       prev.map((v) => (v.representative_id === repId ? { ...v, quantidade: num } : v))
