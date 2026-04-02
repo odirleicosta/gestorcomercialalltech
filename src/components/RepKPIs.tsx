@@ -414,16 +414,6 @@ const RepKPIs = ({ userId }: Props) => {
                 ))}
               </SelectContent>
             </Select>
-            <Select value={String(filterWeek)} onValueChange={(v) => setFilterWeek(Number(v))}>
-              <SelectTrigger className="w-36 text-xs h-8">
-                <Calendar className="h-4 w-4 mr-1" /><SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {weekOptions.map((w) => (
-                  <SelectItem key={w} value={String(w)}>Semana {w}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
         </div>
       </div>
