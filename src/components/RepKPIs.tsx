@@ -215,19 +215,77 @@ const RepKPIs = ({ userId }: Props) => {
     load();
   }, [reps, filterYear, userId]);
 
-  // Load lost deals
-  useEffect(() => {
-    const load = async () => {
-      const { data } = await supabase
-        .from("closing_deals")
-        .select("id, representative_id, client_name, machine_name, machine_type, deal_value, motivo_perda, motivo_perda_detalhe, created_at, updated_at")
-        .eq("user_id", userId)
-        .eq("status", "perdida")
-        .order("updated_at", { ascending: false });
-      setLostDeals(data || []);
-    };
-    load();
+  // Load lost deals from independent table
+  const loadLostDeals = useCallback(async () => {
+    const { data } = await supabase
+      .from("negociacoes_perdidas" as any)
+      .select("id, representative_id, client_name, machine_name, machine_type, deal_value, motivo_perda, motivo_perda_detalhe, data_perda, notes, created_at, updated_at")
+      .eq("user_id", userId)
+      .order("data_perda", { ascending: false });
+    setLostDeals((data as any) || []);
   }, [userId]);
+
+  useEffect(() => { loadLostDeals(); }, [loadLostDeals]);
+
+  const MOTIVOS_PERDA = ["Preço", "Concorrência", "Cancelamento do Projeto", "Sem Investimento", "Cliente Curioso", "Postergação", "Outro"];
+
+  const resetLostForm = () => {
+    setLostForm({ representative_id: "", client_name: "", machine_name: "", machine_type: "", deal_value: "", motivo_perda: "", motivo_perda_detalhe: "", data_perda: new Date().toISOString().slice(0, 10), notes: "" });
+    setEditingLostId(null);
+  };
+
+  const handleSaveLost = async () => {
+    if (!lostForm.client_name.trim()) { toast.error("Informe o nome do cliente"); return; }
+    if (!lostForm.motivo_perda) { toast.error("Selecione o motivo da perda"); return; }
+    setSavingLost(true);
+    const payload = {
+      user_id: userId,
+      representative_id: lostForm.representative_id || null,
+      client_name: lostForm.client_name.trim(),
+      machine_name: lostForm.machine_name.trim(),
+      machine_type: lostForm.machine_type.trim(),
+      deal_value: parseFloat(lostForm.deal_value) || 0,
+      motivo_perda: lostForm.motivo_perda,
+      motivo_perda_detalhe: lostForm.motivo_perda_detalhe.trim() || null,
+      data_perda: lostForm.data_perda,
+      notes: lostForm.notes.trim() || null,
+    };
+    let error;
+    if (editingLostId) {
+      ({ error } = await supabase.from("negociacoes_perdidas" as any).update(payload as any).eq("id", editingLostId));
+    } else {
+      ({ error } = await supabase.from("negociacoes_perdidas" as any).insert(payload as any));
+    }
+    setSavingLost(false);
+    if (error) { toast.error("Erro ao salvar: " + error.message); return; }
+    toast.success(editingLostId ? "Registro atualizado" : "Negociação perdida registrada");
+    resetLostForm();
+    setLostFormOpen(false);
+    loadLostDeals();
+  };
+
+  const handleDeleteLost = async (id: string) => {
+    const { error } = await supabase.from("negociacoes_perdidas" as any).delete().eq("id", id);
+    if (error) { toast.error("Erro ao excluir"); return; }
+    toast.success("Registro excluído");
+    loadLostDeals();
+  };
+
+  const openEditLost = (deal: typeof lostDeals[0]) => {
+    setEditingLostId(deal.id);
+    setLostForm({
+      representative_id: deal.representative_id || "",
+      client_name: deal.client_name,
+      machine_name: deal.machine_name,
+      machine_type: deal.machine_type,
+      deal_value: String(deal.deal_value),
+      motivo_perda: deal.motivo_perda || "",
+      motivo_perda_detalhe: deal.motivo_perda_detalhe || "",
+      data_perda: deal.data_perda,
+      notes: deal.notes || "",
+    });
+    setLostFormOpen(true);
+  };
 
   const handleChange = useCallback((repId: string, value: string) => {
     const num = Math.max(0, parseInt(value) || 0);
