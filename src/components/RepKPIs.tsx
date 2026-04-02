@@ -332,11 +332,17 @@ const RepKPIs = ({ userId }: Props) => {
 
   const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
+  const MACHINE_TYPES = ["Centro de Usinagem", "Torno CNC", "Plu.go"];
+
   const goalsKpis = useMemo(() => {
-    const totalValor = filteredGoals.reduce((s, g) => s + g.meta_valor, 0);
     const totalQtd = filteredGoals.reduce((s, g) => s + g.meta_quantidade, 0);
-    const repsComMeta = filteredGoals.filter((g) => g.meta_valor > 0 || g.meta_quantidade > 0).length;
-    return { totalValor, totalQtd, repsComMeta };
+    const repsComMeta = filteredGoals.filter((g) => g.meta_quantidade > 0).length;
+    // Per machine type breakdown
+    const byType = MACHINE_TYPES.map(mt => ({
+      type: mt,
+      total: filteredGoals.reduce((s, g) => s + (g.byType?.[mt] || 0), 0),
+    }));
+    return { totalQtd, repsComMeta, byType };
   }, [filteredGoals]);
 
   const formatBrl = (v: number) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `${(v / 1_000).toFixed(0)}k` : String(v);
