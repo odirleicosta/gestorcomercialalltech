@@ -520,9 +520,6 @@ const RepKPIs = ({ userId }: Props) => {
           <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5" /> KPIs de Performance
         </h2>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={openVisitDialog}>
-            <ClipboardList className="h-3.5 w-3.5" /> Registrar Visitas
-          </Button>
           <Select value={String(filterYear)} onValueChange={v => setFilterYear(parseInt(v))}>
             <SelectTrigger className="w-[80px] bg-secondary/50 border-border text-xs h-8">
               <SelectValue />
