@@ -194,6 +194,23 @@
     background: linear-gradient(180deg, hsl(var(--sidebar-background)), hsl(220 55% 12%));
   }
 
+  .sidebar-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--sidebar-muted) / 0.55);
+    border-radius: 9999px;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--sidebar-muted) / 0.8);
+  }
+
   .icon-bubble {
     @apply flex h-9 w-9 items-center justify-center rounded-lg transition-colors;
   }
