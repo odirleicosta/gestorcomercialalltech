@@ -667,6 +667,8 @@ export type Database = {
           created_at: string
           id: string
           mes: number
+          qty_proprias: number
+          qty_sdr: number
           quantidade: number
           representative_id: string
           user_id: string
@@ -676,6 +678,8 @@ export type Database = {
           created_at?: string
           id?: string
           mes: number
+          qty_proprias?: number
+          qty_sdr?: number
           quantidade?: number
           representative_id: string
           user_id: string
@@ -685,6 +689,8 @@ export type Database = {
           created_at?: string
           id?: string
           mes?: number
+          qty_proprias?: number
+          qty_sdr?: number
           quantidade?: number
           representative_id?: string
           user_id?: string
