@@ -59,7 +59,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [weeklyHistory, setWeeklyHistory] = useState<{ semana: number; total: number; meta: number }[]>([]);
   const [opportunities, setOpportunities] = useState<{ representative_id: string; nome: string; qty_proprias: number; qty_sdr: number }[]>([]);
   const [savingOpp, setSavingOpp] = useState(false);
-  const [goals, setGoals] = useState<{ representative_id: string; nome: string; meta_valor: number; meta_quantidade: number }[]>([]);
+  const [goals, setGoals] = useState<{ representative_id: string; nome: string; meta_quantidade: number; byType: Record<string, number> }[]>([]);
   const [savingGoals, setSavingGoals] = useState(false);
 
   // Load reps
