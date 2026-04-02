@@ -231,7 +231,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [customMotivo, setCustomMotivo] = useState("");
 
   const resetLostForm = () => {
-    setLostForm({ representative_id: "", client_name: "", machine_name: "", machine_type: "", deal_value: "", motivo_perda: "", motivo_perda_detalhe: "", data_perda: new Date().toISOString().slice(0, 10), notes: "" });
+    setLostForm({ representative_id: "", motivo_perda: "", data_perda: new Date().toISOString().slice(0, 10) });
     setEditingLostId(null);
   };
 
