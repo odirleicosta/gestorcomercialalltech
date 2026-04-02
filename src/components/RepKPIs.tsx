@@ -510,8 +510,8 @@ const RepKPIs = ({ userId }: Props) => {
       <div className="border-t border-border pt-6 mt-2">
         <div className="flex items-center gap-2 mb-4">
           <Lightbulb className="h-5 w-5 text-primary" />
-          <h2 className="text-xl font-bold text-foreground">Oportunidades por Criação</h2>
-          <Badge variant="outline" className="ml-auto">{filterYear}</Badge>
+          <h2 className="text-xl font-bold text-foreground">Oportunidades da Semana</h2>
+          <Badge variant="outline" className="ml-auto">Semana {filterWeek} · {filterYear}</Badge>
         </div>
 
         {/* Opp KPI Cards */}
@@ -522,27 +522,46 @@ const RepKPIs = ({ userId }: Props) => {
           <KpiCard icon={<TrendingUp className="h-5 w-5" />} label="% Geração Própria" value={`${oppKpis.pctProprias.toFixed(1)}%`} color={oppKpis.pctProprias >= 50 ? "text-green-500" : "text-yellow-500"} />
         </div>
 
-        {/* Opp Table */}
+        {/* Opp Editable Table */}
         <Card className="overflow-hidden mb-6">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead className="font-semibold">Representante</TableHead>
-                <TableHead className="text-center font-semibold">Abertas</TableHead>
-                <TableHead className="text-center font-semibold">Próprias</TableHead>
-                <TableHead className="text-center font-semibold">SDR/Interno</TableHead>
-                <TableHead className="text-center font-semibold">% Próprias</TableHead>
+                <TableHead className="text-center font-semibold w-32">Próprias</TableHead>
+                <TableHead className="text-center font-semibold w-32">SDR/Interno</TableHead>
+                <TableHead className="text-center font-semibold w-24">Total</TableHead>
+                <TableHead className="text-center font-semibold w-28">% Próprias</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {opportunities.map((row) => {
-                const pct = row.total > 0 ? (row.proprias / row.total) * 100 : 0;
+                const total = row.qty_proprias + row.qty_sdr;
+                const pct = total > 0 ? (row.qty_proprias / total) * 100 : 0;
                 return (
                   <TableRow key={row.representative_id}>
                     <TableCell className="font-medium">{row.nome}</TableCell>
-                    <TableCell className="text-center font-semibold">{row.total}</TableCell>
-                    <TableCell className="text-center text-green-600 font-semibold">{row.proprias}</TableCell>
-                    <TableCell className="text-center text-yellow-600 font-semibold">{row.sdr}</TableCell>
+                    <TableCell className="text-center">
+                      <Input
+                        type="number"
+                        min={0}
+                        className="w-20 mx-auto text-center h-9"
+                        value={row.qty_proprias || ""}
+                        onChange={(e) => handleOppChange(row.representative_id, "qty_proprias", e.target.value)}
+                        placeholder="0"
+                      />
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Input
+                        type="number"
+                        min={0}
+                        className="w-20 mx-auto text-center h-9"
+                        value={row.qty_sdr || ""}
+                        onChange={(e) => handleOppChange(row.representative_id, "qty_sdr", e.target.value)}
+                        placeholder="0"
+                      />
+                    </TableCell>
+                    <TableCell className="text-center font-semibold">{total}</TableCell>
                     <TableCell className="text-center">
                       <Badge variant={pct >= 50 ? "default" : "secondary"}>{pct.toFixed(1)}%</Badge>
                     </TableCell>
@@ -552,7 +571,7 @@ const RepKPIs = ({ userId }: Props) => {
               {opportunities.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    Nenhuma oportunidade registrada no período.
+                    Nenhum representante cadastrado.
                   </TableCell>
                 </TableRow>
               )}
@@ -580,8 +599,19 @@ const RepKPIs = ({ userId }: Props) => {
             </ResponsiveContainer>
           </Card>
         )}
+
+        {/* Save Opp button */}
+        {opportunities.length > 0 && (
+          <div className="flex justify-end mt-4">
+            <Button onClick={handleSaveOpp} disabled={savingOpp} size="lg" variant="outline">
+              <Save className="h-4 w-4 mr-2" />
+              {savingOpp ? "Salvando..." : "Salvar Oportunidades"}
+            </Button>
+          </div>
+        )}
       </div>
 
+      {/* Save Visits button */}
       {visits.length > 0 && (
         <div className="flex justify-end">
           <Button onClick={handleSave} disabled={saving} size="lg">
