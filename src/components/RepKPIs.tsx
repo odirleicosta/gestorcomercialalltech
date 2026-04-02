@@ -326,6 +326,7 @@ const RepKPIs = ({ userId }: Props) => {
 
   const formatBrl = (v: number) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `${(v / 1_000).toFixed(0)}k` : String(v);
 
+  return (
     <div className="space-y-6">
       {/* Header with sub-tabs and filters */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
