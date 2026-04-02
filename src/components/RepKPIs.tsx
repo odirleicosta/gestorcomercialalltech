@@ -50,7 +50,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [reps, setReps] = useState<Rep[]>([]);
   const [filterYear, setFilterYear] = useState(currentYear);
   const [filterWeek, setFilterWeek] = useState(currentWeek);
-  const [periodMode, setPeriodMode] = useState<PeriodMode>("semana");
+  const [periodMode, setPeriodMode] = useState<PeriodMode>("mes");
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
   const [filterQuarter, setFilterQuarter] = useState<string>(`T${Math.ceil((new Date().getMonth() + 1) / 3)}`);
   const [visits, setVisits] = useState<VisitRow[]>([]);
