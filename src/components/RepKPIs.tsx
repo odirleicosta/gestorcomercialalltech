@@ -601,7 +601,8 @@ const RepKPIs = ({ userId }: Props) => {
       </div>
 
       {/* ===================== VISITAS ===================== */}
-      {viewTab === "visitas" && <Card className="p-4 border-border bg-card space-y-4">
+      {viewTab === "visitas" && <>
+      <Card className="p-4 border-border bg-card space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <Eye className="h-4 w-4 text-primary" /> Registro de Visitas Semanais — {filterYear}
