@@ -1012,7 +1012,7 @@ const RepKPIs = ({ userId }: Props) => {
           evolutionData = mList.map(m => {
             const mWeekSet = new Set(getWeeksForMonth(m, filterYear));
             const mV = allYearVisits.filter(v => mWeekSet.has(v.semana) && (filterRep === "all" || v.representative_id === filterRep));
-            const mO = allYearOpps.filter(o => mWeekSet.has(o.semana) && (filterRep === "all" || o.representative_id === filterRep));
+            const mO = allYearOpps.filter(o => o.mes === m && (filterRep === "all" || o.representative_id === filterRep));
             return { label: MONTHS[m - 1], visitas: mV.reduce((s, v) => s + v.quantidade, 0), meta: mV.reduce((s, v) => s + v.meta, 0), opp: mO.reduce((s, o) => s + o.qty_proprias + o.qty_sdr, 0) };
           });
         }
