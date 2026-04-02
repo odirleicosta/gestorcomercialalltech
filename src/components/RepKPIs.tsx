@@ -1048,7 +1048,7 @@ const RepKPIs = ({ userId }: Props) => {
             {/* Summary KPIs */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <KpiCard icon={<Eye className="h-5 w-5" />} label="Visitas Realizadas" value={String(totalVisitas)} color="text-primary" />
-              <KpiCard icon={<Lightbulb className="h-5 w-5" />} label="Oportunidades" value={String(totalOpp)} color="text-accent" />
+              <KpiCard icon={<Lightbulb className="h-5 w-5" />} label="Oportunidades" value={String(totalOpp)} color="text-muted-foreground" />
               <KpiCard icon={<Flag className="h-5 w-5" />} label="Meta Qtd Máquinas" value={String(totalMetaQtd)} color="text-primary" />
               <KpiCard icon={<TrendingUp className="h-5 w-5" />} label="% Ating. Visitas" value={`${pctGeral.toFixed(0)}%`} color={pctGeral >= 80 ? "text-accent" : pctGeral >= 50 ? "text-primary" : "text-destructive"} />
             </div>
@@ -1076,7 +1076,7 @@ const RepKPIs = ({ userId }: Props) => {
             {compData.some(c => c.oportunidades > 0) && (
               <Card className="p-4 sm:p-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <Lightbulb className="h-5 w-5 text-accent" />
+                  <Lightbulb className="h-5 w-5 text-muted-foreground" />
                   <h3 className="font-semibold text-foreground">Oportunidades por Representante</h3>
                 </div>
                 <ResponsiveContainer width="100%" height={300}>
@@ -1087,7 +1087,7 @@ const RepKPIs = ({ userId }: Props) => {
                     <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} />
                     <Legend />
                     <Bar dataKey="proprias" name="Próprias" stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} maxBarSize={40} />
-                    <Bar dataKey="sdr" name="SDR / Interno" stackId="a" fill="hsl(var(--accent))" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                    <Bar dataKey="sdr" name="SDR / Interno" stackId="a" fill="hsl(var(--muted-foreground))" radius={[6, 6, 0, 0]} maxBarSize={40} />
                   </BarChart>
                 </ResponsiveContainer>
               </Card>
