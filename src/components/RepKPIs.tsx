@@ -279,6 +279,7 @@ const RepKPIs = ({ userId }: Props) => {
       representative_id: deal.representative_id || "",
       motivo_perda: deal.motivo_perda || "",
       data_perda: deal.data_perda,
+      quantidade: (deal as any).quantidade || 1,
     });
     setLostFormOpen(true);
   };
