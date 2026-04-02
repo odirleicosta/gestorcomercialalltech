@@ -1032,6 +1032,9 @@ const RepKPIs = ({ userId }: Props) => {
 
         return (
           <>
+            {/* Period filters - only visible in Desempenho */}
+            {periodFilters}
+
             {/* Inline filters */}
             <div className="flex items-center gap-2 flex-wrap">
               <Select value={filterRep} onValueChange={setFilterRep}>
