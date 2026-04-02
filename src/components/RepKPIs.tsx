@@ -152,25 +152,26 @@ const RepKPIs = ({ userId }: Props) => {
     load();
   }, [reps, filterYear, filterWeek, userId]);
 
-  // Load monthly goals
+  // Load monthly goals (all machine_types from Representatives tab)
   useEffect(() => {
     if (!reps.length) return;
     const load = async () => {
       const { data } = await supabase
         .from("monthly_goals")
-        .select("representative_id, meta_valor, meta_quantidade")
+        .select("representative_id, meta_valor, meta_quantidade, machine_type")
         .eq("user_id", userId)
         .eq("ano", filterYear)
-        .eq("mes", filterMonth)
-        .eq("machine_type", "all");
+        .eq("mes", filterMonth);
 
       const rows = reps.map((r) => {
-        const existing = (data || []).find((d: any) => d.representative_id === r.id);
+        const repGoals = (data || []).filter((d: any) => d.representative_id === r.id);
+        const meta_valor = repGoals.reduce((s: number, g: any) => s + (g.meta_valor || 0), 0);
+        const meta_quantidade = repGoals.reduce((s: number, g: any) => s + (g.meta_quantidade || 0), 0);
         return {
           representative_id: r.id,
           nome: r.nome,
-          meta_valor: existing?.meta_valor ?? 0,
-          meta_quantidade: existing?.meta_quantidade ?? 0,
+          meta_valor,
+          meta_quantidade,
         };
       });
       setGoals(rows);
@@ -769,10 +770,12 @@ const RepKPIs = ({ userId }: Props) => {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <KpiCard icon={<Flag className="h-5 w-5" />} label="Meta Valor Total" value={`R$ ${formatBrl(goalsKpis.totalValor)}`} color="text-primary" />
           <KpiCard icon={<Target className="h-5 w-5" />} label="Meta Qtd Total" value={String(goalsKpis.totalQtd)} color="text-primary" />
-          <KpiCard icon={<Users className="h-5 w-5" />} label="Reps com Meta" value={`${goalsKpis.repsComMeta}/${goals.length}`} color="text-muted-foreground" />
+          <KpiCard icon={<Users className="h-5 w-5" />} label="Reps com Meta" value={`${goalsKpis.repsComMeta}/${filteredGoals.length}`} color="text-muted-foreground" />
         </div>
 
-        {/* Goals Table */}
+        <p className="text-xs text-muted-foreground">As metas são cadastradas na aba Representantes e exibidas aqui por mês.</p>
+
+        {/* Goals Table (read-only) */}
         <Card className="overflow-hidden">
           <Table>
             <TableHeader>
@@ -786,27 +789,17 @@ const RepKPIs = ({ userId }: Props) => {
               {filteredGoals.map((row) => (
                 <TableRow key={row.representative_id}>
                   <TableCell className="font-medium">{row.nome}</TableCell>
-                  <TableCell className="text-center">
-                    <Input type="number" min={0} className="w-28 mx-auto text-center h-9" value={row.meta_valor || ""} onChange={(e) => handleGoalChange(row.representative_id, "meta_valor", e.target.value)} placeholder="0" />
+                  <TableCell className="text-center font-medium">
+                    {row.meta_valor > 0 ? `R$ ${row.meta_valor.toLocaleString("pt-BR")}` : "—"}
                   </TableCell>
-                  <TableCell className="text-center">
-                    <Input type="number" min={0} className="w-20 mx-auto text-center h-9" value={row.meta_quantidade || ""} onChange={(e) => handleGoalChange(row.representative_id, "meta_quantidade", e.target.value)} placeholder="0" />
+                  <TableCell className="text-center font-medium">
+                    {row.meta_quantidade > 0 ? row.meta_quantidade : "—"}
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </Card>
-
-        {/* Save Goals button */}
-        {goals.length > 0 && (
-          <div className="flex justify-end">
-            <Button onClick={handleSaveGoals} disabled={savingGoals} size="lg">
-              <Save className="h-4 w-4 mr-2" />
-              {savingGoals ? "Salvando..." : "Salvar Metas"}
-            </Button>
-          </div>
-        )}
       </>)}
     </div>
   );
