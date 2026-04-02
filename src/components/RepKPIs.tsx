@@ -784,6 +784,10 @@ const RepKPIs = ({ userId }: Props) => {
               {[currentYear - 1, currentYear, currentYear + 1].map((y) => (<SelectItem key={y} value={String(y)}>{y}</SelectItem>))}
             </SelectContent>
           </Select>
+          <Badge variant="outline" className="h-8 px-3 text-xs font-semibold gap-1.5">
+            <Calendar className="h-3.5 w-3.5" />
+            {MONTHS[filterMonth - 1]} / {filterYear}
+          </Badge>
         </div>
         {/* Opp KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
