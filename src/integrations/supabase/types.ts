@@ -709,6 +709,7 @@ export type Database = {
           motivo_perda: string | null
           motivo_perda_detalhe: string | null
           notes: string | null
+          quantidade: number
           representative_id: string | null
           updated_at: string
           user_id: string
@@ -724,6 +725,7 @@ export type Database = {
           motivo_perda?: string | null
           motivo_perda_detalhe?: string | null
           notes?: string | null
+          quantidade?: number
           representative_id?: string | null
           updated_at?: string
           user_id: string
@@ -739,6 +741,7 @@ export type Database = {
           motivo_perda?: string | null
           motivo_perda_detalhe?: string | null
           notes?: string | null
+          quantidade?: number
           representative_id?: string | null
           updated_at?: string
           user_id?: string

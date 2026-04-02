@@ -73,6 +73,7 @@ const RepKPIs = ({ userId }: Props) => {
     representative_id: "",
     motivo_perda: "",
     data_perda: new Date().toISOString().slice(0, 10),
+    quantidade: 1,
   });
 
   // Load reps
@@ -231,7 +232,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [customMotivo, setCustomMotivo] = useState("");
 
   const resetLostForm = () => {
-    setLostForm({ representative_id: "", motivo_perda: "", data_perda: new Date().toISOString().slice(0, 10) });
+    setLostForm({ representative_id: "", motivo_perda: "", data_perda: new Date().toISOString().slice(0, 10), quantidade: 1 });
     setEditingLostId(null);
   };
 
@@ -250,6 +251,7 @@ const RepKPIs = ({ userId }: Props) => {
       motivo_perda_detalhe: null,
       data_perda: lostForm.data_perda,
       notes: null,
+      quantidade: lostForm.quantidade,
     };
     let error;
     if (editingLostId) {
@@ -278,6 +280,7 @@ const RepKPIs = ({ userId }: Props) => {
       representative_id: deal.representative_id || "",
       motivo_perda: deal.motivo_perda || "",
       data_perda: deal.data_perda,
+      quantidade: (deal as any).quantidade || 1,
     });
     setLostFormOpen(true);
   };
@@ -1462,6 +1465,10 @@ const RepKPIs = ({ userId }: Props) => {
                         </SelectContent>
                       </Select>
                     )}
+                  </div>
+                  <div>
+                    <Label className="text-xs">Quantidade *</Label>
+                    <Input type="number" min={1} value={lostForm.quantidade} onChange={e => setLostForm(f => ({ ...f, quantidade: Math.max(1, parseInt(e.target.value) || 1) }))} className="h-9" />
                   </div>
                 </div>
                 <DialogFooter>
