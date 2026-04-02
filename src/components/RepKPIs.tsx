@@ -453,6 +453,19 @@ const RepKPIs = ({ userId }: Props) => {
       {/* ═══ VISITAS ═══ */}
       {subTab === "visitas" && (<>
 
+      {/* Week selector for Visitas */}
+      <div className="flex items-center gap-2">
+        <Select value={String(filterWeek)} onValueChange={(v) => setFilterWeek(Number(v))}>
+          <SelectTrigger className="w-40 text-xs h-8">
+            <Calendar className="h-4 w-4 mr-1" /><SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {weekOptions.map((w) => (
+              <SelectItem key={w} value={String(w)}>Semana {w}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard
