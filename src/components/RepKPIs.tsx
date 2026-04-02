@@ -332,11 +332,11 @@ const RepKPIs = ({ userId }: Props) => {
   const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
   const goalsKpis = useMemo(() => {
-    const totalValor = goals.reduce((s, g) => s + g.meta_valor, 0);
-    const totalQtd = goals.reduce((s, g) => s + g.meta_quantidade, 0);
-    const repsComMeta = goals.filter((g) => g.meta_valor > 0 || g.meta_quantidade > 0).length;
+    const totalValor = filteredGoals.reduce((s, g) => s + g.meta_valor, 0);
+    const totalQtd = filteredGoals.reduce((s, g) => s + g.meta_quantidade, 0);
+    const repsComMeta = filteredGoals.filter((g) => g.meta_valor > 0 || g.meta_quantidade > 0).length;
     return { totalValor, totalQtd, repsComMeta };
-  }, [goals]);
+  }, [filteredGoals]);
 
   const formatBrl = (v: number) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `${(v / 1_000).toFixed(0)}k` : String(v);
 
