@@ -1387,7 +1387,6 @@ const RepKPIs = ({ userId }: Props) => {
                       <TableHead className="font-semibold">Rep</TableHead>
                       <TableHead className="font-semibold">Motivo</TableHead>
                       <TableHead className="text-center font-semibold w-14">Qtd</TableHead>
-                      <TableHead className="text-right font-semibold">Valor</TableHead>
                       <TableHead className="w-20" />
                     </TableRow>
                   </TableHeader>
