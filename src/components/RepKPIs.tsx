@@ -967,7 +967,7 @@ const RepKPIs = ({ userId }: Props) => {
             const effectiveMeta = visitasMeta > 0 ? visitasMeta : (periodMode === "semana" ? DEFAULT_META : 0);
             const pctVisitas = effectiveMeta > 0 ? (visitasRealizadas / effectiveMeta) * 100 : 0;
 
-            const repOpps = allYearOpps.filter(o => o.representative_id === r.id && uniqueWeeks.has(o.semana));
+            const repOpps = allYearOpps.filter(o => o.representative_id === r.id && relevantMonths.includes(o.mes));
             const oppProprias = repOpps.reduce((s, o) => s + o.qty_proprias, 0);
             const oppSdr = repOpps.reduce((s, o) => s + o.qty_sdr, 0);
             const totalOpp = oppProprias + oppSdr;
