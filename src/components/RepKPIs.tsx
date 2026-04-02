@@ -510,16 +510,21 @@ const RepKPIs = ({ userId }: Props) => {
         </Card>
       )}
 
-      {/* ── Oportunidades por Criação ── */}
-      <div className="border-t border-border pt-6 mt-2">
-        <div className="flex items-center gap-2 mb-4">
-          <Lightbulb className="h-5 w-5 text-primary" />
-          <h2 className="text-xl font-bold text-foreground">Oportunidades da Semana</h2>
-          <Badge variant="outline" className="ml-auto">Semana {filterWeek} · {filterYear}</Badge>
+      {/* Save Visits button */}
+      {visits.length > 0 && (
+        <div className="flex justify-end">
+          <Button onClick={handleSave} disabled={saving} size="lg">
+            <Save className="h-4 w-4 mr-2" />
+            {saving ? "Salvando..." : "Salvar Visitas"}
+          </Button>
         </div>
+      )}
+      </>)}
 
+      {/* ═══ OPORTUNIDADES ═══ */}
+      {subTab === "oportunidades" && (<>
         {/* Opp KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <KpiCard icon={<Lightbulb className="h-5 w-5" />} label="Total Abertas" value={String(oppKpis.totalAberto)} color="text-primary" />
           <KpiCard icon={<Users className="h-5 w-5" />} label="Próprias Rep." value={String(oppKpis.totalProprias)} color="text-green-500" />
           <KpiCard icon={<Target className="h-5 w-5" />} label="SDR / Interno" value={String(oppKpis.totalSdr)} color="text-yellow-500" />
@@ -527,7 +532,7 @@ const RepKPIs = ({ userId }: Props) => {
         </div>
 
         {/* Opp Editable Table */}
-        <Card className="overflow-hidden mb-6">
+        <Card className="overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
@@ -546,24 +551,10 @@ const RepKPIs = ({ userId }: Props) => {
                   <TableRow key={row.representative_id}>
                     <TableCell className="font-medium">{row.nome}</TableCell>
                     <TableCell className="text-center">
-                      <Input
-                        type="number"
-                        min={0}
-                        className="w-20 mx-auto text-center h-9"
-                        value={row.qty_proprias || ""}
-                        onChange={(e) => handleOppChange(row.representative_id, "qty_proprias", e.target.value)}
-                        placeholder="0"
-                      />
+                      <Input type="number" min={0} className="w-20 mx-auto text-center h-9" value={row.qty_proprias || ""} onChange={(e) => handleOppChange(row.representative_id, "qty_proprias", e.target.value)} placeholder="0" />
                     </TableCell>
                     <TableCell className="text-center">
-                      <Input
-                        type="number"
-                        min={0}
-                        className="w-20 mx-auto text-center h-9"
-                        value={row.qty_sdr || ""}
-                        onChange={(e) => handleOppChange(row.representative_id, "qty_sdr", e.target.value)}
-                        placeholder="0"
-                      />
+                      <Input type="number" min={0} className="w-20 mx-auto text-center h-9" value={row.qty_sdr || ""} onChange={(e) => handleOppChange(row.representative_id, "qty_sdr", e.target.value)} placeholder="0" />
                     </TableCell>
                     <TableCell className="text-center font-semibold">{total}</TableCell>
                     <TableCell className="text-center">
@@ -572,13 +563,6 @@ const RepKPIs = ({ userId }: Props) => {
                   </TableRow>
                 );
               })}
-              {opportunities.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    Nenhum representante cadastrado.
-                  </TableCell>
-                </TableRow>
-              )}
             </TableBody>
           </Table>
         </Card>
@@ -606,25 +590,14 @@ const RepKPIs = ({ userId }: Props) => {
 
         {/* Save Opp button */}
         {opportunities.length > 0 && (
-          <div className="flex justify-end mt-4">
-            <Button onClick={handleSaveOpp} disabled={savingOpp} size="lg" variant="outline">
+          <div className="flex justify-end">
+            <Button onClick={handleSaveOpp} disabled={savingOpp} size="lg">
               <Save className="h-4 w-4 mr-2" />
               {savingOpp ? "Salvando..." : "Salvar Oportunidades"}
             </Button>
           </div>
         )}
-      </div>
-
-      {/* Save Visits button */}
-      {visits.length > 0 && (
-        <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={saving} size="lg">
-            <Save className="h-4 w-4 mr-2" />
-            {saving ? "Salvando..." : "Salvar Visitas"}
-          </Button>
-        </div>
-      )}
-    </div>
+      </>)}
   );
 };
 
