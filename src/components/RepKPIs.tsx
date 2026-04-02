@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { Eye, Users, Target, TrendingUp, Save, Calendar, BarChart3 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from "recharts";
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, ReferenceLine } from "recharts";
 
 interface Props {
   userId: string;
@@ -45,6 +45,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [visits, setVisits] = useState<VisitRow[]>([]);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [weeklyHistory, setWeeklyHistory] = useState<{ semana: number; total: number; meta: number }[]>([]);
 
   // Load reps
   useEffect(() => {
@@ -85,6 +86,31 @@ const RepKPIs = ({ userId }: Props) => {
     };
     load();
   }, [reps, filterYear, filterWeek, userId]);
+
+  // Load weekly evolution for the year
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from("weekly_visits")
+        .select("semana, quantidade, meta")
+        .eq("user_id", userId)
+        .eq("ano", filterYear)
+        .order("semana");
+      if (!data) return;
+      const grouped: Record<number, { total: number; metaTotal: number }> = {};
+      for (const row of data) {
+        if (!grouped[row.semana]) grouped[row.semana] = { total: 0, metaTotal: 0 };
+        grouped[row.semana].total += row.quantidade;
+        grouped[row.semana].metaTotal += row.meta;
+      }
+      setWeeklyHistory(
+        Object.entries(grouped)
+          .map(([s, v]) => ({ semana: Number(s), total: v.total, meta: v.metaTotal }))
+          .sort((a, b) => a.semana - b.semana)
+      );
+    };
+    load();
+  }, [userId, filterYear, visits]); // re-fetch when visits change (after edits)
 
   const handleChange = useCallback((repId: string, value: string) => {
     const num = Math.max(0, parseInt(value) || 0);
@@ -321,6 +347,35 @@ const RepKPIs = ({ userId }: Props) => {
                 ))}
               </Bar>
             </BarChart>
+          </ResponsiveContainer>
+        </Card>
+      )}
+
+      {/* Weekly Evolution Line Chart */}
+      {weeklyHistory.length > 1 && (
+        <Card className="p-4 sm:p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            <h3 className="font-semibold text-foreground">Evolução Semanal — Equipe {filterYear}</h3>
+          </div>
+          <ResponsiveContainer width="100%" height={260}>
+            <LineChart data={weeklyHistory} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <XAxis
+                dataKey="semana"
+                tickFormatter={(v) => `S${v}`}
+                className="fill-muted-foreground"
+                tick={{ fontSize: 11 }}
+              />
+              <YAxis allowDecimals={false} className="fill-muted-foreground" tick={{ fontSize: 12 }} />
+              <Tooltip
+                contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }}
+                labelFormatter={(v) => `Semana ${v}`}
+                formatter={(value: number, name: string) => [value, name === "total" ? "Visitas" : "Meta"]}
+              />
+              <Line type="monotone" dataKey="total" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} name="total" />
+              <Line type="monotone" dataKey="meta" stroke="hsl(var(--muted-foreground))" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="meta" />
+            </LineChart>
           </ResponsiveContainer>
         </Card>
       )}
