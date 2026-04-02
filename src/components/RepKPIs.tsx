@@ -742,10 +742,12 @@ const RepKPIs = ({ userId }: Props) => {
       {subTab === "metas" && (<>
 
         {/* Goals KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <KpiCard icon={<Flag className="h-5 w-5" />} label="Meta Valor Total" value={`R$ ${formatBrl(goalsKpis.totalValor)}`} color="text-primary" />
-          <KpiCard icon={<Target className="h-5 w-5" />} label="Meta Qtd Total" value={String(goalsKpis.totalQtd)} color="text-primary" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <KpiCard icon={<Flag className="h-5 w-5" />} label="Meta Qtd Total" value={String(goalsKpis.totalQtd)} color="text-primary" />
           <KpiCard icon={<Users className="h-5 w-5" />} label="Reps com Meta" value={`${goalsKpis.repsComMeta}/${filteredGoals.length}`} color="text-muted-foreground" />
+          {goalsKpis.byType.map(bt => (
+            <KpiCard key={bt.type} icon={<Target className="h-5 w-5" />} label={bt.type} value={String(bt.total)} color="text-primary" />
+          ))}
         </div>
 
         <p className="text-xs text-muted-foreground">As metas são cadastradas na aba Representantes e exibidas aqui por mês.</p>
@@ -756,18 +758,22 @@ const RepKPIs = ({ userId }: Props) => {
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead className="font-semibold">Representante</TableHead>
-                <TableHead className="text-center font-semibold w-40">Meta Valor (R$)</TableHead>
-                <TableHead className="text-center font-semibold w-36">Meta Quantidade</TableHead>
+                {MACHINE_TYPES.map(mt => (
+                  <TableHead key={mt} className="text-center font-semibold w-28">{mt}</TableHead>
+                ))}
+                <TableHead className="text-center font-semibold w-24">Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredGoals.map((row) => (
                 <TableRow key={row.representative_id}>
                   <TableCell className="font-medium">{row.nome}</TableCell>
-                  <TableCell className="text-center font-medium">
-                    {row.meta_valor > 0 ? `R$ ${row.meta_valor.toLocaleString("pt-BR")}` : "—"}
-                  </TableCell>
-                  <TableCell className="text-center font-medium">
+                  {MACHINE_TYPES.map(mt => (
+                    <TableCell key={mt} className="text-center font-medium">
+                      {(row.byType[mt] || 0) > 0 ? row.byType[mt] : "—"}
+                    </TableCell>
+                  ))}
+                  <TableCell className="text-center font-bold">
                     {row.meta_quantidade > 0 ? row.meta_quantidade : "—"}
                   </TableCell>
                 </TableRow>
