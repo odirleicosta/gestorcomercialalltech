@@ -60,7 +60,10 @@ const RepKPIs = ({ userId }: Props) => {
   const [opportunities, setOpportunities] = useState<{ representative_id: string; nome: string; qty_proprias: number; qty_sdr: number }[]>([]);
   const [savingOpp, setSavingOpp] = useState(false);
   const [goals, setGoals] = useState<{ representative_id: string; nome: string; meta_quantidade: number; byType: Record<string, number> }[]>([]);
-  
+  const [allYearVisits, setAllYearVisits] = useState<{ representative_id: string; semana: number; quantidade: number; meta: number }[]>([]);
+  const [allYearOpps, setAllYearOpps] = useState<{ representative_id: string; semana: number; qty_proprias: number; qty_sdr: number }[]>([]);
+  const [allYearGoals, setAllYearGoals] = useState<{ representative_id: string; mes: number; meta_quantidade: number; machine_type: string }[]>([]);
+
 
   // Load reps
   useEffect(() => {
@@ -179,6 +182,22 @@ const RepKPIs = ({ userId }: Props) => {
     };
     load();
   }, [reps, filterYear, filterMonth, userId]);
+
+  // Load ALL year data for Desempenho aggregation
+  useEffect(() => {
+    if (!reps.length) return;
+    const load = async () => {
+      const [visRes, oppRes, goalRes] = await Promise.all([
+        supabase.from("weekly_visits").select("representative_id, semana, quantidade, meta").eq("user_id", userId).eq("ano", filterYear),
+        supabase.from("weekly_opportunities").select("representative_id, semana, qty_proprias, qty_sdr").eq("user_id", userId).eq("ano", filterYear),
+        supabase.from("monthly_goals").select("representative_id, mes, meta_quantidade, machine_type").eq("user_id", userId).eq("ano", filterYear),
+      ]);
+      setAllYearVisits(visRes.data || []);
+      setAllYearOpps(oppRes.data || []);
+      setAllYearGoals(goalRes.data || []);
+    };
+    load();
+  }, [reps, filterYear, userId]);
 
   const handleChange = useCallback((repId: string, value: string) => {
     const num = Math.max(0, parseInt(value) || 0);
@@ -792,29 +811,69 @@ const RepKPIs = ({ userId }: Props) => {
 
       {/* ═══ DESEMPENHO ═══ */}
       {subTab === "desempenho" && (() => {
-        // Consolidate per-rep performance data
-        const perfData = reps.map((r) => {
-          const v = visits.find(x => x.representative_id === r.id);
-          const o = opportunities.find(x => x.representative_id === r.id);
-          const g = goals.find(x => x.representative_id === r.id);
-          const visitasRealizadas = v?.quantidade ?? 0;
-          const visitasMeta = v?.meta ?? 0;
-          const pctVisitas = visitasMeta > 0 ? (visitasRealizadas / visitasMeta) * 100 : 0;
-          const totalOpp = (o?.qty_proprias ?? 0) + (o?.qty_sdr ?? 0);
-          const metaQtd = g?.meta_quantidade ?? 0;
-          return {
-            id: r.id,
-            nome: r.nome,
-            shortName: r.nome.split(" ").slice(0, 2).join(" "),
-            visitasRealizadas,
-            visitasMeta,
-            pctVisitas,
-            oppProprias: o?.qty_proprias ?? 0,
-            oppSdr: o?.qty_sdr ?? 0,
-            totalOpp,
-            metaQtd,
-          };
-        }).filter(x => filterRep === "all" || x.id === filterRep);
+        // Helper: get weeks that belong to a given month (approximate)
+        const getWeeksForMonth = (month: number, year: number): number[] => {
+          const weeks: number[] = [];
+          const d = new Date(year, month - 1, 1);
+          while (d.getMonth() === month - 1) {
+            weeks.push(getWeekNumber(d));
+            d.setDate(d.getDate() + 7);
+          }
+          return [...new Set(weeks)];
+        };
+
+        // Determine which weeks and months are in scope
+        let relevantWeeks: number[] = [];
+        let relevantMonths: number[] = [];
+        let periodLabel = "";
+
+        if (periodMode === "semana") {
+          relevantWeeks = [filterWeek];
+          periodLabel = `Semana ${filterWeek}`;
+        } else if (periodMode === "mes") {
+          relevantWeeks = getWeeksForMonth(filterMonth, filterYear);
+          relevantMonths = [filterMonth];
+          periodLabel = MONTHS[filterMonth - 1] + ` ${filterYear}`;
+        } else if (periodMode === "trimestre") {
+          relevantMonths = QUARTER_MONTHS[filterQuarter] || [];
+          relevantWeeks = relevantMonths.flatMap(m => getWeeksForMonth(m, filterYear));
+          periodLabel = `${filterQuarter} ${filterYear}`;
+        } else {
+          relevantWeeks = Array.from({ length: 52 }, (_, i) => i + 1);
+          relevantMonths = Array.from({ length: 12 }, (_, i) => i + 1);
+          periodLabel = `${filterYear}`;
+        }
+
+        const uniqueWeeks = new Set(relevantWeeks);
+
+        // Aggregate per-rep
+        const perfData = reps
+          .filter(r => filterRep === "all" || r.id === filterRep)
+          .map((r) => {
+            const repVisits = allYearVisits.filter(v => v.representative_id === r.id && uniqueWeeks.has(v.semana));
+            const visitasRealizadas = repVisits.reduce((s, v) => s + v.quantidade, 0);
+            const visitasMeta = repVisits.reduce((s, v) => s + v.meta, 0);
+            const effectiveMeta = visitasMeta > 0 ? visitasMeta : (periodMode === "semana" ? DEFAULT_META : 0);
+            const pctVisitas = effectiveMeta > 0 ? (visitasRealizadas / effectiveMeta) * 100 : 0;
+
+            const repOpps = allYearOpps.filter(o => o.representative_id === r.id && uniqueWeeks.has(o.semana));
+            const oppProprias = repOpps.reduce((s, o) => s + o.qty_proprias, 0);
+            const oppSdr = repOpps.reduce((s, o) => s + o.qty_sdr, 0);
+            const totalOpp = oppProprias + oppSdr;
+
+            const monthsToUse = relevantMonths.length > 0 ? relevantMonths : (periodMode === "semana" ? [filterMonth] : []);
+            const repGoals = allYearGoals.filter(g => g.representative_id === r.id && monthsToUse.includes(g.mes));
+            const metaQtd = repGoals.reduce((s, g) => s + (g.meta_quantidade || 0), 0);
+
+            const byType: Record<string, number> = {};
+            repGoals.forEach(g => {
+              if (g.machine_type && g.meta_quantidade > 0) {
+                byType[g.machine_type] = (byType[g.machine_type] || 0) + g.meta_quantidade;
+              }
+            });
+
+            return { id: r.id, nome: r.nome, shortName: r.nome.split(" ").slice(0, 2).join(" "), visitasRealizadas, visitasMeta: effectiveMeta, pctVisitas, oppProprias, oppSdr, totalOpp, metaQtd, byType };
+          });
 
         const totalVisitas = perfData.reduce((s, r) => s + r.visitasRealizadas, 0);
         const totalMeta = perfData.reduce((s, r) => s + r.visitasMeta, 0);
@@ -822,37 +881,56 @@ const RepKPIs = ({ userId }: Props) => {
         const totalMetaQtd = perfData.reduce((s, r) => s + r.metaQtd, 0);
         const pctGeral = totalMeta > 0 ? (totalVisitas / totalMeta) * 100 : 0;
 
-        // Radar data for team overview
-        const radarData = perfData.map(r => ({
-          nome: r.shortName,
-          visitas: r.pctVisitas,
-          oportunidades: r.totalOpp * 10, // scale for visibility
-          metas: r.metaQtd,
-        }));
-
-        // Comparative bar chart
         const compData = perfData.map(r => ({
-          nome: r.shortName,
-          visitas: r.visitasRealizadas,
-          meta: r.visitasMeta,
-          oportunidades: r.totalOpp,
-          metaQtd: r.metaQtd,
+          nome: r.shortName, visitas: r.visitasRealizadas, meta: r.visitasMeta, oportunidades: r.totalOpp, proprias: r.oppProprias, sdr: r.oppSdr, metaQtd: r.metaQtd,
         }));
 
-        // Performance ranking sorted by % visitas
         const ranking = [...perfData].sort((a, b) => b.pctVisitas - a.pctVisitas);
+
+        // Evolution data
+        let evolutionData: { label: string; visitas: number; meta: number; opp: number }[] = [];
+        if (periodMode === "semana" || periodMode === "mes") {
+          const sortedWeeks = [...uniqueWeeks].sort((a, b) => a - b);
+          evolutionData = sortedWeeks.map(w => {
+            const wV = allYearVisits.filter(v => v.semana === w && (filterRep === "all" || v.representative_id === filterRep));
+            const wO = allYearOpps.filter(o => o.semana === w && (filterRep === "all" || o.representative_id === filterRep));
+            return { label: `S${w}`, visitas: wV.reduce((s, v) => s + v.quantidade, 0), meta: wV.reduce((s, v) => s + v.meta, 0), opp: wO.reduce((s, o) => s + o.qty_proprias + o.qty_sdr, 0) };
+          });
+        } else {
+          const mList = periodMode === "trimestre" ? relevantMonths : Array.from({ length: 12 }, (_, i) => i + 1);
+          evolutionData = mList.map(m => {
+            const mWeekSet = new Set(getWeeksForMonth(m, filterYear));
+            const mV = allYearVisits.filter(v => mWeekSet.has(v.semana) && (filterRep === "all" || v.representative_id === filterRep));
+            const mO = allYearOpps.filter(o => mWeekSet.has(o.semana) && (filterRep === "all" || o.representative_id === filterRep));
+            return { label: MONTHS[m - 1], visitas: mV.reduce((s, v) => s + v.quantidade, 0), meta: mV.reduce((s, v) => s + v.meta, 0), opp: mO.reduce((s, o) => s + o.qty_proprias + o.qty_sdr, 0) };
+          });
+        }
+
+        const metaByType = MACHINE_TYPES.map(mt => ({
+          type: mt, total: perfData.reduce((s, r) => s + (r.byType[mt] || 0), 0),
+        }));
 
         return (
           <>
+            {/* Period badge */}
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs px-3 py-1">
+                <Calendar className="h-3 w-3 mr-1.5" />{periodLabel}
+              </Badge>
+              <Badge variant="secondary" className="text-xs">
+                {filterRep === "all" ? "Equipe" : reps.find(r => r.id === filterRep)?.nome}
+              </Badge>
+            </div>
+
             {/* Summary KPIs */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <KpiCard icon={<Eye className="h-5 w-5" />} label="Visitas Realizadas" value={String(totalVisitas)} color="text-primary" />
-              <KpiCard icon={<Lightbulb className="h-5 w-5" />} label="Oportunidades Abertas" value={String(totalOpp)} color="text-green-500" />
-              <KpiCard icon={<Flag className="h-5 w-5" />} label="Meta Qtd Máquinas" value={String(totalMetaQtd)} color="text-yellow-500" />
-              <KpiCard icon={<TrendingUp className="h-5 w-5" />} label="% Ating. Visitas" value={`${pctGeral.toFixed(0)}%`} color={pctGeral >= 80 ? "text-green-500" : pctGeral >= 50 ? "text-yellow-500" : "text-destructive"} />
+              <KpiCard icon={<Lightbulb className="h-5 w-5" />} label="Oportunidades" value={String(totalOpp)} color="text-accent" />
+              <KpiCard icon={<Flag className="h-5 w-5" />} label="Meta Qtd Máquinas" value={String(totalMetaQtd)} color="text-primary" />
+              <KpiCard icon={<TrendingUp className="h-5 w-5" />} label="% Ating. Visitas" value={`${pctGeral.toFixed(0)}%`} color={pctGeral >= 80 ? "text-accent" : pctGeral >= 50 ? "text-primary" : "text-destructive"} />
             </div>
 
-            {/* Comparative: Visitas x Meta */}
+            {/* Visitas vs Meta */}
             <Card className="p-4 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
                 <BarChart3 className="h-5 w-5 text-primary" />
@@ -860,64 +938,77 @@ const RepKPIs = ({ userId }: Props) => {
               </div>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={compData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="nome" tick={{ fontSize: 11 }} className="fill-muted-foreground" interval={0} angle={-25} textAnchor="end" height={60} />
-                  <YAxis allowDecimals={false} className="fill-muted-foreground" tick={{ fontSize: 12 }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="nome" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} interval={0} angle={-25} textAnchor="end" height={60} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
                   <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} />
                   <Legend />
                   <Bar dataKey="visitas" name="Visitas" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} maxBarSize={40} />
-                  <Bar dataKey="meta" name="Meta" fill="hsl(var(--muted-foreground))" radius={[6, 6, 0, 0]} maxBarSize={40} opacity={0.5} />
+                  <Bar dataKey="meta" name="Meta" fill="hsl(var(--muted-foreground))" radius={[6, 6, 0, 0]} maxBarSize={40} opacity={0.4} />
                 </BarChart>
               </ResponsiveContainer>
             </Card>
 
             {/* Oportunidades por Rep */}
-            <Card className="p-4 sm:p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Lightbulb className="h-5 w-5 text-green-500" />
-                <h3 className="font-semibold text-foreground">Oportunidades por Representante</h3>
-              </div>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={compData.filter(c => c.oportunidades > 0)} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="nome" tick={{ fontSize: 11 }} className="fill-muted-foreground" interval={0} angle={-25} textAnchor="end" height={60} />
-                  <YAxis allowDecimals={false} className="fill-muted-foreground" tick={{ fontSize: 12 }} />
-                  <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} />
-                  <Legend />
-                  <Bar dataKey="oportunidades" name="Oportunidades" fill="hsl(142 71% 45%)" radius={[6, 6, 0, 0]} maxBarSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
-            </Card>
-
-            {/* Metas por Rep */}
-            {perfData.some(r => r.metaQtd > 0) && (
+            {compData.some(c => c.oportunidades > 0) && (
               <Card className="p-4 sm:p-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <Flag className="h-5 w-5 text-yellow-500" />
-                  <h3 className="font-semibold text-foreground">Metas de Máquinas por Representante</h3>
+                  <Lightbulb className="h-5 w-5 text-accent" />
+                  <h3 className="font-semibold text-foreground">Oportunidades por Representante</h3>
                 </div>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={compData.filter(c => c.metaQtd > 0)} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="nome" tick={{ fontSize: 11 }} className="fill-muted-foreground" interval={0} angle={-25} textAnchor="end" height={60} />
-                    <YAxis allowDecimals={false} className="fill-muted-foreground" tick={{ fontSize: 12 }} />
+                  <BarChart data={compData.filter(c => c.oportunidades > 0)} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="nome" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} interval={0} angle={-25} textAnchor="end" height={60} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
                     <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} />
-                    <Bar dataKey="metaQtd" name="Meta Qtd" fill="hsl(48 96% 53%)" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                    <Legend />
+                    <Bar dataKey="proprias" name="Próprias" stackId="a" fill="hsl(var(--primary))" radius={[0, 0, 0, 0]} maxBarSize={40} />
+                    <Bar dataKey="sdr" name="SDR / Interno" stackId="a" fill="hsl(var(--accent))" radius={[6, 6, 0, 0]} maxBarSize={40} />
                   </BarChart>
                 </ResponsiveContainer>
               </Card>
             )}
 
-            {/* Ranking de Desempenho */}
+            {/* Metas por Tipo de Máquina */}
+            {metaByType.some(m => m.total > 0) && (
+              <Card className="p-4 sm:p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Flag className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-foreground">Metas por Tipo de Máquina</h3>
+                </div>
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  {metaByType.map(mt => (
+                    <div key={mt.type} className="p-3 rounded-lg bg-secondary text-center">
+                      <p className="text-[10px] text-muted-foreground truncate">{mt.type}</p>
+                      <p className="text-lg font-bold text-foreground">{mt.total}</p>
+                    </div>
+                  ))}
+                </div>
+                {perfData.some(r => r.metaQtd > 0) && (
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={compData.filter(c => c.metaQtd > 0)} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="nome" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} interval={0} angle={-25} textAnchor="end" height={60} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+                      <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} />
+                      <Bar dataKey="metaQtd" name="Meta Qtd" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </Card>
+            )}
+
+            {/* Ranking */}
             <Card className="p-4 sm:p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Activity className="h-5 w-5 text-primary" />
-                <h3 className="font-semibold text-foreground">Ranking de Desempenho</h3>
+                <h3 className="font-semibold text-foreground">Ranking de Desempenho — {periodLabel}</h3>
               </div>
               <div className="space-y-3">
                 {ranking.map((row, i) => {
-                  const color = row.pctVisitas >= 100 ? "bg-green-500" : row.pctVisitas >= 70 ? "bg-yellow-500" : "bg-destructive";
-                  const textColor = row.pctVisitas >= 100 ? "text-green-600" : row.pctVisitas >= 70 ? "text-yellow-600" : "text-destructive";
+                  const color = row.pctVisitas >= 100 ? "bg-accent" : row.pctVisitas >= 70 ? "bg-primary" : "bg-destructive";
+                  const textColor = row.pctVisitas >= 100 ? "text-accent" : row.pctVisitas >= 70 ? "text-primary" : "text-destructive";
                   const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`;
                   return (
                     <div key={row.id} className="flex items-center gap-3">
@@ -938,21 +1029,28 @@ const RepKPIs = ({ userId }: Props) => {
               </div>
             </Card>
 
-            {/* Evolução Semanal */}
-            {weeklyHistory.length > 1 && (
+            {/* Evolução temporal */}
+            {evolutionData.length > 1 && (
               <Card className="p-4 sm:p-6">
                 <div className="flex items-center gap-2 mb-4">
                   <TrendingUp className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold text-foreground">Evolução Semanal — Equipe {filterYear}</h3>
+                  <h3 className="font-semibold text-foreground">
+                    Evolução {periodMode === "semana" || periodMode === "mes" ? "Semanal" : "Mensal"} — {periodLabel}
+                  </h3>
                 </div>
-                <ResponsiveContainer width="100%" height={260}>
-                  <LineChart data={weeklyHistory} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="semana" tickFormatter={(v) => `S${v}`} className="fill-muted-foreground" tick={{ fontSize: 11 }} />
-                    <YAxis allowDecimals={false} className="fill-muted-foreground" tick={{ fontSize: 12 }} />
-                    <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} labelFormatter={(v) => `Semana ${v}`} formatter={(value: number, name: string) => [value, name === "total" ? "Visitas" : "Meta"]} />
-                    <Line type="monotone" dataKey="total" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} name="total" />
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={evolutionData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+                    <Tooltip
+                      contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }}
+                      formatter={(value: number, name: string) => [value, name === "visitas" ? "Visitas" : name === "meta" ? "Meta" : "Oportunidades"]}
+                    />
+                    <Legend formatter={(v) => v === "visitas" ? "Visitas" : v === "meta" ? "Meta" : "Oportunidades"} />
+                    <Line type="monotone" dataKey="visitas" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4, fill: "hsl(var(--primary))" }} name="visitas" />
                     <Line type="monotone" dataKey="meta" stroke="hsl(var(--muted-foreground))" strokeWidth={1.5} strokeDasharray="5 5" dot={false} name="meta" />
+                    <Line type="monotone" dataKey="opp" stroke="hsl(var(--accent))" strokeWidth={2} dot={{ r: 3, fill: "hsl(var(--accent))" }} name="opp" />
                   </LineChart>
                 </ResponsiveContainer>
               </Card>
