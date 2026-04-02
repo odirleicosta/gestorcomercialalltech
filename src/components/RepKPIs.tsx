@@ -143,7 +143,32 @@ const RepKPIs = ({ userId }: Props) => {
     load();
   }, [reps, filterYear, filterWeek, userId]);
 
-  const handleChange = useCallback((repId: string, value: string) => {
+  // Load monthly goals
+  useEffect(() => {
+    if (!reps.length) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from("monthly_goals")
+        .select("representative_id, meta_valor, meta_quantidade")
+        .eq("user_id", userId)
+        .eq("ano", filterYear)
+        .eq("mes", filterMonth)
+        .eq("machine_type", "all");
+
+      const rows = reps.map((r) => {
+        const existing = (data || []).find((d: any) => d.representative_id === r.id);
+        return {
+          representative_id: r.id,
+          nome: r.nome,
+          meta_valor: existing?.meta_valor ?? 0,
+          meta_quantidade: existing?.meta_quantidade ?? 0,
+        };
+      });
+      setGoals(rows);
+    };
+    load();
+  }, [reps, filterYear, filterMonth, userId]);
+
     const num = Math.max(0, parseInt(value) || 0);
     setVisits((prev) =>
       prev.map((v) => (v.representative_id === repId ? { ...v, quantidade: num } : v))
