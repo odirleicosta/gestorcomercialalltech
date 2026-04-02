@@ -501,7 +501,7 @@ const RepKPIs = ({ userId }: Props) => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {visits.map((row) => {
+            {filteredVisits.map((row) => {
               const pct = row.meta > 0 ? (row.quantidade / row.meta) * 100 : 0;
               return (
                 <TableRow key={row.representative_id}>
