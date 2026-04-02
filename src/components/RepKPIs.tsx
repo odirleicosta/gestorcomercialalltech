@@ -345,6 +345,13 @@ const RepKPIs = ({ userId }: Props) => {
             <Lightbulb className="inline h-4 w-4 mr-1.5 -mt-0.5" />
             Oportunidades
           </button>
+          <button
+            onClick={() => setSubTab("metas")}
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "metas" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+          >
+            <Flag className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+            Metas
+          </button>
         </div>
         <div className="flex items-center gap-2">
           <Select value={String(filterYear)} onValueChange={(v) => setFilterYear(Number(v))}>
