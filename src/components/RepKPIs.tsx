@@ -113,7 +113,36 @@ const RepKPIs = ({ userId }: Props) => {
     load();
   }, [userId, filterYear, visits]); // re-fetch when visits change (after edits)
 
-  const handleChange = useCallback((repId: string, value: string) => {
+  // Load opportunities (closing_deals) for the year
+  useEffect(() => {
+    if (!reps.length) return;
+    const load = async () => {
+      const startDate = `${filterYear}-01-01`;
+      const endDate = `${filterYear}-12-31`;
+      const { data } = await supabase
+        .from("closing_deals")
+        .select("representative_id, origem")
+        .eq("user_id", userId)
+        .gte("start_date", startDate)
+        .lte("start_date", endDate);
+
+      const oppData = reps.map((r) => {
+        const repOps = (data || []).filter((d: any) => d.representative_id === r.id);
+        const proprias = repOps.filter((d: any) => d.origem === "Própria do representante").length;
+        const sdr = repOps.filter((d: any) => d.origem === "SDR / Interno").length;
+        return {
+          representative_id: r.id,
+          nome: r.nome,
+          total: repOps.length,
+          proprias,
+          sdr,
+        };
+      });
+      setOpportunities(oppData);
+    };
+    load();
+  }, [reps, filterYear, userId]);
+
     const num = Math.max(0, parseInt(value) || 0);
     setVisits((prev) =>
       prev.map((v) => (v.representative_id === repId ? { ...v, quantidade: num } : v))
