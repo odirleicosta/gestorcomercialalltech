@@ -46,7 +46,8 @@ const RepKPIs = ({ userId }: Props) => {
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [weeklyHistory, setWeeklyHistory] = useState<{ semana: number; total: number; meta: number }[]>([]);
-  const [opportunities, setOpportunities] = useState<{ representative_id: string; nome: string; total: number; proprias: number; sdr: number }[]>([]);
+  const [opportunities, setOpportunities] = useState<{ representative_id: string; nome: string; qty_proprias: number; qty_sdr: number }[]>([]);
+  const [savingOpp, setSavingOpp] = useState(false);
 
   // Load reps
   useEffect(() => {
@@ -113,35 +114,30 @@ const RepKPIs = ({ userId }: Props) => {
     load();
   }, [userId, filterYear, visits]); // re-fetch when visits change (after edits)
 
-  // Load opportunities (closing_deals) for the year
+  // Load weekly opportunities for selected week
   useEffect(() => {
     if (!reps.length) return;
     const load = async () => {
-      const startDate = `${filterYear}-01-01`;
-      const endDate = `${filterYear}-12-31`;
       const { data } = await supabase
-        .from("closing_deals")
-        .select("representative_id, origem")
+        .from("weekly_opportunities")
+        .select("representative_id, qty_proprias, qty_sdr")
         .eq("user_id", userId)
-        .gte("start_date", startDate)
-        .lte("start_date", endDate);
+        .eq("ano", filterYear)
+        .eq("semana", filterWeek);
 
-      const oppData = reps.map((r) => {
-        const repOps = (data || []).filter((d: any) => d.representative_id === r.id);
-        const proprias = repOps.filter((d: any) => d.origem === "Própria do representante").length;
-        const sdr = repOps.filter((d: any) => d.origem === "SDR / Interno").length;
+      const rows = reps.map((r) => {
+        const existing = (data || []).find((d: any) => d.representative_id === r.id);
         return {
           representative_id: r.id,
           nome: r.nome,
-          total: repOps.length,
-          proprias,
-          sdr,
+          qty_proprias: existing?.qty_proprias ?? 0,
+          qty_sdr: existing?.qty_sdr ?? 0,
         };
       });
-      setOpportunities(oppData);
+      setOpportunities(rows);
     };
     load();
-  }, [reps, filterYear, userId]);
+  }, [reps, filterYear, filterWeek, userId]);
 
   const handleChange = useCallback((repId: string, value: string) => {
     const num = Math.max(0, parseInt(value) || 0);
@@ -204,23 +200,57 @@ const RepKPIs = ({ userId }: Props) => {
 
   // Opportunities KPIs
   const oppKpis = useMemo(() => {
-    const totalAberto = opportunities.reduce((s, o) => s + o.total, 0);
-    const totalProprias = opportunities.reduce((s, o) => s + o.proprias, 0);
-    const totalSdr = opportunities.reduce((s, o) => s + o.sdr, 0);
+    const totalProprias = opportunities.reduce((s, o) => s + o.qty_proprias, 0);
+    const totalSdr = opportunities.reduce((s, o) => s + o.qty_sdr, 0);
+    const totalAberto = totalProprias + totalSdr;
     const pctProprias = totalAberto > 0 ? (totalProprias / totalAberto) * 100 : 0;
     return { totalAberto, totalProprias, totalSdr, pctProprias };
   }, [opportunities]);
 
   const oppChartData = useMemo(() =>
     opportunities
-      .filter((o) => o.total > 0)
+      .filter((o) => o.qty_proprias + o.qty_sdr > 0)
       .map((o) => ({
         nome: o.nome.split(" ").slice(0, 2).join(" "),
-        proprias: o.proprias,
-        sdr: o.sdr,
+        proprias: o.qty_proprias,
+        sdr: o.qty_sdr,
       })),
     [opportunities]
   );
+
+  const handleOppChange = useCallback((repId: string, field: "qty_proprias" | "qty_sdr", value: string) => {
+    const num = Math.max(0, parseInt(value) || 0);
+    setOpportunities((prev) =>
+      prev.map((o) => (o.representative_id === repId ? { ...o, [field]: num } : o))
+    );
+  }, []);
+
+  const handleSaveOpp = async () => {
+    setSavingOpp(true);
+    try {
+      for (const row of opportunities) {
+        const { error } = await supabase
+          .from("weekly_opportunities")
+          .upsert(
+            {
+              user_id: userId,
+              representative_id: row.representative_id,
+              ano: filterYear,
+              semana: filterWeek,
+              qty_proprias: row.qty_proprias,
+              qty_sdr: row.qty_sdr,
+            },
+            { onConflict: "user_id,representative_id,ano,semana" }
+          );
+        if (error) throw error;
+      }
+      toast.success("Oportunidades salvas com sucesso!");
+    } catch (e: any) {
+      toast.error("Erro ao salvar: " + e.message);
+    } finally {
+      setSavingOpp(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -480,8 +510,8 @@ const RepKPIs = ({ userId }: Props) => {
       <div className="border-t border-border pt-6 mt-2">
         <div className="flex items-center gap-2 mb-4">
           <Lightbulb className="h-5 w-5 text-primary" />
-          <h2 className="text-xl font-bold text-foreground">Oportunidades por Criação</h2>
-          <Badge variant="outline" className="ml-auto">{filterYear}</Badge>
+          <h2 className="text-xl font-bold text-foreground">Oportunidades da Semana</h2>
+          <Badge variant="outline" className="ml-auto">Semana {filterWeek} · {filterYear}</Badge>
         </div>
 
         {/* Opp KPI Cards */}
@@ -492,27 +522,46 @@ const RepKPIs = ({ userId }: Props) => {
           <KpiCard icon={<TrendingUp className="h-5 w-5" />} label="% Geração Própria" value={`${oppKpis.pctProprias.toFixed(1)}%`} color={oppKpis.pctProprias >= 50 ? "text-green-500" : "text-yellow-500"} />
         </div>
 
-        {/* Opp Table */}
+        {/* Opp Editable Table */}
         <Card className="overflow-hidden mb-6">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead className="font-semibold">Representante</TableHead>
-                <TableHead className="text-center font-semibold">Abertas</TableHead>
-                <TableHead className="text-center font-semibold">Próprias</TableHead>
-                <TableHead className="text-center font-semibold">SDR/Interno</TableHead>
-                <TableHead className="text-center font-semibold">% Próprias</TableHead>
+                <TableHead className="text-center font-semibold w-32">Próprias</TableHead>
+                <TableHead className="text-center font-semibold w-32">SDR/Interno</TableHead>
+                <TableHead className="text-center font-semibold w-24">Total</TableHead>
+                <TableHead className="text-center font-semibold w-28">% Próprias</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {opportunities.map((row) => {
-                const pct = row.total > 0 ? (row.proprias / row.total) * 100 : 0;
+                const total = row.qty_proprias + row.qty_sdr;
+                const pct = total > 0 ? (row.qty_proprias / total) * 100 : 0;
                 return (
                   <TableRow key={row.representative_id}>
                     <TableCell className="font-medium">{row.nome}</TableCell>
-                    <TableCell className="text-center font-semibold">{row.total}</TableCell>
-                    <TableCell className="text-center text-green-600 font-semibold">{row.proprias}</TableCell>
-                    <TableCell className="text-center text-yellow-600 font-semibold">{row.sdr}</TableCell>
+                    <TableCell className="text-center">
+                      <Input
+                        type="number"
+                        min={0}
+                        className="w-20 mx-auto text-center h-9"
+                        value={row.qty_proprias || ""}
+                        onChange={(e) => handleOppChange(row.representative_id, "qty_proprias", e.target.value)}
+                        placeholder="0"
+                      />
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Input
+                        type="number"
+                        min={0}
+                        className="w-20 mx-auto text-center h-9"
+                        value={row.qty_sdr || ""}
+                        onChange={(e) => handleOppChange(row.representative_id, "qty_sdr", e.target.value)}
+                        placeholder="0"
+                      />
+                    </TableCell>
+                    <TableCell className="text-center font-semibold">{total}</TableCell>
                     <TableCell className="text-center">
                       <Badge variant={pct >= 50 ? "default" : "secondary"}>{pct.toFixed(1)}%</Badge>
                     </TableCell>
@@ -522,7 +571,7 @@ const RepKPIs = ({ userId }: Props) => {
               {opportunities.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                    Nenhuma oportunidade registrada no período.
+                    Nenhum representante cadastrado.
                   </TableCell>
                 </TableRow>
               )}
@@ -550,8 +599,19 @@ const RepKPIs = ({ userId }: Props) => {
             </ResponsiveContainer>
           </Card>
         )}
+
+        {/* Save Opp button */}
+        {opportunities.length > 0 && (
+          <div className="flex justify-end mt-4">
+            <Button onClick={handleSaveOpp} disabled={savingOpp} size="lg" variant="outline">
+              <Save className="h-4 w-4 mr-2" />
+              {savingOpp ? "Salvando..." : "Salvar Oportunidades"}
+            </Button>
+          </div>
+        )}
       </div>
 
+      {/* Save Visits button */}
       {visits.length > 0 && (
         <div className="flex justify-end">
           <Button onClick={handleSave} disabled={saving} size="lg">
