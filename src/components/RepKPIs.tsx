@@ -1465,6 +1465,10 @@ const RepKPIs = ({ userId }: Props) => {
                       </Select>
                     )}
                   </div>
+                  <div>
+                    <Label className="text-xs">Quantidade *</Label>
+                    <Input type="number" min={1} value={lostForm.quantidade} onChange={e => setLostForm(f => ({ ...f, quantidade: Math.max(1, parseInt(e.target.value) || 1) }))} className="h-9" />
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => { resetLostForm(); setLostFormOpen(false); }}>Cancelar</Button>
