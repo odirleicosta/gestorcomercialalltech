@@ -337,107 +337,120 @@ const RepKPIs = ({ userId }: Props) => {
 
   return (
     <div className="space-y-6">
-      {/* Header with sub-tabs and filters */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setSubTab("visitas")}
-            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "visitas" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
-          >
-            <Eye className="inline h-4 w-4 mr-1.5 -mt-0.5" />
-            Visitas
-          </button>
-          <button
-            onClick={() => setSubTab("oportunidades")}
-            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "oportunidades" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
-          >
-            <Lightbulb className="inline h-4 w-4 mr-1.5 -mt-0.5" />
-            Oportunidades
-          </button>
-          <button
-            onClick={() => setSubTab("metas")}
-            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "metas" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
-          >
-            <Flag className="inline h-4 w-4 mr-1.5 -mt-0.5" />
-            Metas
-          </button>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select value={String(filterYear)} onValueChange={(v) => setFilterYear(Number(v))}>
-            <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {[currentYear - 1, currentYear, currentYear + 1].map((y) => (
-                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={String(filterWeek)} onValueChange={(v) => setFilterWeek(Number(v))}>
-            <SelectTrigger className="w-36">
-              <Calendar className="h-4 w-4 mr-1" /><SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {weekOptions.map((w) => (
-                <SelectItem key={w} value={String(w)}>Semana {w}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {/* Top row: Period mode + Year/Week + Rep filter */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
+              {(["semana", "mes", "trimestre", "ano"] as PeriodMode[]).map((mode) => {
+                const labels: Record<PeriodMode, string> = { semana: "Semana", mes: "Mês", trimestre: "Trimestre", ano: "Ano" };
+                return (
+                  <button
+                    key={mode}
+                    onClick={() => setPeriodMode(mode)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                      periodMode === mode
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-transparent text-muted-foreground hover:bg-secondary/80"
+                    }`}
+                  >
+                    {labels[mode]}
+                  </button>
+                );
+              })}
+            </div>
+            {periodMode === "trimestre" && (
+              <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
+                {["T1", "T2", "T3", "T4"].map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => setFilterQuarter(q)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                      filterQuarter === q
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-transparent text-muted-foreground hover:bg-secondary/80"
+                    }`}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
+            {periodMode === "mes" && (
+              <div className="flex items-center gap-1 flex-wrap">
+                {MONTHS.map((m, i) => (
+                  <button
+                    key={m}
+                    onClick={() => setFilterMonth(i + 1)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                      filterMonth === i + 1
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-transparent text-muted-foreground hover:bg-secondary/80"
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={filterRep} onValueChange={setFilterRep}>
+              <SelectTrigger className="w-[140px] text-xs h-8">
+                <Users className="h-3.5 w-3.5 mr-1" /><SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Equipe</SelectItem>
+                {reps.map((r) => (
+                  <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={String(filterYear)} onValueChange={(v) => setFilterYear(Number(v))}>
+              <SelectTrigger className="w-24 text-xs h-8"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {[currentYear - 1, currentYear, currentYear + 1].map((y) => (
+                  <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={String(filterWeek)} onValueChange={(v) => setFilterWeek(Number(v))}>
+              <SelectTrigger className="w-36 text-xs h-8">
+                <Calendar className="h-4 w-4 mr-1" /><SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {weekOptions.map((w) => (
+                  <SelectItem key={w} value={String(w)}>Semana {w}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
-      {/* Period mode toggle */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
-          {(["semana", "mes", "trimestre", "ano"] as PeriodMode[]).map((mode) => {
-            const labels: Record<PeriodMode, string> = { semana: "Semana", mes: "Mês", trimestre: "Trimestre", ano: "Ano" };
-            return (
-              <button
-                key={mode}
-                onClick={() => setPeriodMode(mode)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                  periodMode === mode
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-transparent text-muted-foreground hover:bg-secondary/80"
-                }`}
-              >
-                {labels[mode]}
-              </button>
-            );
-          })}
-        </div>
-        {periodMode === "trimestre" && (
-          <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
-            {["T1", "T2", "T3", "T4"].map((q) => (
-              <button
-                key={q}
-                onClick={() => setFilterQuarter(q)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                  filterQuarter === q
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-transparent text-muted-foreground hover:bg-secondary/80"
-                }`}
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-        )}
-        {periodMode === "mes" && (
-          <div className="flex items-center gap-1 flex-wrap">
-            {MONTHS.map((m, i) => (
-              <button
-                key={m}
-                onClick={() => setFilterMonth(i + 1)}
-                className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                  filterMonth === i + 1
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "bg-transparent text-muted-foreground hover:bg-secondary/80"
-                }`}
-              >
-                {m}
-              </button>
-            ))}
-          </div>
-        )}
+      {/* Sub-tabs */}
+      <div className="flex items-center gap-2">
+        <button
+          onClick={() => setSubTab("visitas")}
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "visitas" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+        >
+          <Eye className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+          Visitas
+        </button>
+        <button
+          onClick={() => setSubTab("oportunidades")}
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "oportunidades" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+        >
+          <Lightbulb className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+          Oportunidades
+        </button>
+        <button
+          onClick={() => setSubTab("metas")}
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${subTab === "metas" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+        >
+          <Flag className="inline h-4 w-4 mr-1.5 -mt-0.5" />
+          Metas
+        </button>
       </div>
 
       {/* ═══ VISITAS ═══ */}
