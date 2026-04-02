@@ -580,91 +580,13 @@ const RepKPIs = ({ userId }: Props) => {
         </Badge>
       </div>
 
-      {/* View Tab Pills */}
-      <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5 w-fit">
-        <PillButton active={viewTab === "equipe"} onClick={() => setViewTab("equipe")}>
-          <span className="flex items-center gap-1"><Users className="h-3 w-3" /> Equipe</span>
-        </PillButton>
-        <PillButton active={viewTab === "representante"} onClick={() => setViewTab("representante")}>
-          <span className="flex items-center gap-1"><Target className="h-3 w-3" /> Por Representante</span>
-        </PillButton>
-        <PillButton active={viewTab === "perdas"} onClick={() => setViewTab("perdas")}>
-          <span className="flex items-center gap-1"><XCircle className="h-3 w-3" /> Perdas</span>
-        </PillButton>
-        <PillButton active={viewTab === "visitas"} onClick={() => setViewTab("visitas")}>
-          <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> Visitas</span>
-        </PillButton>
-        <PillButton active={viewTab === "dados"} onClick={() => setViewTab("dados")}>
-          <span className="flex items-center gap-1"><Database className="h-3 w-3" /> Dados</span>
-        </PillButton>
+      {/* Global KPI Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <KpiCard icon={<Eye className="h-4 w-4" />} label="Visitas" value={String(globalKpis.totalVisits)} color="bg-primary/10 text-primary" />
+        <KpiCard icon={<Target className="h-4 w-4" />} label="Oportunidades Ativas" value={String(globalKpis.totalOpps)} sub={formatBrl(globalKpis.totalPipeline)} color="bg-accent/10 text-accent" />
+        <KpiCard icon={<FileText className="h-4 w-4" />} label={`Neg. Abertas (${periodLabel})`} value={String(openByRep.reduce((s, r) => s + r.total, 0))} sub={`Radar: ${openByRep.reduce((s, r) => s + r.radar, 0)} | Vendas: ${openByRep.reduce((s, r) => s + r.vendas, 0)}`} color="bg-primary/10 text-primary" />
+        <KpiCard icon={<CheckCircle className="h-4 w-4" />} label="Win Rate" value={formatPct(globalKpis.globalWinRate)} sub={`${globalKpis.totalWon}W / ${globalKpis.totalLost}L`} color="bg-accent/10 text-accent" />
       </div>
-
-      {/* ===================== VIEW: EQUIPE ===================== */}
-      {viewTab === "equipe" && (
-        <>
-
-          {/* Global KPI Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <KpiCard icon={<Eye className="h-4 w-4" />} label="Visitas" value={String(globalKpis.totalVisits)} color="bg-primary/10 text-primary" />
-            <KpiCard icon={<Target className="h-4 w-4" />} label="Oportunidades Ativas" value={String(globalKpis.totalOpps)} sub={formatBrl(globalKpis.totalPipeline)} color="bg-accent/10 text-accent" />
-            <KpiCard icon={<FileText className="h-4 w-4" />} label={`Neg. Abertas (${periodLabel})`} value={String(openByRep.reduce((s, r) => s + r.total, 0))} sub={`Radar: ${openByRep.reduce((s, r) => s + r.radar, 0)} | Vendas: ${openByRep.reduce((s, r) => s + r.vendas, 0)}`} color="bg-primary/10 text-primary" />
-            <KpiCard icon={<CheckCircle className="h-4 w-4" />} label="Win Rate" value={formatPct(globalKpis.globalWinRate)} sub={`${globalKpis.totalWon}W / ${globalKpis.totalLost}L`} color="bg-accent/10 text-accent" />
-          </div>
-
-          {/* Meta vs Realizado global */}
-          <Card className="p-4 border-border bg-card">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-foreground">Meta vs Realizado — {periodLabel}</span>
-              <Badge variant={metaPct >= 100 ? "default" : metaPct >= 70 ? "secondary" : "destructive"} className="text-xs">
-                {formatPct(metaPct)}
-              </Badge>
-            </div>
-            <Progress value={Math.min(metaPct, 100)} className="h-3" />
-            <div className="flex justify-between text-xs text-muted-foreground mt-1">
-              <span>Realizado: {formatBrl(globalKpis.totalRealized)}</span>
-              <span>Meta: {formatBrl(globalKpis.totalMeta)}</span>
-            </div>
-          </Card>
-
-          {/* Negociações Abertas por Representante */}
-          <Card className="p-4 border-border bg-card">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-foreground">Negociações Abertas por Representante — {periodLabel}</h3>
-              <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={openNewNeg}>
-                <Plus className="h-3 w-3" /> Nova Negociação
-              </Button>
-            </div>
-
-            {/* Active negotiations list */}
-            {(() => {
-              const activeNegs = closingDeals.filter(c => c.status === "ativa" && isInPeriod(new Date(c.created_at)));
-              if (activeNegs.length === 0) return null;
-              return (
-                <div className="mt-4 space-y-2 max-h-[300px] overflow-y-auto">
-                  <h4 className="text-xs font-semibold text-muted-foreground">Negociações ativas ({activeNegs.length})</h4>
-                  {activeNegs.map(neg => {
-                    const repName = reps.find(r => r.id === neg.representative_id)?.nome || "—";
-                    return (
-                      <div key={neg.id} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-secondary/30 border border-border">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                            <span className="text-xs font-semibold text-foreground">{neg.client_name || "—"}</span>
-                            <Badge variant="outline" className="text-[10px]">{repName}</Badge>
-                            <Badge variant="secondary" className="text-[10px]">{neg.stage}</Badge>
-                          </div>
-                          <p className="text-[10px] text-muted-foreground">{neg.machine_name && `${neg.machine_name} · `}{formatBrl(neg.deal_value)}</p>
-                        </div>
-                        {renderNegActions(neg)}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-          </Card>
-
-        </>
-      )}
 
       {/* ===================== VIEW: POR REPRESENTANTE ===================== */}
       {viewTab === "representante" && (() => {
