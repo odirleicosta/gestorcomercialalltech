@@ -131,6 +131,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [visitEditWeek, setVisitEditWeek] = useState(getWeekNumber(now));
   const [visitInlineEntries, setVisitInlineEntries] = useState<Record<string, { meta: number; quantidade: number }>>({});
   const [visitSaving, setVisitSaving] = useState(false);
+  const [visitRepFilter, setVisitRepFilter] = useState<string>("all");
 
   // Dados tab state
   const [oppsData, setOppsData] = useState<Record<string, Record<number, number>>>({});
