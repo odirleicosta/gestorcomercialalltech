@@ -45,7 +45,7 @@ const currentYear = new Date().getFullYear();
 const currentWeek = getWeekNumber(new Date());
 
 const RepKPIs = ({ userId }: Props) => {
-  const [subTab, setSubTab] = useState<"visitas" | "oportunidades" | "metas">("visitas");
+  const [subTab, setSubTab] = useState<"visitas" | "oportunidades" | "metas" | "desempenho">("visitas");
   const [filterRep, setFilterRep] = useState<string>("all");
   const [reps, setReps] = useState<Rep[]>([]);
   const [filterYear, setFilterYear] = useState(currentYear);
