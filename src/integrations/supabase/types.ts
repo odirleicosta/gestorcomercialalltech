@@ -691,6 +691,62 @@ export type Database = {
         }
         Relationships: []
       }
+      negociacoes_perdidas: {
+        Row: {
+          client_name: string
+          created_at: string
+          data_perda: string
+          deal_value: number
+          id: string
+          machine_name: string
+          machine_type: string
+          motivo_perda: string | null
+          motivo_perda_detalhe: string | null
+          notes: string | null
+          representative_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_name: string
+          created_at?: string
+          data_perda?: string
+          deal_value?: number
+          id?: string
+          machine_name?: string
+          machine_type?: string
+          motivo_perda?: string | null
+          motivo_perda_detalhe?: string | null
+          notes?: string | null
+          representative_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_name?: string
+          created_at?: string
+          data_perda?: string
+          deal_value?: number
+          id?: string
+          machine_name?: string
+          machine_type?: string
+          motivo_perda?: string | null
+          motivo_perda_detalhe?: string | null
+          notes?: string | null
+          representative_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "negociacoes_perdidas_representative_id_fkey"
+            columns: ["representative_id"]
+            isOneToOne: false
+            referencedRelation: "representatives"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           commission_password: string | null
