@@ -222,6 +222,7 @@ const RepKPIs = ({ userId }: Props) => {
     [opportunities]
   );
 
+  return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
