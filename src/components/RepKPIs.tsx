@@ -200,23 +200,57 @@ const RepKPIs = ({ userId }: Props) => {
 
   // Opportunities KPIs
   const oppKpis = useMemo(() => {
-    const totalAberto = opportunities.reduce((s, o) => s + o.total, 0);
-    const totalProprias = opportunities.reduce((s, o) => s + o.proprias, 0);
-    const totalSdr = opportunities.reduce((s, o) => s + o.sdr, 0);
+    const totalProprias = opportunities.reduce((s, o) => s + o.qty_proprias, 0);
+    const totalSdr = opportunities.reduce((s, o) => s + o.qty_sdr, 0);
+    const totalAberto = totalProprias + totalSdr;
     const pctProprias = totalAberto > 0 ? (totalProprias / totalAberto) * 100 : 0;
     return { totalAberto, totalProprias, totalSdr, pctProprias };
   }, [opportunities]);
 
   const oppChartData = useMemo(() =>
     opportunities
-      .filter((o) => o.total > 0)
+      .filter((o) => o.qty_proprias + o.qty_sdr > 0)
       .map((o) => ({
         nome: o.nome.split(" ").slice(0, 2).join(" "),
-        proprias: o.proprias,
-        sdr: o.sdr,
+        proprias: o.qty_proprias,
+        sdr: o.qty_sdr,
       })),
     [opportunities]
   );
+
+  const handleOppChange = useCallback((repId: string, field: "qty_proprias" | "qty_sdr", value: string) => {
+    const num = Math.max(0, parseInt(value) || 0);
+    setOpportunities((prev) =>
+      prev.map((o) => (o.representative_id === repId ? { ...o, [field]: num } : o))
+    );
+  }, []);
+
+  const handleSaveOpp = async () => {
+    setSavingOpp(true);
+    try {
+      for (const row of opportunities) {
+        const { error } = await supabase
+          .from("weekly_opportunities")
+          .upsert(
+            {
+              user_id: userId,
+              representative_id: row.representative_id,
+              ano: filterYear,
+              semana: filterWeek,
+              qty_proprias: row.qty_proprias,
+              qty_sdr: row.qty_sdr,
+            },
+            { onConflict: "user_id,representative_id,ano,semana" }
+          );
+        if (error) throw error;
+      }
+      toast.success("Oportunidades salvas com sucesso!");
+    } catch (e: any) {
+      toast.error("Erro ao salvar: " + e.message);
+    } finally {
+      setSavingOpp(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
