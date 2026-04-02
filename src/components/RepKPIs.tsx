@@ -1469,12 +1469,29 @@ const RepKPIs = ({ userId }: Props) => {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label className="text-xs">Motivo da Perda *</Label>
-                      <Select value={lostForm.motivo_perda} onValueChange={v => setLostForm(f => ({ ...f, motivo_perda: v }))}>
-                        <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                        <SelectContent>
-                          {MOTIVOS_PERDA.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                      {addingCustomMotivo ? (
+                        <div className="flex gap-1">
+                          <Input value={customMotivo} onChange={e => setCustomMotivo(e.target.value)} placeholder="Novo motivo" className="h-9" autoFocus />
+                          <Button size="sm" className="h-9 px-2" onClick={() => {
+                            if (customMotivo.trim()) {
+                              setLostForm(f => ({ ...f, motivo_perda: customMotivo.trim() }));
+                              setCustomMotivo("");
+                              setAddingCustomMotivo(false);
+                            }
+                          }}>OK</Button>
+                          <Button size="sm" variant="ghost" className="h-9 px-2" onClick={() => { setAddingCustomMotivo(false); setCustomMotivo(""); }}>✕</Button>
+                        </div>
+                      ) : (
+                        <Select value={lostForm.motivo_perda} onValueChange={v => {
+                          if (v === "__novo__") { setAddingCustomMotivo(true); } else { setLostForm(f => ({ ...f, motivo_perda: v })); }
+                        }}>
+                          <SelectTrigger className="h-9"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                          <SelectContent>
+                            {MOTIVOS_PERDA.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                            <SelectItem value="__novo__" className="text-primary font-medium">+ Adicionar novo motivo</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
                     </div>
                     <div>
                       <Label className="text-xs">Submotivo / Detalhe</Label>
