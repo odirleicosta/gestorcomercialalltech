@@ -114,35 +114,30 @@ const RepKPIs = ({ userId }: Props) => {
     load();
   }, [userId, filterYear, visits]); // re-fetch when visits change (after edits)
 
-  // Load opportunities (closing_deals) for the year
+  // Load weekly opportunities for selected week
   useEffect(() => {
     if (!reps.length) return;
     const load = async () => {
-      const startDate = `${filterYear}-01-01`;
-      const endDate = `${filterYear}-12-31`;
       const { data } = await supabase
-        .from("closing_deals")
-        .select("representative_id, origem")
+        .from("weekly_opportunities")
+        .select("representative_id, qty_proprias, qty_sdr")
         .eq("user_id", userId)
-        .gte("start_date", startDate)
-        .lte("start_date", endDate);
+        .eq("ano", filterYear)
+        .eq("semana", filterWeek);
 
-      const oppData = reps.map((r) => {
-        const repOps = (data || []).filter((d: any) => d.representative_id === r.id);
-        const proprias = repOps.filter((d: any) => d.origem === "Própria do representante").length;
-        const sdr = repOps.filter((d: any) => d.origem === "SDR / Interno").length;
+      const rows = reps.map((r) => {
+        const existing = (data || []).find((d: any) => d.representative_id === r.id);
         return {
           representative_id: r.id,
           nome: r.nome,
-          total: repOps.length,
-          proprias,
-          sdr,
+          qty_proprias: existing?.qty_proprias ?? 0,
+          qty_sdr: existing?.qty_sdr ?? 0,
         };
       });
-      setOpportunities(oppData);
+      setOpportunities(rows);
     };
     load();
-  }, [reps, filterYear, userId]);
+  }, [reps, filterYear, filterWeek, userId]);
 
   const handleChange = useCallback((repId: string, value: string) => {
     const num = Math.max(0, parseInt(value) || 0);
