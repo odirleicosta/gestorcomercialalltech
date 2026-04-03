@@ -1990,6 +1990,7 @@ const RepKPIs = ({ userId }: Props) => {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            <LostDealImport userId={userId} reps={reps} open={lostImportOpen} onClose={() => setLostImportOpen(false)} onImported={loadLostDeals} />
           </>
         );
       })()}
