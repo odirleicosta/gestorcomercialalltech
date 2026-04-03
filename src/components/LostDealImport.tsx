@@ -289,11 +289,11 @@ const LostDealImport = ({ userId, reps, open, onClose, onImported }: Props) => {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-xs w-8">#</TableHead>
-                      <TableHead className="text-xs">Data</TableHead>
+                      <TableHead className="text-xs">Criação</TableHead>
+                      <TableHead className="text-xs">Fechamento</TableHead>
                       <TableHead className="text-xs">Representante</TableHead>
                       <TableHead className="text-xs">Cliente</TableHead>
                       <TableHead className="text-xs">Motivo</TableHead>
-                      <TableHead className="text-xs">Máquina</TableHead>
                       <TableHead className="text-xs">Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -301,7 +301,18 @@ const LostDealImport = ({ userId, reps, open, onClose, onImported }: Props) => {
                     {rows.slice(0, 100).map((r, i) => (
                       <TableRow key={i} className={!r.valid ? "opacity-50" : ""}>
                         <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
-                        <TableCell className="text-xs">{r.data_perda || "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{r.data_criacao || "—"}</TableCell>
+                        <TableCell className="text-xs">
+                          <Input
+                            type="date"
+                            className="w-32 h-7 text-xs"
+                            value={r.data_perda}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setRows((prev) => prev.map((row, idx) => idx === i ? { ...row, data_perda: val } : row));
+                            }}
+                          />
+                        </TableCell>
                         <TableCell className="text-xs">
                           {r.matched_rep_id ? (
                             <span className="font-medium">{reps.find((rep) => rep.id === r.matched_rep_id)?.nome}</span>
