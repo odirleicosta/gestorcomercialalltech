@@ -766,8 +766,21 @@ const PriceCalculator = () => {
 
           <TabsContent value="registry">
             <KpiErrorBoundary fallbackTitle="Erro ao carregar Cadastros">
-              <div className="space-y-6">
-                <ClientManager clients={clients} setClients={setClients} />
+              <div className="space-y-4">
+                <div className="flex gap-2 border-b border-border pb-2 overflow-x-auto">
+                  <Button variant={registrySubTab === "clients" ? "default" : "ghost"} size="sm" onClick={() => setRegistrySubTab("clients")}>
+                    <Building2 className="h-4 w-4 mr-1.5" /> Clientes
+                  </Button>
+                  <Button variant={registrySubTab === "reps" ? "default" : "ghost"} size="sm" onClick={() => setRegistrySubTab("reps")}>
+                    <UserPlus className="h-4 w-4 mr-1.5" /> Representantes
+                  </Button>
+                  <Button variant={registrySubTab === "catalog" ? "default" : "ghost"} size="sm" onClick={() => setRegistrySubTab("catalog")}>
+                    <Package className="h-4 w-4 mr-1.5" /> Catálogo
+                  </Button>
+                </div>
+                {registrySubTab === "clients" && <ClientManager clients={clients} setClients={setClients} />}
+                {registrySubTab === "reps" && <RepresentativeManager userId={user.id} />}
+                {registrySubTab === "catalog" && <MachineCatalog catalog={catalog} setCatalog={setCatalog} userId={user.id} />}
               </div>
             </KpiErrorBoundary>
           </TabsContent>
