@@ -831,6 +831,7 @@ const RepKPIs = ({ userId }: Props) => {
           </Button>
         </div>
       )}
+      <VisitImport userId={userId} reps={reps} open={visitImportOpen} onClose={() => setVisitImportOpen(false)} onImported={() => { /* refresh data */ }} />
       </>)}
 
       {/* ═══ OPORTUNIDADES ═══ */}
