@@ -78,6 +78,7 @@ const RepKPIs = ({ userId }: Props) => {
     data_perda: new Date().toISOString().slice(0, 10),
     quantidade: 1,
   });
+  const [selRadar, setSelRadar] = useState<string[]>([]);
 
   // Load reps
   useEffect(() => {
