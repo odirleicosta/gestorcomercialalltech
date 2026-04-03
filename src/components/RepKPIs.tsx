@@ -67,7 +67,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [allYearVisits, setAllYearVisits] = useState<{ representative_id: string; semana: number; quantidade: number; meta: number }[]>([]);
   const [allYearOpps, setAllYearOpps] = useState<{ representative_id: string; mes: number; qty_proprias: number; qty_sdr: number }[]>([]);
   const [allYearGoals, setAllYearGoals] = useState<{ representative_id: string; mes: number; meta_quantidade: number; machine_type: string }[]>([]);
-  const [allYearClosedDeals, setAllYearClosedDeals] = useState<{ representative_id: string | null; closed_at: string }[]>([]);
+  const [allYearClosedDeals, setAllYearClosedDeals] = useState<{ representative_id: string | null; closed_at: string; machine_type: string }[]>([]);
   const [lostDeals, setLostDeals] = useState<{ id: string; representative_id: string | null; client_name: string; machine_name: string; machine_type: string; deal_value: number; motivo_perda: string | null; motivo_perda_detalhe: string | null; data_perda: string; notes: string | null; created_at: string; updated_at: string }[]>([]);
   const [lostFormOpen, setLostFormOpen] = useState(false);
   const [editingLostId, setEditingLostId] = useState<string | null>(null);
@@ -224,7 +224,7 @@ const RepKPIs = ({ userId }: Props) => {
         supabase.from("weekly_visits").select("representative_id, semana, quantidade, meta").eq("user_id", userId).eq("ano", filterYear),
         supabase.from("monthly_opportunities").select("representative_id, mes, qty_proprias, qty_sdr, quantidade").eq("user_id", userId).eq("ano", filterYear),
         supabase.from("monthly_goals").select("representative_id, mes, meta_quantidade, machine_type").eq("user_id", userId).eq("ano", filterYear),
-        supabase.from("deals").select("representative_id, closed_at").eq("user_id", userId).eq("status", "closed").gte("closed_at", `${filterYear}-01-01`).lt("closed_at", `${filterYear + 1}-01-01`),
+        supabase.from("deals").select("representative_id, closed_at, machine_type").eq("user_id", userId).eq("status", "closed").gte("closed_at", `${filterYear}-01-01`).lt("closed_at", `${filterYear + 1}-01-01`),
       ]);
       setAllYearVisits(visRes.data || []);
       setAllYearOpps(oppRes.data || []);
@@ -1318,6 +1318,103 @@ const RepKPIs = ({ userId }: Props) => {
                         </div>
                       ))}
                     </div>
+                  </div>
+                </Card>
+              );
+            })()}
+
+            {/* ═══ META VS REALIZADO POR TIPO DE MÁQUINA ═══ */}
+            {(() => {
+              // Filter closed deals by period and rep
+              const closedFiltered = allYearClosedDeals.filter(d => {
+                if (filterRep !== "all" && d.representative_id !== filterRep) return false;
+                if (!d.closed_at) return false;
+                const dt = new Date(d.closed_at);
+                const m = dt.getMonth() + 1;
+                if (periodMode === "mes") return m === filterMonth;
+                if (periodMode === "trimestre") return relevantMonths.includes(m);
+                return true;
+              });
+
+              // Goals filtered by period and rep
+              const goalsFiltered = allYearGoals.filter(g => {
+                if (filterRep !== "all" && g.representative_id !== filterRep) return false;
+                if (periodMode === "mes") return g.mes === filterMonth;
+                if (periodMode === "trimestre") return relevantMonths.includes(g.mes);
+                return true;
+              });
+
+              const chartDataMvR = MACHINE_TYPES.map(mt => {
+                const metaVal = goalsFiltered.filter(g => g.machine_type === mt).reduce((s, g) => s + (g.meta_quantidade || 0), 0);
+                const realVal = closedFiltered.filter(d => d.machine_type === mt).length;
+                return { tipo: mt, meta: metaVal, realizado: realVal };
+              });
+
+              const totalMetaMvR = chartDataMvR.reduce((s, r) => s + r.meta, 0);
+              const totalRealMvR = chartDataMvR.reduce((s, r) => s + r.realizado, 0);
+              const pctAtingMvR = totalMetaMvR > 0 ? (totalRealMvR / totalMetaMvR) * 100 : 0;
+              const melhorTipo = [...chartDataMvR].sort((a, b) => {
+                const pA = a.meta > 0 ? a.realizado / a.meta : 0;
+                const pB = b.meta > 0 ? b.realizado / b.meta : 0;
+                return pB - pA;
+              })[0];
+
+              const pctColor = pctAtingMvR >= 100 ? "text-accent" : pctAtingMvR >= 70 ? "text-yellow-500" : "text-destructive";
+
+              return (
+                <Card className="p-4 sm:p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Flag className="h-5 w-5 text-primary" />
+                    <h3 className="font-semibold text-foreground">Meta vs Realizado por Tipo de Máquina — {periodLabel}</h3>
+                  </div>
+
+                  {/* Summary cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+                    <div className="p-3 rounded-lg bg-secondary text-center">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Total Meta</p>
+                      <p className="text-lg font-bold text-foreground">{totalMetaMvR}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-secondary text-center">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Total Realizado</p>
+                      <p className="text-lg font-bold text-foreground">{totalRealMvR}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-secondary text-center">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">% Atingido</p>
+                      <p className={`text-lg font-bold ${pctColor}`}>{pctAtingMvR.toFixed(1)}%</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-secondary text-center">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-semibold">Melhor Tipo</p>
+                      <p className="text-sm font-bold text-foreground truncate">{melhorTipo?.tipo || "—"}</p>
+                    </div>
+                  </div>
+
+                  {/* Chart */}
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={chartDataMvR} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="tipo" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                      <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+                      <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} />
+                      <Legend />
+                      <Bar dataKey="meta" name="Meta" fill="hsl(var(--muted-foreground))" radius={[6, 6, 0, 0]} maxBarSize={50} opacity={0.4} />
+                      <Bar dataKey="realizado" name="Realizado" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} maxBarSize={50} />
+                    </BarChart>
+                  </ResponsiveContainer>
+
+                  {/* Per-type detail */}
+                  <div className="mt-4 pt-3 border-t border-border grid grid-cols-3 gap-2">
+                    {chartDataMvR.map(r => {
+                      const p = r.meta > 0 ? (r.realizado / r.meta) * 100 : 0;
+                      const c = p >= 100 ? "text-accent" : p >= 70 ? "text-yellow-500" : "text-destructive";
+                      return (
+                        <div key={r.tipo} className="text-center p-2 rounded-lg bg-secondary/40">
+                          <p className="text-[10px] text-muted-foreground font-medium truncate">{r.tipo}</p>
+                          <p className="text-xs text-foreground">{r.realizado} / {r.meta}</p>
+                          <p className={`text-sm font-bold mt-0.5 ${c}`}>{r.meta > 0 ? `${p.toFixed(0)}%` : "—"}</p>
+                          <Progress value={Math.min(p, 100)} className="h-1.5 mt-1" />
+                        </div>
+                      );
+                    })}
                   </div>
                 </Card>
               );
