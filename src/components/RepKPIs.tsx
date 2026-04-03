@@ -1758,7 +1758,10 @@ const RepKPIs = ({ userId }: Props) => {
                   {MONTHS.map((m, i) => (<SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>))}
                 </SelectContent>
               </Select>
-              <div className="ml-auto">
+              <div className="ml-auto flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setLostImportOpen(true)} className="gap-1.5">
+                  <FileSpreadsheet className="h-4 w-4" /> Importar Planilha
+                </Button>
                 <Button size="sm" onClick={() => { resetLostForm(); setLostFormOpen(true); }} className="gap-1.5">
                   <Plus className="h-4 w-4" /> Registrar Perda
                 </Button>
