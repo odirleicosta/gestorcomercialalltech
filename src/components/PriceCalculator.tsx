@@ -326,13 +326,13 @@ const PriceCalculator = () => {
               className={`group flex items-center gap-3 rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-all duration-200 ${
                 sidebarCollapsed ? "justify-center px-2" : ""
               } ${
-                activeTab === value
+                getActiveNavTab(activeTab) === value
                   ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
                   : "text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
               }`}
             >
                 <div className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-200 shrink-0 ${
-                activeTab === value
+                getActiveNavTab(activeTab) === value
                   ? "gradient-accent shadow-sm text-accent-foreground"
                   : "bg-sidebar-accent/30 text-sidebar-muted group-hover:text-sidebar-foreground"
               }`}>
