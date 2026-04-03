@@ -111,7 +111,8 @@ const LostDealImport = ({ userId, reps, open, onClose, onImported }: Props) => {
           const headers = raw[0].map((h: any) => String(h));
           const iFechada = findCol(headers, "fechada por");
           const iMotivo = findCol(headers, "motivo da perda", "motivo");
-          const iCriacao = findCol(headers, "criacao", "criação", "data");
+          const iCriacao = findCol(headers, "criacao", "criação", "data de criacao", "data criacao");
+          const iPerda = findCol(headers, "data de perda", "data perda", "fechamento", "data fechamento");
           const iCliente = findCol(headers, "cliente");
           const iName = findCol(headers, "name", "nome_negociacao", "maquina", "máquina");
           const iCnpj = findCol(headers, "cnpj");
@@ -132,6 +133,7 @@ const LostDealImport = ({ userId, reps, open, onClose, onImported }: Props) => {
             const fechadaPor = iFechada >= 0 ? String(r[iFechada] ?? "").trim() : "";
             const motivo = iMotivo >= 0 ? String(r[iMotivo] ?? "").trim() : "";
             const dataStr = iCriacao >= 0 ? parseExcelDate(r[iCriacao]) : null;
+            const dataPerdaStr = iPerda >= 0 ? parseExcelDate(r[iPerda]) : null;
             const cliente = String(r[iCliente] ?? "").trim();
             const machineName = iName >= 0 ? String(r[iName] ?? "").trim() : "";
             const cnpj = iCnpj >= 0 ? String(r[iCnpj] ?? "").trim() : "";
@@ -150,7 +152,7 @@ const LostDealImport = ({ userId, reps, open, onClose, onImported }: Props) => {
               fechada_por: fechadaPor,
               motivo_perda: motivo,
               data_criacao: dataStr || "",
-              data_perda: new Date().toISOString().slice(0, 10),
+              data_perda: dataPerdaStr || new Date().toISOString().slice(0, 10),
               cliente,
               machine_name: machineName,
               cnpj,
