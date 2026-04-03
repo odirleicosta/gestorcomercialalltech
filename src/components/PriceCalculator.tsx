@@ -11,7 +11,7 @@ import {
   DollarSign, Percent, TrendingUp, Package, Receipt,
   Save, AlertTriangle, History, Calculator, RotateCcw, User, StickyNote,
   Building2, Plus, Wrench, Copy, Users, BarChart3, LogOut, UserPlus, Zap,
-  Moon, Sun, PanelLeftClose, PanelLeft, Crosshair, Target,
+  Moon, Sun, PanelLeftClose, PanelLeft, Crosshair, Target, Upload, Settings,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,12 +27,13 @@ import CommissionsTab from "@/components/CommissionsTab";
 import CommissionGate from "@/components/CommissionGate";
 import Auth from "@/components/Auth";
 import BottomNavBar from "@/components/BottomNavBar";
+import BiImport from "@/components/BiImport";
 import ClosingRadar from "@/components/ClosingRadar";
 import RepKPIs from "@/components/RepKPIs";
 import KpiErrorBoundary from "@/components/KpiErrorBoundary";
 
 import { useTheme } from "@/hooks/use-theme";
-import { ALL_APP_TABS, AppTabId, DEFAULT_APP_TAB, isAppTab } from "@/lib/app-tabs";
+import { ALL_APP_TABS, SIDEBAR_APP_TABS, AppTabId, DEFAULT_APP_TAB, isAppTab, getActiveNavTab } from "@/lib/app-tabs";
 
 export interface SavedCalculation {
   id: string;
@@ -81,6 +82,8 @@ const PriceCalculator = () => {
 
   const [activeTab, setActiveTab] = useState<AppTabId>(DEFAULT_APP_TAB);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [kpiSubTab, setKpiSubTab] = useState("performance");
+  const [registrySubTab, setRegistrySubTab] = useState("clients");
   const { theme, toggle: toggleTheme } = useTheme();
   const [history, setHistory] = useState<SavedCalculation[]>(loadHistory);
   const [clients, setClients] = useState<Client[]>([]);
@@ -315,7 +318,7 @@ const PriceCalculator = () => {
         </div>
         <div className="mb-1" />
         <nav className="sidebar-scrollbar flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(var(--sidebar-muted)) transparent' }}>
-          {ALL_APP_TABS.map(({ value, icon: Icon, label }) => (
+          {SIDEBAR_APP_TABS.map(({ value, icon: Icon, label }) => (
             <button
               key={value}
               onClick={() => handleTabChange(value)}
@@ -323,13 +326,13 @@ const PriceCalculator = () => {
               className={`group flex items-center gap-3 rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-all duration-200 ${
                 sidebarCollapsed ? "justify-center px-2" : ""
               } ${
-                activeTab === value
+                getActiveNavTab(activeTab) === value
                   ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
                   : "text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent/50"
               }`}
             >
                 <div className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-200 shrink-0 ${
-                activeTab === value
+                getActiveNavTab(activeTab) === value
                   ? "gradient-accent shadow-sm text-accent-foreground"
                   : "bg-sidebar-accent/30 text-sidebar-muted group-hover:text-sidebar-foreground"
               }`}>
@@ -763,8 +766,21 @@ const PriceCalculator = () => {
 
           <TabsContent value="registry">
             <KpiErrorBoundary fallbackTitle="Erro ao carregar Cadastros">
-              <div className="space-y-6">
-                <ClientManager clients={clients} setClients={setClients} />
+              <div className="space-y-4">
+                <div className="flex gap-2 border-b border-border pb-2 overflow-x-auto">
+                  <Button variant={registrySubTab === "clients" ? "default" : "ghost"} size="sm" onClick={() => setRegistrySubTab("clients")}>
+                    <Building2 className="h-4 w-4 mr-1.5" /> Clientes
+                  </Button>
+                  <Button variant={registrySubTab === "reps" ? "default" : "ghost"} size="sm" onClick={() => setRegistrySubTab("reps")}>
+                    <UserPlus className="h-4 w-4 mr-1.5" /> Representantes
+                  </Button>
+                  <Button variant={registrySubTab === "catalog" ? "default" : "ghost"} size="sm" onClick={() => setRegistrySubTab("catalog")}>
+                    <Package className="h-4 w-4 mr-1.5" /> Catálogo
+                  </Button>
+                </div>
+                {registrySubTab === "clients" && <ClientManager clients={clients} setClients={setClients} />}
+                {registrySubTab === "reps" && <RepresentativeManager userId={user.id} />}
+                {registrySubTab === "catalog" && <MachineCatalog catalog={catalog} setCatalog={setCatalog} userId={user.id} />}
               </div>
             </KpiErrorBoundary>
           </TabsContent>
@@ -777,13 +793,63 @@ const PriceCalculator = () => {
 
           <TabsContent value="rep-kpis">
             <KpiErrorBoundary fallbackTitle="Erro ao carregar KPIs">
-              <RepKPIs userId={user.id} />
+              <div className="space-y-4">
+                <div className="flex gap-2 border-b border-border pb-2 overflow-x-auto">
+                  <Button variant={kpiSubTab === "performance" ? "default" : "ghost"} size="sm" onClick={() => setKpiSubTab("performance")}>
+                    <Target className="h-4 w-4 mr-1.5" /> Desempenho
+                  </Button>
+                  <Button variant={kpiSubTab === "deals" ? "default" : "ghost"} size="sm" onClick={() => setKpiSubTab("deals")}>
+                    <Users className="h-4 w-4 mr-1.5" /> Vendas
+                  </Button>
+                  <Button variant={kpiSubTab === "commissions" ? "default" : "ghost"} size="sm" onClick={() => setKpiSubTab("commissions")}>
+                    <DollarSign className="h-4 w-4 mr-1.5" /> Comissões
+                  </Button>
+                  <Button variant={kpiSubTab === "analysis" ? "default" : "ghost"} size="sm" onClick={() => setKpiSubTab("analysis")}>
+                    <Zap className="h-4 w-4 mr-1.5" /> Análise
+                  </Button>
+                </div>
+                {kpiSubTab === "performance" && <RepKPIs userId={user.id} />}
+                {kpiSubTab === "deals" && <DealManager userId={user.id} />}
+                {kpiSubTab === "commissions" && (
+                  <CommissionGate userId={user.id}>
+                    <CommissionsTab userId={user.id} />
+                  </CommissionGate>
+                )}
+                {kpiSubTab === "analysis" && <DeepAnalysis userId={user.id} onBack={() => setKpiSubTab("performance")} />}
+              </div>
             </KpiErrorBoundary>
           </TabsContent>
 
           <TabsContent value="deep-analysis">
             <KpiErrorBoundary fallbackTitle="Erro ao carregar Análise Profunda">
               <DeepAnalysis userId={user.id} onBack={() => setActiveTab("dashboard")} />
+            </KpiErrorBoundary>
+          </TabsContent>
+
+          <TabsContent value="importacao">
+            <KpiErrorBoundary fallbackTitle="Erro ao carregar Importação">
+              <BiImport userId={user.id} />
+            </KpiErrorBoundary>
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <KpiErrorBoundary fallbackTitle="Erro ao carregar Configurações">
+              <div className="space-y-6">
+                <h1 className="font-heading text-xl font-bold text-foreground">Configurações & Ferramentas</h1>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <Card className="cursor-pointer hover:border-primary/50 transition-colors p-6" onClick={() => setActiveTab("simulation")}>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                        <Calculator className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-heading text-sm font-semibold">Simulação de Preço</h3>
+                        <p className="text-xs text-muted-foreground">Calcule preços FOB e nacionalizados</p>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              </div>
             </KpiErrorBoundary>
           </TabsContent>
 
