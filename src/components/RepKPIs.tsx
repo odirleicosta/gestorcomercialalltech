@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { Eye, Users, Target, TrendingUp, Save, Calendar, BarChart3, Lightbulb, Flag, Filter, Activity, XCircle, AlertTriangle, Plus, Trash2, Edit2, SlidersHorizontal, ChevronDown, FileSpreadsheet } from "lucide-react";
 import VisitImport from "@/components/VisitImport";
+import LostDealImport from "@/components/LostDealImport";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -81,6 +82,7 @@ const RepKPIs = ({ userId }: Props) => {
   });
   const [selRadar, setSelRadar] = useState<string[]>([]);
   const [visitImportOpen, setVisitImportOpen] = useState(false);
+  const [lostImportOpen, setLostImportOpen] = useState(false);
   const [importedVisits, setImportedVisits] = useState<{ id: string; data_visita: string; cliente: string; cnpj: string | null; assunto: string | null; descricao: string | null; representative_id: string }[]>([]);
   const [importedPage, setImportedPage] = useState(0);
   const IMPORTED_PAGE_SIZE = 20;
@@ -1756,7 +1758,10 @@ const RepKPIs = ({ userId }: Props) => {
                   {MONTHS.map((m, i) => (<SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>))}
                 </SelectContent>
               </Select>
-              <div className="ml-auto">
+              <div className="ml-auto flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setLostImportOpen(true)} className="gap-1.5">
+                  <FileSpreadsheet className="h-4 w-4" /> Importar Planilha
+                </Button>
                 <Button size="sm" onClick={() => { resetLostForm(); setLostFormOpen(true); }} className="gap-1.5">
                   <Plus className="h-4 w-4" /> Registrar Perda
                 </Button>
@@ -1985,6 +1990,7 @@ const RepKPIs = ({ userId }: Props) => {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            <LostDealImport userId={userId} reps={reps} open={lostImportOpen} onClose={() => setLostImportOpen(false)} onImported={loadLostDeals} />
           </>
         );
       })()}
