@@ -247,6 +247,13 @@ const RepKPIs = ({ userId }: Props) => {
 
   useEffect(() => { loadLostDeals(); }, [loadLostDeals]);
 
+  // Initialize radar selection when reps load
+  useEffect(() => {
+    if (reps.length > 0 && selRadar.length === 0) {
+      setSelRadar(reps.slice(0, 3).map(r => r.id));
+    }
+  }, [reps]);
+
   const DEFAULT_MOTIVOS = ["Preço", "Concorrência", "Cancelamento do Projeto", "Sem Investimento", "Cliente Curioso", "Postergação", "Comprou máquina usada", "Relacionamento com o cliente"];
   const [customMotivos, setCustomMotivos] = useState<string[]>([]);
   const MOTIVOS_PERDA = useMemo(() => {
