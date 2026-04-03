@@ -1496,6 +1496,92 @@ const RepKPIs = ({ userId }: Props) => {
                 </Card>
               );
             })()}
+
+            {/* ── Radar de Performance ── */}
+            {(() => {
+              const RADAR_COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4"];
+              const radarReps = perfData.map(r => {
+                const closedCount = allYearClosedDeals.filter(d => {
+                  if (d.representative_id !== r.id) return false;
+                  const dt = new Date(d.closed_at);
+                  if (dt.getFullYear() !== filterYear) return false;
+                  if (relevantMonths.length > 0) return relevantMonths.includes(dt.getMonth() + 1);
+                  return true;
+                }).length;
+                const conversion = r.totalOpp > 0 ? (closedCount / r.totalOpp) * 100 : 0;
+                const pctMeta = r.metaQtd > 0 ? (closedCount / r.metaQtd) * 100 : 0;
+                return { id: r.id, nome: r.shortName, visitas: r.visitasRealizadas, pctMeta, oportunidades: r.totalOpp, vendas: closedCount, conversao: conversion };
+              });
+              const maxMap: Record<string, number> = {
+                visitas: Math.max(...radarReps.map(r => r.visitas), 1),
+                pctMeta: Math.max(...radarReps.map(r => r.pctMeta), 1),
+                oportunidades: Math.max(...radarReps.map(r => r.oportunidades), 1),
+                vendas: Math.max(...radarReps.map(r => r.vendas), 1),
+                conversao: Math.max(...radarReps.map(r => r.conversao), 1),
+              };
+              const axes = [
+                { axis: "Visitas", key: "visitas" as const },
+                { axis: "% Meta", key: "pctMeta" as const },
+                { axis: "Oportunidades", key: "oportunidades" as const },
+                { axis: "Vendas", key: "vendas" as const },
+                { axis: "Conversão", key: "conversao" as const },
+              ];
+              const radarChartData = axes.map(a => {
+                const entry: Record<string, any> = { axis: a.axis };
+                radarReps.forEach(r => {
+                  const raw = r[a.key] as number;
+                  entry[r.id] = Math.round((raw / maxMap[a.key]) * 100);
+                  entry[`${r.id}_raw`] = a.key === "pctMeta" || a.key === "conversao" ? `${raw.toFixed(0)}%` : String(raw);
+                });
+                return entry;
+              });
+              const defaultIds = radarReps.slice(0, 3).map(r => r.id);
+              const [selRadar, setSelRadar] = React.useState<string[]>(defaultIds);
+              const toggleR = (id: string) => setSelRadar(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
+              const vis = radarReps.filter(r => selRadar.includes(r.id));
+              return (
+                <Card className="p-4 sm:p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Activity className="h-5 w-5 text-primary" />
+                    <h3 className="font-semibold text-foreground">Radar de Performance — {periodLabel}</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {radarReps.map(r => (
+                      <button key={r.id} onClick={() => toggleR(r.id)} className={`px-3 py-1 rounded-full text-xs font-medium transition-all border ${selRadar.includes(r.id) ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted text-muted-foreground hover:bg-muted/80"}`}>{r.nome}</button>
+                    ))}
+                  </div>
+                  {vis.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-8">Selecione ao menos um representante.</p>
+                  ) : (
+                    <div className="w-full" style={{ height: 380 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart data={radarChartData} outerRadius="75%">
+                          <PolarGrid stroke="hsl(var(--border))" />
+                          <PolarAngleAxis dataKey="axis" tick={{ fill: "hsl(var(--foreground))", fontSize: 12 }} />
+                          <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
+                          {vis.map((r, i) => (
+                            <Radar key={r.id} name={r.nome} dataKey={r.id} stroke={RADAR_COLORS[i % RADAR_COLORS.length]} fill={RADAR_COLORS[i % RADAR_COLORS.length]} fillOpacity={0.15} strokeWidth={2} />
+                          ))}
+                          <Legend />
+                          <Tooltip content={({ payload, label }) => {
+                            if (!payload?.length) return null;
+                            return (
+                              <div className="rounded-lg border bg-background p-2 text-xs shadow-xl">
+                                <p className="font-semibold mb-1">{label}</p>
+                                {payload.map((p: any) => {
+                                  const rawVal = radarChartData.find(d => d.axis === label)?.[`${p.dataKey}_raw`] ?? p.value;
+                                  return <p key={p.dataKey} style={{ color: p.stroke }}>{p.name}: {rawVal}</p>;
+                                })}
+                              </div>
+                            );
+                          }} />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </Card>
+              );
+            })()}
           </>
         );
       })()}
