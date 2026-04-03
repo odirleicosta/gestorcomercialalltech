@@ -33,7 +33,7 @@ import RepKPIs from "@/components/RepKPIs";
 import KpiErrorBoundary from "@/components/KpiErrorBoundary";
 
 import { useTheme } from "@/hooks/use-theme";
-import { ALL_APP_TABS, AppTabId, DEFAULT_APP_TAB, isAppTab } from "@/lib/app-tabs";
+import { ALL_APP_TABS, SIDEBAR_APP_TABS, AppTabId, DEFAULT_APP_TAB, isAppTab, getActiveNavTab } from "@/lib/app-tabs";
 
 export interface SavedCalculation {
   id: string;
