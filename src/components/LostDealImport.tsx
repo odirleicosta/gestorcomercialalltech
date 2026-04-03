@@ -111,7 +111,8 @@ const LostDealImport = ({ userId, reps, open, onClose, onImported }: Props) => {
           const headers = raw[0].map((h: any) => String(h));
           const iFechada = findCol(headers, "fechada por");
           const iMotivo = findCol(headers, "motivo da perda", "motivo");
-          const iCriacao = findCol(headers, "criacao", "criação", "data");
+          const iCriacao = findCol(headers, "criacao", "criação", "data de criacao", "data criacao");
+          const iPerda = findCol(headers, "data de perda", "data perda", "fechamento", "data fechamento");
           const iCliente = findCol(headers, "cliente");
           const iName = findCol(headers, "name", "nome_negociacao", "maquina", "máquina");
           const iCnpj = findCol(headers, "cnpj");
