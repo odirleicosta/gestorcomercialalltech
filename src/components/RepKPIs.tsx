@@ -871,7 +871,56 @@ const RepKPIs = ({ userId }: Props) => {
           </Button>
         </div>
       )}
-      <VisitImport userId={userId} reps={reps} open={visitImportOpen} onClose={() => setVisitImportOpen(false)} onImported={() => { /* refresh data */ }} />
+      <VisitImport userId={userId} reps={reps} open={visitImportOpen} onClose={() => setVisitImportOpen(false)} onImported={handleImported} />
+
+      {/* ═══ DETALHAMENTO DE VISITAS IMPORTADAS ═══ */}
+      {importedVisits.length > 0 && (() => {
+        const filtered = filterRep === "all" ? importedVisits : importedVisits.filter(v => v.representative_id === filterRep);
+        const totalPages = Math.ceil(filtered.length / IMPORTED_PAGE_SIZE);
+        const paged = filtered.slice(importedPage * IMPORTED_PAGE_SIZE, (importedPage + 1) * IMPORTED_PAGE_SIZE);
+        return (
+          <Card className="overflow-hidden">
+            <div className="flex items-center justify-between px-4 pt-4 pb-2">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold text-foreground">Detalhamento de Visitas Importadas</h3>
+                <Badge variant="secondary" className="text-xs">{filtered.length} registros</Badge>
+              </div>
+            </div>
+            <div className="overflow-auto max-h-[400px]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="text-xs">Data</TableHead>
+                    <TableHead className="text-xs">Cliente</TableHead>
+                    <TableHead className="text-xs">CNPJ</TableHead>
+                    <TableHead className="text-xs">Assunto</TableHead>
+                    {filterRep === "all" && <TableHead className="text-xs">Representante</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paged.map((v) => (
+                    <TableRow key={v.id}>
+                      <TableCell className="text-xs whitespace-nowrap">{v.data_visita}</TableCell>
+                      <TableCell className="text-xs font-medium">{v.cliente}</TableCell>
+                      <TableCell className="text-xs">{v.cnpj || "—"}</TableCell>
+                      <TableCell className="text-xs max-w-[200px] truncate">{v.assunto || "—"}</TableCell>
+                      {filterRep === "all" && <TableCell className="text-xs">{reps.find(r => r.id === v.representative_id)?.nome || "—"}</TableCell>}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 py-2">
+                <Button variant="ghost" size="sm" disabled={importedPage === 0} onClick={() => setImportedPage(p => p - 1)}>Anterior</Button>
+                <span className="text-xs text-muted-foreground">{importedPage + 1} / {totalPages}</span>
+                <Button variant="ghost" size="sm" disabled={importedPage >= totalPages - 1} onClick={() => setImportedPage(p => p + 1)}>Próximo</Button>
+              </div>
+            )}
+          </Card>
+        );
+      })()}
       </>)}
 
       {/* ═══ OPORTUNIDADES ═══ */}
