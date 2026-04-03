@@ -318,7 +318,7 @@ const PriceCalculator = () => {
         </div>
         <div className="mb-1" />
         <nav className="sidebar-scrollbar flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pr-1" style={{ scrollbarWidth: 'thin', scrollbarColor: 'hsl(var(--sidebar-muted)) transparent' }}>
-          {ALL_APP_TABS.map(({ value, icon: Icon, label }) => (
+          {SIDEBAR_APP_TABS.map(({ value, icon: Icon, label }) => (
             <button
               key={value}
               onClick={() => handleTabChange(value)}
