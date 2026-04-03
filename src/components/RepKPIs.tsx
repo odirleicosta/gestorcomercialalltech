@@ -224,7 +224,7 @@ const RepKPIs = ({ userId }: Props) => {
         supabase.from("weekly_visits").select("representative_id, semana, quantidade, meta").eq("user_id", userId).eq("ano", filterYear),
         supabase.from("monthly_opportunities").select("representative_id, mes, qty_proprias, qty_sdr, quantidade").eq("user_id", userId).eq("ano", filterYear),
         supabase.from("monthly_goals").select("representative_id, mes, meta_quantidade, machine_type").eq("user_id", userId).eq("ano", filterYear),
-        supabase.from("deals").select("representative_id, closed_at").eq("user_id", userId).eq("status", "closed").gte("closed_at", `${filterYear}-01-01`).lt("closed_at", `${filterYear + 1}-01-01`),
+        supabase.from("deals").select("representative_id, closed_at, machine_type").eq("user_id", userId).eq("status", "closed").gte("closed_at", `${filterYear}-01-01`).lt("closed_at", `${filterYear + 1}-01-01`),
       ]);
       setAllYearVisits(visRes.data || []);
       setAllYearOpps(oppRes.data || []);
