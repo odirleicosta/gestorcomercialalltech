@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -63,6 +63,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [opportunities, setOpportunities] = useState<{ representative_id: string; nome: string; qty_proprias: number; qty_sdr: number }[]>([]);
   const [savingOpp, setSavingOpp] = useState(false);
   const [goals, setGoals] = useState<{ representative_id: string; nome: string; meta_quantidade: number; byType: Record<string, number> }[]>([]);
+  const [closedDealsForMetas, setClosedDealsForMetas] = useState<{ representative_id: string | null; machine_type: string }[]>([]);
   const [allYearVisits, setAllYearVisits] = useState<{ representative_id: string; semana: number; quantidade: number; meta: number }[]>([]);
   const [allYearOpps, setAllYearOpps] = useState<{ representative_id: string; mes: number; qty_proprias: number; qty_sdr: number }[]>([]);
   const [allYearGoals, setAllYearGoals] = useState<{ representative_id: string; mes: number; meta_quantidade: number; machine_type: string }[]>([]);
@@ -195,7 +196,26 @@ const RepKPIs = ({ userId }: Props) => {
     load();
   }, [reps, filterYear, filterMonth, userId]);
 
-  // Load ALL year data for Desempenho aggregation
+  // Load closed deals for Metas tab (by month)
+  useEffect(() => {
+    const load = async () => {
+      const startDate = `${filterYear}-${String(filterMonth).padStart(2, "0")}-01`;
+      const endMonth = filterMonth === 12 ? 1 : filterMonth + 1;
+      const endYear = filterMonth === 12 ? filterYear + 1 : filterYear;
+      const endDate = `${endYear}-${String(endMonth).padStart(2, "0")}-01`;
+      const { data } = await supabase
+        .from("deals")
+        .select("representative_id, machine_type")
+        .eq("user_id", userId)
+        .eq("status", "closed")
+        .gte("closed_at", startDate)
+        .lt("closed_at", endDate);
+      setClosedDealsForMetas(data || []);
+    };
+    load();
+  }, [userId, filterYear, filterMonth]);
+
+
   useEffect(() => {
     if (!reps.length) return;
     const load = async () => {
@@ -421,6 +441,23 @@ const RepKPIs = ({ userId }: Props) => {
     }));
     return { totalQtd, repsComMeta, byType };
   }, [filteredGoals]);
+
+  // Closed deals grouped by rep + machine_type for Metas tab
+  const closedByRepType = useMemo(() => {
+    const map: Record<string, Record<string, number>> = {};
+    for (const d of closedDealsForMetas) {
+      const repId = d.representative_id || "__none__";
+      if (!map[repId]) map[repId] = {};
+      const mt = d.machine_type || "Outro";
+      map[repId][mt] = (map[repId][mt] || 0) + 1;
+    }
+    return map;
+  }, [closedDealsForMetas]);
+
+  const totalRealizadoQtd = useMemo(() => {
+    if (filterRep === "all") return closedDealsForMetas.length;
+    return closedDealsForMetas.filter(d => d.representative_id === filterRep).length;
+  }, [closedDealsForMetas, filterRep]);
 
   const formatBrl = (v: number) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `${(v / 1_000).toFixed(0)}k` : String(v);
 
@@ -904,41 +941,70 @@ const RepKPIs = ({ userId }: Props) => {
         </div>
         {/* Goals KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <KpiCard icon={<Flag className="h-5 w-5" />} label="Meta Qtd Total" value={String(goalsKpis.totalQtd)} color="text-primary" />
+          <KpiCard icon={<Flag className="h-5 w-5" />} label="Meta Total" value={String(goalsKpis.totalQtd)} color="text-primary" />
+          <KpiCard icon={<TrendingUp className="h-5 w-5" />} label="Realizado" value={String(totalRealizadoQtd)} color={totalRealizadoQtd >= goalsKpis.totalQtd && goalsKpis.totalQtd > 0 ? "text-accent" : "text-foreground"} />
+          <KpiCard icon={<Target className="h-5 w-5" />} label="% Atingimento" value={goalsKpis.totalQtd > 0 ? `${((totalRealizadoQtd / goalsKpis.totalQtd) * 100).toFixed(1)}%` : "—"} color={goalsKpis.totalQtd > 0 ? (totalRealizadoQtd / goalsKpis.totalQtd >= 1 ? "text-accent" : totalRealizadoQtd / goalsKpis.totalQtd >= 0.7 ? "text-yellow-500" : "text-destructive") : "text-muted-foreground"} />
           <KpiCard icon={<Users className="h-5 w-5" />} label="Reps com Meta" value={`${goalsKpis.repsComMeta}/${filteredGoals.length}`} color="text-muted-foreground" />
-          {goalsKpis.byType.map(bt => (
-            <KpiCard key={bt.type} icon={<Target className="h-5 w-5" />} label={bt.type} value={String(bt.total)} color="text-primary" />
-          ))}
         </div>
 
-        <p className="text-xs text-muted-foreground">As metas são cadastradas na aba Representantes e exibidas aqui por mês.</p>
+        <p className="text-xs text-muted-foreground">As metas são cadastradas na aba Representantes. O realizado é calculado automaticamente a partir das vendas fechadas no mês.</p>
 
-        {/* Goals Table (read-only) */}
-        <Card className="overflow-hidden">
+        {/* Goals Table with Realizado */}
+        <Card className="overflow-hidden overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
-                <TableHead className="font-semibold">Representante</TableHead>
+                <TableHead className="font-semibold" rowSpan={2}>Representante</TableHead>
                 {MACHINE_TYPES.map(mt => (
-                  <TableHead key={mt} className="text-center font-semibold w-28">{mt}</TableHead>
+                  <TableHead key={mt} className="text-center font-semibold border-l border-border" colSpan={2}>{mt}</TableHead>
                 ))}
-                <TableHead className="text-center font-semibold w-24">Total</TableHead>
+                <TableHead className="text-center font-semibold border-l border-border" colSpan={3}>Total</TableHead>
+              </TableRow>
+              <TableRow className="bg-muted/30">
+                {MACHINE_TYPES.map(mt => (
+                  <React.Fragment key={`h-${mt}`}>
+                    <TableHead className="text-center text-xs border-l border-border">Meta</TableHead>
+                    <TableHead className="text-center text-xs">Real.</TableHead>
+                  </React.Fragment>
+                ))}
+                <TableHead className="text-center text-xs border-l border-border">Meta</TableHead>
+                <TableHead className="text-center text-xs">Real.</TableHead>
+                <TableHead className="text-center text-xs">%</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredGoals.map((row) => (
-                <TableRow key={row.representative_id}>
-                  <TableCell className="font-medium">{row.nome}</TableCell>
-                  {MACHINE_TYPES.map(mt => (
-                    <TableCell key={mt} className="text-center font-medium">
-                      {(row.byType[mt] || 0) > 0 ? row.byType[mt] : "—"}
+              {filteredGoals.map((row) => {
+                const repClosed = closedByRepType[row.representative_id] || {};
+                const totalMeta = row.meta_quantidade;
+                const totalReal = MACHINE_TYPES.reduce((s, mt) => s + (repClosed[mt] || 0), 0);
+                const pct = totalMeta > 0 ? (totalReal / totalMeta) * 100 : 0;
+                const pctColor = totalMeta === 0 ? "text-muted-foreground" : pct >= 100 ? "text-accent" : pct >= 70 ? "text-yellow-500" : "text-destructive";
+                return (
+                  <TableRow key={row.representative_id}>
+                    <TableCell className="font-medium">{row.nome}</TableCell>
+                    {MACHINE_TYPES.map(mt => {
+                      const meta = row.byType[mt] || 0;
+                      const real = repClosed[mt] || 0;
+                      return (
+                        <React.Fragment key={mt}>
+                          <TableCell className="text-center border-l border-border">{meta > 0 ? meta : "—"}</TableCell>
+                          <TableCell className={`text-center font-medium ${meta > 0 && real >= meta ? "text-accent" : real > 0 ? "text-foreground" : "text-muted-foreground"}`}>{real}</TableCell>
+                        </React.Fragment>
+                      );
+                    })}
+                    <TableCell className="text-center font-bold border-l border-border">{totalMeta > 0 ? totalMeta : "—"}</TableCell>
+                    <TableCell className="text-center font-bold">{totalReal}</TableCell>
+                    <TableCell className={`text-center font-bold ${pctColor}`}>
+                      {totalMeta > 0 ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <span>{pct.toFixed(0)}%</span>
+                          <Progress value={Math.min(pct, 100)} className="h-1.5 w-16" />
+                        </div>
+                      ) : "—"}
                     </TableCell>
-                  ))}
-                  <TableCell className="text-center font-bold">
-                    {row.meta_quantidade > 0 ? row.meta_quantidade : "—"}
-                  </TableCell>
-                </TableRow>
-              ))}
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </Card>
