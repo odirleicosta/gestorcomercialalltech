@@ -1747,45 +1747,78 @@ const RepKPIs = ({ userId }: Props) => {
 
         return (
           <>
-            {/* Filters + Add Button */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <Select value={filterRep} onValueChange={setFilterRep}>
-                <SelectTrigger className="w-[140px] text-xs h-8"><Users className="h-3.5 w-3.5 mr-1" /><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Equipe</SelectItem>
-                  {reps.map((r) => (<SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>))}
-                </SelectContent>
-              </Select>
-              <Select value={String(filterYear)} onValueChange={(v) => setFilterYear(Number(v))}>
-                <SelectTrigger className="w-24 text-xs h-8"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[currentYear - 1, currentYear, currentYear + 1].map((y) => (<SelectItem key={y} value={String(y)}>{y}</SelectItem>))}
-                </SelectContent>
-              </Select>
-              <Select value={String(filterMonth)} onValueChange={(v) => setFilterMonth(Number(v))}>
-                <SelectTrigger className="w-24 text-xs h-8"><Calendar className="h-3.5 w-3.5 mr-1" /><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {MONTHS.map((m, i) => (<SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>))}
-                </SelectContent>
-              </Select>
-              <div className="ml-auto flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setLostImportOpen(true)} className="gap-1.5">
-                  <FileSpreadsheet className="h-4 w-4" /> Importar Planilha
-                </Button>
-                <Button variant="destructive" size="sm" className="gap-1.5" onClick={async () => {
-                  if (!confirm("Tem certeza que deseja excluir TODAS as negociações perdidas? Esta ação não pode ser desfeita.")) return;
-                  const { error } = await supabase.from("negociacoes_perdidas" as any).delete().eq("user_id", userId);
-                  if (error) { toast.error("Erro ao excluir"); return; }
-                  toast.success("Todas as negociações perdidas foram excluídas");
-                  loadLostDeals();
-                }}>
-                  <Trash2 className="h-4 w-4" /> Excluir Todas
-                </Button>
-                <Button size="sm" onClick={() => { resetLostForm(); setLostFormOpen(true); }} className="gap-1.5">
-                  <Plus className="h-4 w-4" /> Registrar Perda
-                </Button>
+            {/* Filter badge / expandable panel */}
+            {lostFilterExpanded ? (
+              <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0">Ano</span>
+                  <div className="flex gap-1">
+                    {[currentYear - 1, currentYear, currentYear + 1].map(y => (
+                      <button key={y} onClick={() => setFilterYear(y)} className={btnClass(filterYear === y)}>{y}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0">Visão</span>
+                  <div className="flex gap-1 flex-wrap">
+                    <button onClick={() => setPeriodMode("mes")} className={btnClass(periodMode === "mes")}>Mês</button>
+                    {["T1", "T2", "T3", "T4"].map(q => (
+                      <button key={q} onClick={() => { setPeriodMode("trimestre"); setFilterQuarter(q); setLostFilterExpanded(false); }} className={btnClass(periodMode === "trimestre" && filterQuarter === q)}>{q}</button>
+                    ))}
+                    <button onClick={() => { setPeriodMode("ano"); setLostFilterExpanded(false); }} className={btnClass(periodMode === "ano")}>Ano</button>
+                  </div>
+                </div>
+                {periodMode === "mes" && (
+                  <div className="flex items-start gap-2">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0 mt-1">Mês</span>
+                    <div className="flex flex-wrap gap-1">
+                      {MONTHS.map((m, i) => (
+                        <button key={i} onClick={() => { setFilterMonth(i + 1); setLostFilterExpanded(false); }} className={btnClass(filterMonth === i + 1)}>{m}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {reps.length > 0 && (
+                  <div className="flex items-start gap-2">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0 mt-1">Rep.</span>
+                    <div className="flex flex-wrap gap-1">
+                      <button onClick={() => { setFilterRep("all"); setLostFilterExpanded(false); }} className={btnClass(filterRep === "all")}>Todos</button>
+                      {reps.map(r => (
+                        <button key={r.id} onClick={() => { setFilterRep(r.id); setLostFilterExpanded(false); }} className={btnClass(filterRep === r.id)}>{r.nome.split(" ").slice(0, 2).join(" ")}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => setLostFilterExpanded(true)}
+                  className="inline-flex items-center gap-2 bg-destructive/10 hover:bg-destructive/15 text-destructive border border-destructive/20 rounded-full px-4 py-1.5 transition-all group"
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5" />
+                  <span className="text-xs sm:text-sm font-semibold">{periodLabel}{filterRep !== "all" ? ` · ${reps.find(r => r.id === filterRep)?.nome?.split(" ").slice(0, 2).join(" ")}` : ""}</span>
+                  <ChevronDown className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 transition-opacity" />
+                </button>
+                <div className="ml-auto flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setLostImportOpen(true)} className="gap-1.5">
+                    <FileSpreadsheet className="h-4 w-4" /> Importar Planilha
+                  </Button>
+                  <Button variant="destructive" size="sm" className="gap-1.5" onClick={async () => {
+                    if (!confirm("Tem certeza que deseja excluir TODAS as negociações perdidas? Esta ação não pode ser desfeita.")) return;
+                    const { error } = await supabase.from("negociacoes_perdidas" as any).delete().eq("user_id", userId);
+                    if (error) { toast.error("Erro ao excluir"); return; }
+                    toast.success("Todas as negociações perdidas foram excluídas");
+                    loadLostDeals();
+                  }}>
+                    <Trash2 className="h-4 w-4" /> Excluir Todas
+                  </Button>
+                  <Button size="sm" onClick={() => { resetLostForm(); setLostFormOpen(true); }} className="gap-1.5">
+                    <Plus className="h-4 w-4" /> Registrar Perda
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* KPI Summary */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
