@@ -1,7 +1,7 @@
 import { LogOut, Moon, MoreHorizontal, Sun } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { AppTabId, PRIMARY_APP_TABS, SECONDARY_APP_TABS } from "@/lib/app-tabs";
+import { AppTabId, BOTTOM_NAV_TABS, SECONDARY_APP_TABS, getActiveNavTab } from "@/lib/app-tabs";
 
 interface BottomNavBarProps {
   activeTab: string;
@@ -14,14 +14,15 @@ interface BottomNavBarProps {
 const BottomNavBar = ({ activeTab, onTabChange, onLogout, theme, onToggleTheme }: BottomNavBarProps) => {
   const [moreOpen, setMoreOpen] = useState(false);
 
-  const isMoreActive = SECONDARY_APP_TABS.some((t) => t.value === activeTab);
+  const navTab = getActiveNavTab(activeTab as AppTabId);
+  const isMoreActive = !BOTTOM_NAV_TABS.some((t) => t.value === navTab);
 
   return (
     <>
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border shadow-[0_-2px_10px_rgba(0,0,0,0.08)]">
         <div className="flex items-center justify-around px-1 py-1.5 safe-area-bottom">
-          {PRIMARY_APP_TABS.map(({ value, icon: Icon, label }) => {
-            const isActive = activeTab === value;
+          {BOTTOM_NAV_TABS.map(({ value, icon: Icon, label }) => {
+            const isActive = navTab === value;
             return (
               <button
                 key={value}
@@ -71,7 +72,7 @@ const BottomNavBar = ({ activeTab, onTabChange, onLogout, theme, onToggleTheme }
           </SheetHeader>
           <div className="grid grid-cols-2 gap-3 mt-4">
             {SECONDARY_APP_TABS.map(({ value, icon: Icon, label }) => {
-              const isActive = activeTab === value;
+              const isActive = navTab === value;
               return (
                 <button
                   key={value}
