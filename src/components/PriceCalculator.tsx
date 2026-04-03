@@ -826,6 +826,33 @@ const PriceCalculator = () => {
             </KpiErrorBoundary>
           </TabsContent>
 
+          <TabsContent value="importacao">
+            <KpiErrorBoundary fallbackTitle="Erro ao carregar Importação">
+              <BiImport userId={user.id} />
+            </KpiErrorBoundary>
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <KpiErrorBoundary fallbackTitle="Erro ao carregar Configurações">
+              <div className="space-y-6">
+                <h1 className="font-heading text-xl font-bold text-foreground">Configurações & Ferramentas</h1>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <Card className="cursor-pointer hover:border-primary/50 transition-colors p-6" onClick={() => setActiveTab("simulation")}>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                        <Calculator className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-heading text-sm font-semibold">Simulação de Preço</h3>
+                        <p className="text-xs text-muted-foreground">Calcule preços FOB e nacionalizados</p>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              </div>
+            </KpiErrorBoundary>
+          </TabsContent>
+
         </Tabs>
         </div>
       </main>
