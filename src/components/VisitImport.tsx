@@ -146,24 +146,32 @@ const VisitImport = ({ userId, reps, open, onClose, onImported }: Props) => {
         descricao: r.descricao || null,
         hash_linha: hashRow(r),
       }));
+      // Build a set of hashes to track which ones actually get inserted
+      const allHashes = records.map(r => r.hash_linha);
 
       // Insert in batches, skipping duplicates
       let inserted = 0;
+      const insertedHashes = new Set<string>();
       const BATCH = 50;
       for (let i = 0; i < records.length; i += BATCH) {
         const batch = records.slice(i, i + BATCH);
         const { data, error } = await supabase
           .from("visitas_importadas" as any)
           .upsert(batch as any, { onConflict: "user_id,hash_linha", ignoreDuplicates: true })
-          .select();
+          .select("hash_linha");
         if (error) throw error;
-        inserted += (data as any[])?.length || 0;
+        const returned = (data as any[]) || [];
+        inserted += returned.length;
+        returned.forEach((r: any) => insertedHashes.add(r.hash_linha));
       }
       const skipped = records.length - inserted;
 
-      // Aggregate imported visits by week and upsert into weekly_visits
+      // Aggregate ONLY actually inserted visits by week
       const weekGroups: Record<string, number> = {};
-      for (const r of validRows) {
+      for (let i = 0; i < validRows.length; i++) {
+        const hash = allHashes[i];
+        if (!insertedHashes.has(hash)) continue; // skip duplicates
+        const r = validRows[i];
         const d = new Date(r.data_visita + "T12:00:00");
         const ano = d.getFullYear();
         const semana = getWeekNumber(d);
@@ -173,7 +181,6 @@ const VisitImport = ({ userId, reps, open, onClose, onImported }: Props) => {
 
       for (const [key, qty] of Object.entries(weekGroups)) {
         const [ano, semana] = key.split("-").map(Number);
-        // Check existing record
         const { data: existing } = await supabase
           .from("weekly_visits")
           .select("id, quantidade")
