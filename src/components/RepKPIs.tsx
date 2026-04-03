@@ -524,6 +524,7 @@ const RepKPIs = ({ userId }: Props) => {
     `px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-medium transition-all ${active ? "bg-primary text-primary-foreground shadow-sm" : "bg-secondary text-muted-foreground hover:bg-secondary/80 border border-border"}`;
 
   const [filterExpanded, setFilterExpanded] = useState(false);
+  const [lostFilterExpanded, setLostFilterExpanded] = useState(false);
 
 
 
