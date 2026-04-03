@@ -1537,9 +1537,6 @@ const RepKPIs = ({ userId }: Props) => {
                 return entry;
               });
               const defaultIds = radarReps.slice(0, 3).map(r => r.id);
-              if (selRadar.length === 0 && defaultIds.length > 0 && selRadar.join() !== defaultIds.join()) {
-                setTimeout(() => setSelRadar(defaultIds), 0);
-              }
               const toggleR = (id: string) => setSelRadar(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
               const vis = radarReps.filter(r => selRadar.includes(r.id));
               return (
