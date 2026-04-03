@@ -587,6 +587,9 @@ const RepKPIs = ({ userId }: Props) => {
 
       {/* Week selector for Visitas */}
       <div className="flex items-center gap-2 flex-wrap">
+        <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setVisitImportOpen(true)}>
+          <FileSpreadsheet className="h-3.5 w-3.5 mr-1" /> Importar Planilha
+        </Button>
         <Select value={filterRep} onValueChange={setFilterRep}>
           <SelectTrigger className="w-[140px] text-xs h-8"><Users className="h-3.5 w-3.5 mr-1" /><SelectValue /></SelectTrigger>
           <SelectContent>
