@@ -196,7 +196,26 @@ const RepKPIs = ({ userId }: Props) => {
     load();
   }, [reps, filterYear, filterMonth, userId]);
 
-  // Load ALL year data for Desempenho aggregation
+  // Load closed deals for Metas tab (by month)
+  useEffect(() => {
+    const load = async () => {
+      const startDate = `${filterYear}-${String(filterMonth).padStart(2, "0")}-01`;
+      const endMonth = filterMonth === 12 ? 1 : filterMonth + 1;
+      const endYear = filterMonth === 12 ? filterYear + 1 : filterYear;
+      const endDate = `${endYear}-${String(endMonth).padStart(2, "0")}-01`;
+      const { data } = await supabase
+        .from("deals")
+        .select("representative_id, machine_type")
+        .eq("user_id", userId)
+        .eq("status", "closed")
+        .gte("closed_at", startDate)
+        .lt("closed_at", endDate);
+      setClosedDealsForMetas(data || []);
+    };
+    load();
+  }, [userId, filterYear, filterMonth]);
+
+
   useEffect(() => {
     if (!reps.length) return;
     const load = async () => {
