@@ -1771,6 +1771,15 @@ const RepKPIs = ({ userId }: Props) => {
                 <Button variant="outline" size="sm" onClick={() => setLostImportOpen(true)} className="gap-1.5">
                   <FileSpreadsheet className="h-4 w-4" /> Importar Planilha
                 </Button>
+                <Button variant="destructive" size="sm" className="gap-1.5" onClick={async () => {
+                  if (!confirm("Tem certeza que deseja excluir TODAS as negociações perdidas? Esta ação não pode ser desfeita.")) return;
+                  const { error } = await supabase.from("negociacoes_perdidas" as any).delete().eq("user_id", userId);
+                  if (error) { toast.error("Erro ao excluir"); return; }
+                  toast.success("Todas as negociações perdidas foram excluídas");
+                  loadLostDeals();
+                }}>
+                  <Trash2 className="h-4 w-4" /> Excluir Todas
+                </Button>
                 <Button size="sm" onClick={() => { resetLostForm(); setLostFormOpen(true); }} className="gap-1.5">
                   <Plus className="h-4 w-4" /> Registrar Perda
                 </Button>
