@@ -793,7 +793,30 @@ const PriceCalculator = () => {
 
           <TabsContent value="rep-kpis">
             <KpiErrorBoundary fallbackTitle="Erro ao carregar KPIs">
-              <RepKPIs userId={user.id} />
+              <div className="space-y-4">
+                <div className="flex gap-2 border-b border-border pb-2 overflow-x-auto">
+                  <Button variant={kpiSubTab === "performance" ? "default" : "ghost"} size="sm" onClick={() => setKpiSubTab("performance")}>
+                    <Target className="h-4 w-4 mr-1.5" /> Desempenho
+                  </Button>
+                  <Button variant={kpiSubTab === "deals" ? "default" : "ghost"} size="sm" onClick={() => setKpiSubTab("deals")}>
+                    <Users className="h-4 w-4 mr-1.5" /> Vendas
+                  </Button>
+                  <Button variant={kpiSubTab === "commissions" ? "default" : "ghost"} size="sm" onClick={() => setKpiSubTab("commissions")}>
+                    <DollarSign className="h-4 w-4 mr-1.5" /> Comissões
+                  </Button>
+                  <Button variant={kpiSubTab === "analysis" ? "default" : "ghost"} size="sm" onClick={() => setKpiSubTab("analysis")}>
+                    <Zap className="h-4 w-4 mr-1.5" /> Análise
+                  </Button>
+                </div>
+                {kpiSubTab === "performance" && <RepKPIs userId={user.id} />}
+                {kpiSubTab === "deals" && <DealManager userId={user.id} />}
+                {kpiSubTab === "commissions" && (
+                  <CommissionGate userId={user.id}>
+                    <CommissionsTab userId={user.id} />
+                  </CommissionGate>
+                )}
+                {kpiSubTab === "analysis" && <DeepAnalysis userId={user.id} onBack={() => setKpiSubTab("performance")} />}
+              </div>
             </KpiErrorBoundary>
           </TabsContent>
 
