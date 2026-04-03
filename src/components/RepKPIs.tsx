@@ -63,6 +63,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [opportunities, setOpportunities] = useState<{ representative_id: string; nome: string; qty_proprias: number; qty_sdr: number }[]>([]);
   const [savingOpp, setSavingOpp] = useState(false);
   const [goals, setGoals] = useState<{ representative_id: string; nome: string; meta_quantidade: number; byType: Record<string, number> }[]>([]);
+  const [closedDealsForMetas, setClosedDealsForMetas] = useState<{ representative_id: string | null; machine_type: string }[]>([]);
   const [allYearVisits, setAllYearVisits] = useState<{ representative_id: string; semana: number; quantidade: number; meta: number }[]>([]);
   const [allYearOpps, setAllYearOpps] = useState<{ representative_id: string; mes: number; qty_proprias: number; qty_sdr: number }[]>([]);
   const [allYearGoals, setAllYearGoals] = useState<{ representative_id: string; mes: number; meta_quantidade: number; machine_type: string }[]>([]);
