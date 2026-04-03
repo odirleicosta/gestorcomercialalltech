@@ -3,6 +3,7 @@ import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -20,6 +21,7 @@ interface Props {
 interface ParsedRow {
   fechada_por: string;
   motivo_perda: string;
+  data_criacao: string;
   data_perda: string;
   cliente: string;
   machine_name: string;
@@ -141,14 +143,14 @@ const LostDealImport = ({ userId, reps, open, onClose, onImported }: Props) => {
 
             let valid = true;
             let reason = "";
-            if (!dataStr) { valid = false; reason = "Data inválida"; }
-            else if (!cliente) { valid = false; reason = "Cliente vazio"; }
+            if (!cliente) { valid = false; reason = "Cliente vazio"; }
             else if (!matched_rep_id) { valid = false; reason = `Rep "${fechadaPor}" não encontrado`; }
 
             parsed.push({
               fechada_por: fechadaPor,
               motivo_perda: motivo,
-              data_perda: dataStr || "",
+              data_criacao: dataStr || "",
+              data_perda: new Date().toISOString().slice(0, 10),
               cliente,
               machine_name: machineName,
               cnpj,
@@ -256,15 +258,29 @@ const LostDealImport = ({ userId, reps, open, onClose, onImported }: Props) => {
 
           {rows.length > 0 && (
             <>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary" className="text-xs">
-                  <CheckCircle2 className="h-3 w-3 mr-1" /> {validRows.length} válidos
-                </Badge>
-                {rows.length - validRows.length > 0 && (
-                  <Badge variant="destructive" className="text-xs">
-                    <AlertTriangle className="h-3 w-3 mr-1" /> {rows.length - validRows.length} inválidos
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Data de Fechamento (para todos):</label>
+                  <Input
+                    type="date"
+                    className="w-40 h-8 text-xs"
+                    value={rows[0]?.data_perda || ""}
+                    onChange={(e) => {
+                      const newDate = e.target.value;
+                      setRows((prev) => prev.map((r) => ({ ...r, data_perda: newDate })));
+                    }}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Badge variant="secondary" className="text-xs">
+                    <CheckCircle2 className="h-3 w-3 mr-1" /> {validRows.length} válidos
                   </Badge>
-                )}
+                  {rows.length - validRows.length > 0 && (
+                    <Badge variant="destructive" className="text-xs">
+                      <AlertTriangle className="h-3 w-3 mr-1" /> {rows.length - validRows.length} inválidos
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground ml-auto">{fileName}</p>
               </div>
 
@@ -273,11 +289,11 @@ const LostDealImport = ({ userId, reps, open, onClose, onImported }: Props) => {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-xs w-8">#</TableHead>
-                      <TableHead className="text-xs">Data</TableHead>
+                      <TableHead className="text-xs">Criação</TableHead>
+                      <TableHead className="text-xs">Fechamento</TableHead>
                       <TableHead className="text-xs">Representante</TableHead>
                       <TableHead className="text-xs">Cliente</TableHead>
                       <TableHead className="text-xs">Motivo</TableHead>
-                      <TableHead className="text-xs">Máquina</TableHead>
                       <TableHead className="text-xs">Status</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -285,7 +301,18 @@ const LostDealImport = ({ userId, reps, open, onClose, onImported }: Props) => {
                     {rows.slice(0, 100).map((r, i) => (
                       <TableRow key={i} className={!r.valid ? "opacity-50" : ""}>
                         <TableCell className="text-xs text-muted-foreground">{i + 1}</TableCell>
-                        <TableCell className="text-xs">{r.data_perda || "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{r.data_criacao || "—"}</TableCell>
+                        <TableCell className="text-xs">
+                          <Input
+                            type="date"
+                            className="w-32 h-7 text-xs"
+                            value={r.data_perda}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setRows((prev) => prev.map((row, idx) => idx === i ? { ...row, data_perda: val } : row));
+                            }}
+                          />
+                        </TableCell>
                         <TableCell className="text-xs">
                           {r.matched_rep_id ? (
                             <span className="font-medium">{reps.find((rep) => rep.id === r.matched_rep_id)?.nome}</span>
@@ -295,7 +322,6 @@ const LostDealImport = ({ userId, reps, open, onClose, onImported }: Props) => {
                         </TableCell>
                         <TableCell className="text-xs font-medium max-w-[150px] truncate">{r.cliente || "—"}</TableCell>
                         <TableCell className="text-xs max-w-[150px] truncate">{r.motivo_perda || "—"}</TableCell>
-                        <TableCell className="text-xs max-w-[120px] truncate">{r.machine_name || "—"}</TableCell>
                         <TableCell>
                           {r.valid ? (
                             <Badge variant="outline" className="text-xs text-green-600">OK</Badge>
