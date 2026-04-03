@@ -82,6 +82,7 @@ const RepKPIs = ({ userId }: Props) => {
   });
   const [selRadar, setSelRadar] = useState<string[]>([]);
   const [visitImportOpen, setVisitImportOpen] = useState(false);
+  const [lostImportOpen, setLostImportOpen] = useState(false);
   const [importedVisits, setImportedVisits] = useState<{ id: string; data_visita: string; cliente: string; cnpj: string | null; assunto: string | null; descricao: string | null; representative_id: string }[]>([]);
   const [importedPage, setImportedPage] = useState(0);
   const IMPORTED_PAGE_SIZE = 20;
