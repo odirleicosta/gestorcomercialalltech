@@ -21,6 +21,7 @@ interface Props {
 interface ParsedRow {
   fechada_por: string;
   motivo_perda: string;
+  data_criacao: string;
   data_perda: string;
   cliente: string;
   machine_name: string;
