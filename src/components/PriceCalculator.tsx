@@ -82,6 +82,8 @@ const PriceCalculator = () => {
 
   const [activeTab, setActiveTab] = useState<AppTabId>(DEFAULT_APP_TAB);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [kpiSubTab, setKpiSubTab] = useState("performance");
+  const [registrySubTab, setRegistrySubTab] = useState("clients");
   const { theme, toggle: toggleTheme } = useTheme();
   const [history, setHistory] = useState<SavedCalculation[]>(loadHistory);
   const [clients, setClients] = useState<Client[]>([]);
