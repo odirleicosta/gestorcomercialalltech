@@ -240,6 +240,41 @@ const RepKPIs = ({ userId }: Props) => {
     load();
   }, [reps, filterYear, userId]);
 
+  // Load imported visit details
+  const loadImportedVisits = useCallback(async () => {
+    const { data } = await supabase
+      .from("visitas_importadas" as any)
+      .select("id, data_visita, cliente, cnpj, assunto, descricao, representative_id")
+      .eq("user_id", userId)
+      .order("data_visita", { ascending: false });
+    setImportedVisits((data as any) || []);
+    setImportedPage(0);
+  }, [userId]);
+
+  useEffect(() => { loadImportedVisits(); }, [loadImportedVisits]);
+
+  // Refresh visit data after import
+  const handleImported = useCallback(async () => {
+    // Reload weekly_visits for current week
+    const { data } = await supabase
+      .from("weekly_visits")
+      .select("representative_id, quantidade, meta")
+      .eq("user_id", userId)
+      .eq("ano", filterYear)
+      .eq("semana", filterWeek);
+    const rows: VisitRow[] = reps.map((r) => {
+      const existing = data?.find((v) => v.representative_id === r.id);
+      return { representative_id: r.id, nome: r.nome, meta: existing?.meta ?? DEFAULT_META, quantidade: existing?.quantidade ?? 0 };
+    });
+    setVisits(rows);
+    // Reload all year visits for charts
+    const { data: allVis } = await supabase.from("weekly_visits").select("representative_id, semana, quantidade, meta").eq("user_id", userId).eq("ano", filterYear);
+    setAllYearVisits(allVis || []);
+    // Reload imported visits
+    await loadImportedVisits();
+    toast.success("Dados de visitas atualizados");
+  }, [userId, filterYear, filterWeek, reps, loadImportedVisits]);
+
   // Load lost deals from independent table
   const loadLostDeals = useCallback(async () => {
     const { data } = await supabase
