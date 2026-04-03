@@ -78,6 +78,7 @@ const RepKPIs = ({ userId }: Props) => {
     data_perda: new Date().toISOString().slice(0, 10),
     quantidade: 1,
   });
+  const [selRadar, setSelRadar] = useState<string[]>([]);
 
   // Load reps
   useEffect(() => {
@@ -245,6 +246,13 @@ const RepKPIs = ({ userId }: Props) => {
   }, [userId]);
 
   useEffect(() => { loadLostDeals(); }, [loadLostDeals]);
+
+  // Initialize radar selection when reps load
+  useEffect(() => {
+    if (reps.length > 0 && selRadar.length === 0) {
+      setSelRadar(reps.slice(0, 3).map(r => r.id));
+    }
+  }, [reps]);
 
   const DEFAULT_MOTIVOS = ["Preço", "Concorrência", "Cancelamento do Projeto", "Sem Investimento", "Cliente Curioso", "Postergação", "Comprou máquina usada", "Relacionamento com o cliente"];
   const [customMotivos, setCustomMotivos] = useState<string[]>([]);
@@ -1536,7 +1544,6 @@ const RepKPIs = ({ userId }: Props) => {
                 return entry;
               });
               const defaultIds = radarReps.slice(0, 3).map(r => r.id);
-              const [selRadar, setSelRadar] = React.useState<string[]>(defaultIds);
               const toggleR = (id: string) => setSelRadar(p => p.includes(id) ? p.filter(x => x !== id) : [...p, id]);
               const vis = radarReps.filter(r => selRadar.includes(r.id));
               return (
