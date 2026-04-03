@@ -258,15 +258,29 @@ const LostDealImport = ({ userId, reps, open, onClose, onImported }: Props) => {
 
           {rows.length > 0 && (
             <>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="secondary" className="text-xs">
-                  <CheckCircle2 className="h-3 w-3 mr-1" /> {validRows.length} válidos
-                </Badge>
-                {rows.length - validRows.length > 0 && (
-                  <Badge variant="destructive" className="text-xs">
-                    <AlertTriangle className="h-3 w-3 mr-1" /> {rows.length - validRows.length} inválidos
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-medium text-muted-foreground whitespace-nowrap">Data de Fechamento (para todos):</label>
+                  <Input
+                    type="date"
+                    className="w-40 h-8 text-xs"
+                    value={rows[0]?.data_perda || ""}
+                    onChange={(e) => {
+                      const newDate = e.target.value;
+                      setRows((prev) => prev.map((r) => ({ ...r, data_perda: newDate })));
+                    }}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Badge variant="secondary" className="text-xs">
+                    <CheckCircle2 className="h-3 w-3 mr-1" /> {validRows.length} válidos
                   </Badge>
-                )}
+                  {rows.length - validRows.length > 0 && (
+                    <Badge variant="destructive" className="text-xs">
+                      <AlertTriangle className="h-3 w-3 mr-1" /> {rows.length - validRows.length} inválidos
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground ml-auto">{fileName}</p>
               </div>
 
