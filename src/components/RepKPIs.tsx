@@ -485,6 +485,8 @@ const RepKPIs = ({ userId }: Props) => {
 
   const [filterExpanded, setFilterExpanded] = useState(false);
 
+  console.log("[RepKPIs] render OK, subTab=", subTab, "reps=", reps.length);
+
   return (
     <div className="space-y-6">
       {/* ═══ FILTRO GLOBAL (só Desempenho) ═══ */}
