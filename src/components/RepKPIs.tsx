@@ -80,6 +80,7 @@ const RepKPIs = ({ userId }: Props) => {
     quantidade: 1,
   });
   const [selRadar, setSelRadar] = useState<string[]>([]);
+  const [visitImportOpen, setVisitImportOpen] = useState(false);
 
   // Load reps
   useEffect(() => {
