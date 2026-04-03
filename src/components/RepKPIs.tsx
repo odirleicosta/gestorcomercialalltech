@@ -1419,6 +1419,83 @@ const RepKPIs = ({ userId }: Props) => {
                 </Card>
               );
             })()}
+
+            {/* ═══ HEATMAP SEMANAL DE VISITAS ═══ */}
+            {(() => {
+              const filteredReps = reps.filter(r => filterRep === "all" || r.id === filterRep);
+              const sortedWeeks = [...uniqueWeeks].sort((a, b) => a - b);
+
+              if (filteredReps.length === 0 || sortedWeeks.length === 0) return null;
+
+              const heatData = filteredReps.map(r => {
+                const row: Record<number, number> = {};
+                sortedWeeks.forEach(w => {
+                  const found = allYearVisits.find(v => v.representative_id === r.id && v.semana === w);
+                  row[w] = found ? found.quantidade : 0;
+                });
+                return { id: r.id, nome: r.nome.split(" ").slice(0, 2).join(" "), weeks: row };
+              });
+
+              const maxV = Math.max(...heatData.flatMap(r => Object.values(r.weeks)), 1);
+
+              const getHeatColor = (val: number) => {
+                if (val === 0) return "bg-muted text-muted-foreground";
+                const ratio = val / maxV;
+                if (ratio <= 0.25) return "bg-primary/10 text-primary";
+                if (ratio <= 0.5) return "bg-primary/25 text-primary";
+                if (ratio <= 0.75) return "bg-primary/40 text-primary-foreground";
+                return "bg-primary/60 text-primary-foreground";
+              };
+
+              return (
+                <Card className="p-4 sm:p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Eye className="h-5 w-5 text-primary" />
+                    <h3 className="font-semibold text-foreground">Heatmap Semanal de Visitas — {periodLabel}</h3>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-xs">
+                      <thead>
+                        <tr>
+                          <th className="text-left p-1.5 text-muted-foreground font-semibold sticky left-0 bg-card z-10 min-w-[100px]">Rep</th>
+                          {sortedWeeks.map(w => (
+                            <th key={w} className="text-center p-1 text-muted-foreground font-medium min-w-[36px]">S{w}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {heatData.map(row => (
+                          <tr key={row.id}>
+                            <td className="p-1.5 font-medium text-foreground sticky left-0 bg-card z-10 truncate">{row.nome}</td>
+                            {sortedWeeks.map(w => {
+                              const val = row.weeks[w];
+                              return (
+                                <td key={w} className="p-0.5 text-center">
+                                  <div className={`rounded-md w-full h-7 flex items-center justify-center text-[10px] font-bold ${getHeatColor(val)}`}>
+                                    {val > 0 ? val : ""}
+                                  </div>
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="flex items-center gap-3 mt-4 pt-3 border-t border-border">
+                    <span className="text-[10px] text-muted-foreground font-semibold">Intensidade:</span>
+                    <div className="flex items-center gap-1">
+                      {["bg-muted", "bg-primary/10", "bg-primary/25", "bg-primary/40", "bg-primary/60"].map((bg, i) => (
+                        <div key={i} className={`h-3 w-6 rounded ${bg}`} />
+                      ))}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground">0 → Máx</span>
+                  </div>
+                </Card>
+              );
+            })()}
           </>
         );
       })()}
