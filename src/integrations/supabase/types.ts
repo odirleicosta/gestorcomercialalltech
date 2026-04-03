@@ -944,6 +944,45 @@ export type Database = {
           },
         ]
       }
+      visitas_importadas: {
+        Row: {
+          assunto: string | null
+          cliente: string
+          cnpj: string | null
+          created_at: string
+          data_visita: string
+          descricao: string | null
+          hash_linha: string
+          id: string
+          representative_id: string
+          user_id: string
+        }
+        Insert: {
+          assunto?: string | null
+          cliente: string
+          cnpj?: string | null
+          created_at?: string
+          data_visita: string
+          descricao?: string | null
+          hash_linha: string
+          id?: string
+          representative_id: string
+          user_id: string
+        }
+        Update: {
+          assunto?: string | null
+          cliente?: string
+          cnpj?: string | null
+          created_at?: string
+          data_visita?: string
+          descricao?: string | null
+          hash_linha?: string
+          id?: string
+          representative_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       weekly_opportunities: {
         Row: {
           ano: number
