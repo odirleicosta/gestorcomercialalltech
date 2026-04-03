@@ -1249,6 +1249,79 @@ const RepKPIs = ({ userId }: Props) => {
                 </ResponsiveContainer>
               </Card>
             )}
+
+            {/* ═══ FUNIL DE CONVERSÃO ═══ */}
+            {(() => {
+              // Filter closed deals by period and rep
+              const filteredClosed = allYearClosedDeals.filter(d => {
+                if (filterRep !== "all" && d.representative_id !== filterRep) return false;
+                if (!d.closed_at) return false;
+                const dt = new Date(d.closed_at);
+                const m = dt.getMonth() + 1;
+                if (periodMode === "mes") return m === filterMonth;
+                if (periodMode === "trimestre") return relevantMonths.includes(m);
+                return true; // ano
+              });
+              const vendasFechadas = filteredClosed.length;
+              const fmtPct = (a: number, b: number) => b > 0 ? `${((a / b) * 100).toFixed(1)}%` : "—";
+
+              const funnelSteps = [
+                { label: "Visitas", value: totalVisitas, icon: <Eye className="h-4 w-4" />, colorClass: "text-primary bg-primary/15" },
+                { label: "Oportunidades", value: totalOpp, icon: <Target className="h-4 w-4" />, colorClass: "text-accent bg-accent/15" },
+                { label: "Vendas Fechadas", value: vendasFechadas, icon: <TrendingUp className="h-4 w-4" />, colorClass: "text-accent bg-accent/15" },
+              ];
+              const maxVal = Math.max(totalVisitas, totalOpp, vendasFechadas, 1);
+
+              return (
+                <Card className="p-4 sm:p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Target className="h-5 w-5 text-primary" />
+                    <h3 className="font-semibold text-foreground">Funil de Conversão — {periodLabel}</h3>
+                  </div>
+
+                  <div className="space-y-3">
+                    {funnelSteps.map((step) => {
+                      const pct = maxVal > 0 ? (step.value / maxVal) * 100 : 0;
+                      return (
+                        <div key={step.label}>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <div className={`flex h-6 w-6 items-center justify-center rounded-md ${step.colorClass}`}>
+                                {step.icon}
+                              </div>
+                              <span className="text-xs font-medium text-foreground">{step.label}</span>
+                            </div>
+                            <span className="text-sm font-bold text-foreground">{step.value}</span>
+                          </div>
+                          <Progress value={Math.min(pct, 100)} className="h-2" />
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Taxas de conversão */}
+                  <div className="mt-4 pt-3 border-t border-border">
+                    <p className="text-[10px] text-muted-foreground mb-2 uppercase tracking-wide font-semibold">Taxas de Conversão</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { from: "Visitas", to: "Oportunidades", pct: fmtPct(totalOpp, totalVisitas) },
+                        { from: "Oportunidades", to: "Vendas", pct: fmtPct(vendasFechadas, totalOpp) },
+                        { from: "Visitas", to: "Vendas", pct: fmtPct(vendasFechadas, totalVisitas) },
+                      ].map((c) => (
+                        <div key={c.from + c.to} className="text-center p-2 rounded-lg bg-secondary/40">
+                          <p className="text-[10px] text-muted-foreground">{c.from}</p>
+                          <div className="flex items-center justify-center gap-1 my-0.5">
+                            <span className="text-muted-foreground text-xs">→</span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">{c.to}</p>
+                          <p className="text-sm font-bold text-primary mt-0.5">{c.pct}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Card>
+              );
+            })()}
           </>
         );
       })()}
