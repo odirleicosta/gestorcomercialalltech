@@ -152,7 +152,7 @@ const LostDealImport = ({ userId, reps, open, onClose, onImported }: Props) => {
               fechada_por: fechadaPor,
               motivo_perda: motivo,
               data_criacao: dataStr || "",
-              data_perda: new Date().toISOString().slice(0, 10),
+              data_perda: dataPerdaStr || new Date().toISOString().slice(0, 10),
               cliente,
               machine_name: machineName,
               cnpj,
