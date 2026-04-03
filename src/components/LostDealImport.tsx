@@ -322,7 +322,6 @@ const LostDealImport = ({ userId, reps, open, onClose, onImported }: Props) => {
                         </TableCell>
                         <TableCell className="text-xs font-medium max-w-[150px] truncate">{r.cliente || "—"}</TableCell>
                         <TableCell className="text-xs max-w-[150px] truncate">{r.motivo_perda || "—"}</TableCell>
-                        <TableCell className="text-xs max-w-[120px] truncate">{r.machine_name || "—"}</TableCell>
                         <TableCell>
                           {r.valid ? (
                             <Badge variant="outline" className="text-xs text-green-600">OK</Badge>
