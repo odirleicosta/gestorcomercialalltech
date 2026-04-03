@@ -81,6 +81,9 @@ const RepKPIs = ({ userId }: Props) => {
   });
   const [selRadar, setSelRadar] = useState<string[]>([]);
   const [visitImportOpen, setVisitImportOpen] = useState(false);
+  const [importedVisits, setImportedVisits] = useState<{ id: string; data_visita: string; cliente: string; cnpj: string | null; assunto: string | null; descricao: string | null; representative_id: string }[]>([]);
+  const [importedPage, setImportedPage] = useState(0);
+  const IMPORTED_PAGE_SIZE = 20;
 
   // Load reps
   useEffect(() => {
@@ -236,6 +239,41 @@ const RepKPIs = ({ userId }: Props) => {
     };
     load();
   }, [reps, filterYear, userId]);
+
+  // Load imported visit details
+  const loadImportedVisits = useCallback(async () => {
+    const { data } = await supabase
+      .from("visitas_importadas" as any)
+      .select("id, data_visita, cliente, cnpj, assunto, descricao, representative_id")
+      .eq("user_id", userId)
+      .order("data_visita", { ascending: false });
+    setImportedVisits((data as any) || []);
+    setImportedPage(0);
+  }, [userId]);
+
+  useEffect(() => { loadImportedVisits(); }, [loadImportedVisits]);
+
+  // Refresh visit data after import
+  const handleImported = useCallback(async () => {
+    // Reload weekly_visits for current week
+    const { data } = await supabase
+      .from("weekly_visits")
+      .select("representative_id, quantidade, meta")
+      .eq("user_id", userId)
+      .eq("ano", filterYear)
+      .eq("semana", filterWeek);
+    const rows: VisitRow[] = reps.map((r) => {
+      const existing = data?.find((v) => v.representative_id === r.id);
+      return { representative_id: r.id, nome: r.nome, meta: existing?.meta ?? DEFAULT_META, quantidade: existing?.quantidade ?? 0 };
+    });
+    setVisits(rows);
+    // Reload all year visits for charts
+    const { data: allVis } = await supabase.from("weekly_visits").select("representative_id, semana, quantidade, meta").eq("user_id", userId).eq("ano", filterYear);
+    setAllYearVisits(allVis || []);
+    // Reload imported visits
+    await loadImportedVisits();
+    toast.success("Dados de visitas atualizados");
+  }, [userId, filterYear, filterWeek, reps, loadImportedVisits]);
 
   // Load lost deals from independent table
   const loadLostDeals = useCallback(async () => {
@@ -833,7 +871,56 @@ const RepKPIs = ({ userId }: Props) => {
           </Button>
         </div>
       )}
-      <VisitImport userId={userId} reps={reps} open={visitImportOpen} onClose={() => setVisitImportOpen(false)} onImported={() => { /* refresh data */ }} />
+      <VisitImport userId={userId} reps={reps} open={visitImportOpen} onClose={() => setVisitImportOpen(false)} onImported={handleImported} />
+
+      {/* ═══ DETALHAMENTO DE VISITAS IMPORTADAS ═══ */}
+      {importedVisits.length > 0 && (() => {
+        const filtered = filterRep === "all" ? importedVisits : importedVisits.filter(v => v.representative_id === filterRep);
+        const totalPages = Math.ceil(filtered.length / IMPORTED_PAGE_SIZE);
+        const paged = filtered.slice(importedPage * IMPORTED_PAGE_SIZE, (importedPage + 1) * IMPORTED_PAGE_SIZE);
+        return (
+          <Card className="overflow-hidden">
+            <div className="flex items-center justify-between px-4 pt-4 pb-2">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold text-foreground">Detalhamento de Visitas Importadas</h3>
+                <Badge variant="secondary" className="text-xs">{filtered.length} registros</Badge>
+              </div>
+            </div>
+            <div className="overflow-auto max-h-[400px]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="text-xs">Data</TableHead>
+                    <TableHead className="text-xs">Cliente</TableHead>
+                    <TableHead className="text-xs">CNPJ</TableHead>
+                    <TableHead className="text-xs">Assunto</TableHead>
+                    {filterRep === "all" && <TableHead className="text-xs">Representante</TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paged.map((v) => (
+                    <TableRow key={v.id}>
+                      <TableCell className="text-xs whitespace-nowrap">{v.data_visita}</TableCell>
+                      <TableCell className="text-xs font-medium">{v.cliente}</TableCell>
+                      <TableCell className="text-xs">{v.cnpj || "—"}</TableCell>
+                      <TableCell className="text-xs max-w-[200px] truncate">{v.assunto || "—"}</TableCell>
+                      {filterRep === "all" && <TableCell className="text-xs">{reps.find(r => r.id === v.representative_id)?.nome || "—"}</TableCell>}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 py-2">
+                <Button variant="ghost" size="sm" disabled={importedPage === 0} onClick={() => setImportedPage(p => p - 1)}>Anterior</Button>
+                <span className="text-xs text-muted-foreground">{importedPage + 1} / {totalPages}</span>
+                <Button variant="ghost" size="sm" disabled={importedPage >= totalPages - 1} onClick={() => setImportedPage(p => p + 1)}>Próximo</Button>
+              </div>
+            )}
+          </Card>
+        );
+      })()}
       </>)}
 
       {/* ═══ OPORTUNIDADES ═══ */}

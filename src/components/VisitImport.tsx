@@ -124,6 +124,12 @@ const VisitImport = ({ userId, reps, open, onClose, onImported }: Props) => {
     e.target.value = "";
   }, []);
 
+  const getWeekNumber = (d: Date): number => {
+    const start = new Date(d.getFullYear(), 0, 1);
+    const diff = d.getTime() - start.getTime() + (start.getTimezoneOffset() - d.getTimezoneOffset()) * 60000;
+    return Math.ceil((diff / 86400000 + start.getDay() + 1) / 7);
+  };
+
   const handleImport = async () => {
     if (!selectedRep) { toast.error("Selecione o representante"); return; }
     if (validRows.length === 0) { toast.error("Nenhuma linha válida para importar"); return; }
@@ -143,7 +149,6 @@ const VisitImport = ({ userId, reps, open, onClose, onImported }: Props) => {
 
       // Insert in batches, skipping duplicates
       let inserted = 0;
-      let skipped = 0;
       const BATCH = 50;
       for (let i = 0; i < records.length; i += BATCH) {
         const batch = records.slice(i, i + BATCH);
@@ -154,7 +159,41 @@ const VisitImport = ({ userId, reps, open, onClose, onImported }: Props) => {
         if (error) throw error;
         inserted += (data as any[])?.length || 0;
       }
-      skipped = records.length - inserted;
+      const skipped = records.length - inserted;
+
+      // Aggregate imported visits by week and upsert into weekly_visits
+      const weekGroups: Record<string, number> = {};
+      for (const r of validRows) {
+        const d = new Date(r.data_visita + "T12:00:00");
+        const ano = d.getFullYear();
+        const semana = getWeekNumber(d);
+        const key = `${ano}-${semana}`;
+        weekGroups[key] = (weekGroups[key] || 0) + 1;
+      }
+
+      for (const [key, qty] of Object.entries(weekGroups)) {
+        const [ano, semana] = key.split("-").map(Number);
+        // Check existing record
+        const { data: existing } = await supabase
+          .from("weekly_visits")
+          .select("id, quantidade")
+          .eq("user_id", userId)
+          .eq("representative_id", selectedRep)
+          .eq("ano", ano)
+          .eq("semana", semana)
+          .maybeSingle();
+
+        if (existing) {
+          await supabase
+            .from("weekly_visits")
+            .update({ quantidade: existing.quantidade + qty })
+            .eq("id", existing.id);
+        } else {
+          await supabase
+            .from("weekly_visits")
+            .insert({ user_id: userId, representative_id: selectedRep, ano, semana, quantidade: qty, meta: 16 });
+        }
+      }
 
       toast.success(`${inserted} visitas importadas${skipped > 0 ? `, ${skipped} duplicadas ignoradas` : ""}`);
       setRows([]);
