@@ -534,40 +534,40 @@ const RepKPIs = ({ userId }: Props) => {
       )}
 
       {/* Sub-tabs */}
-      <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 scrollbar-hidden sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
         <button
           onClick={() => setSubTab("desempenho")}
-          className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all ${subTab === "desempenho" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+          className={`inline-flex min-h-11 w-full items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all sm:min-h-0 sm:w-auto ${subTab === "desempenho" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
         >
-          <Activity className="mr-1.5 h-4 w-4" />
+          <Activity className="mr-1.5 h-4 w-4 shrink-0" />
           Desempenho
         </button>
         <button
           onClick={() => setSubTab("visitas")}
-          className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all ${subTab === "visitas" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+          className={`inline-flex min-h-11 w-full items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all sm:min-h-0 sm:w-auto ${subTab === "visitas" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
         >
-          <Eye className="mr-1.5 h-4 w-4" />
+          <Eye className="mr-1.5 h-4 w-4 shrink-0" />
           Visitas
         </button>
         <button
           onClick={() => setSubTab("oportunidades")}
-          className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all ${subTab === "oportunidades" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+          className={`inline-flex min-h-11 w-full items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all sm:min-h-0 sm:w-auto ${subTab === "oportunidades" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
         >
-          <Lightbulb className="mr-1.5 h-4 w-4" />
+          <Lightbulb className="mr-1.5 h-4 w-4 shrink-0" />
           Oportunidades
         </button>
         <button
           onClick={() => setSubTab("metas")}
-          className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all ${subTab === "metas" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+          className={`inline-flex min-h-11 w-full items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all sm:min-h-0 sm:w-auto ${subTab === "metas" ? "bg-primary text-primary-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
         >
-          <Flag className="mr-1.5 h-4 w-4" />
+          <Flag className="mr-1.5 h-4 w-4 shrink-0" />
           Metas
         </button>
         <button
           onClick={() => setSubTab("perdidas")}
-          className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all ${subTab === "perdidas" ? "bg-destructive text-destructive-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+          className={`col-span-2 inline-flex min-h-11 w-full items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-all sm:col-span-1 sm:min-h-0 sm:w-auto ${subTab === "perdidas" ? "bg-destructive text-destructive-foreground shadow" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
         >
-          <XCircle className="mr-1.5 h-4 w-4" />
+          <XCircle className="mr-1.5 h-4 w-4 shrink-0" />
           Perdidas
         </button>
       </div>
