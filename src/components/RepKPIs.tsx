@@ -632,6 +632,15 @@ const RepKPIs = ({ userId }: Props) => {
         <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setVisitImportOpen(true)}>
           <FileSpreadsheet className="h-3.5 w-3.5 mr-1" /> Importar Planilha
         </Button>
+        <Button variant="destructive" size="sm" className="h-8 text-xs" onClick={async () => {
+          if (!confirm("Tem certeza que deseja excluir TODAS as visitas importadas? Esta ação não pode ser desfeita.")) return;
+          const { error } = await supabase.from("visitas_importadas" as any).delete().eq("user_id", userId);
+          if (error) { toast.error("Erro ao excluir visitas"); return; }
+          toast.success("Todas as visitas importadas foram excluídas");
+          loadImportedVisits();
+        }}>
+          <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir Todas
+        </Button>
         <Select value={filterRep} onValueChange={setFilterRep}>
           <SelectTrigger className="w-[140px] text-xs h-8"><Users className="h-3.5 w-3.5 mr-1" /><SelectValue /></SelectTrigger>
           <SelectContent>
