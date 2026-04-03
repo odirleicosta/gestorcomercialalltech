@@ -133,6 +133,7 @@ const LostDealImport = ({ userId, reps, open, onClose, onImported }: Props) => {
             const fechadaPor = iFechada >= 0 ? String(r[iFechada] ?? "").trim() : "";
             const motivo = iMotivo >= 0 ? String(r[iMotivo] ?? "").trim() : "";
             const dataStr = iCriacao >= 0 ? parseExcelDate(r[iCriacao]) : null;
+            const dataPerdaStr = iPerda >= 0 ? parseExcelDate(r[iPerda]) : null;
             const cliente = String(r[iCliente] ?? "").trim();
             const machineName = iName >= 0 ? String(r[iName] ?? "").trim() : "";
             const cnpj = iCnpj >= 0 ? String(r[iCnpj] ?? "").trim() : "";
