@@ -15,7 +15,6 @@ import {
 export type AppTabId =
   | "dashboard"
   | "rep-kpis"
-  | "importacao"
   | "registry"
   | "settings"
   | "deals"
