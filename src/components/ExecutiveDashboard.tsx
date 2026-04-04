@@ -516,6 +516,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                     <div className="flex items-center gap-2 sm:gap-3 mt-0.5 sm:mt-1 flex-wrap">
                       <span className="text-[10px] sm:text-xs text-muted-foreground">Meta: <b>{rep.metaQtd}</b></span>
                       <span className="text-[10px] sm:text-xs font-semibold text-foreground">Vendido: <b>{rep.count}</b></span>
+                      <span className="text-[10px] sm:text-xs text-muted-foreground">Visitas: <b>{visitStats.perRep.get(rep.id) || 0}</b></span>
                       <span className={`text-[10px] sm:text-xs font-bold ${statusColor(pct)}`}>{formatPct(pct)}</span>
                       {faltaRep > 0 && <span className="text-[10px] sm:text-xs text-muted-foreground hidden sm:inline">Faltam: <b>{faltaRep}</b></span>}
                     </div>
