@@ -681,9 +681,10 @@ const RepKPIs = ({ userId }: Props) => {
         </Button>
         <Button variant="destructive" size="sm" className="h-8 text-xs" onClick={async () => {
           if (!confirm("Tem certeza que deseja excluir TODAS as visitas importadas? Esta ação não pode ser desfeita.")) return;
-          const { error } = await supabase.from("visitas_importadas" as any).delete().eq("user_id", userId);
-          if (error) { toast.error("Erro ao excluir visitas"); return; }
-          toast.success("Todas as visitas importadas foram excluídas");
+          const { error: e1 } = await supabase.from("visitas_importadas" as any).delete().eq("user_id", userId);
+          const { error: e2 } = await supabase.from("weekly_visits").delete().eq("user_id", userId);
+          if (e1 || e2) { toast.error("Erro ao excluir visitas"); return; }
+          toast.success("Todas as visitas importadas e semanais foram excluídas");
           loadImportedVisits();
         }}>
           <Trash2 className="h-3.5 w-3.5 mr-1" /> Excluir Todas

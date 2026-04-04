@@ -202,7 +202,50 @@ const VisitImport = ({ userId, reps, open, onClose, onImported }: Props) => {
         }
       }
 
-      toast.success(`${inserted} visitas importadas${skipped > 0 ? `, ${skipped} duplicadas ignoradas` : ""}`);
+      // If all rows were duplicates, recalculate weekly_visits from existing data
+      if (inserted === 0 && skipped > 0) {
+        // Fetch ALL visitas_importadas for this rep
+        const { data: allVisits } = await supabase
+          .from("visitas_importadas" as any)
+          .select("data_visita")
+          .eq("user_id", userId)
+          .eq("representative_id", selectedRep);
+
+        if (allVisits && allVisits.length > 0) {
+          // Aggregate by week
+          const weekTotals: Record<string, number> = {};
+          for (const v of allVisits as any[]) {
+            const d = new Date(v.data_visita + "T12:00:00");
+            const ano = d.getFullYear();
+            const semana = getWeekNumber(d);
+            const key = `${ano}-${semana}`;
+            weekTotals[key] = (weekTotals[key] || 0) + 1;
+          }
+
+          // Delete existing weekly_visits for this rep
+          await supabase
+            .from("weekly_visits")
+            .delete()
+            .eq("user_id", userId)
+            .eq("representative_id", selectedRep);
+
+          // Insert recalculated totals
+          const weekRecords = Object.entries(weekTotals).map(([key, qty]) => {
+            const [ano, semana] = key.split("-").map(Number);
+            return { user_id: userId, representative_id: selectedRep, ano, semana, quantidade: qty, meta: 16 };
+          });
+          if (weekRecords.length > 0) {
+            await supabase.from("weekly_visits").insert(weekRecords);
+          }
+
+          toast.success(`${skipped} registros já existentes — weekly_visits recalculado (${allVisits.length} visitas)`);
+        } else {
+          toast.info(`${skipped} duplicadas ignoradas, nenhum registro encontrado para recalcular`);
+        }
+      } else {
+        toast.success(`${inserted} visitas importadas${skipped > 0 ? `, ${skipped} duplicadas ignoradas` : ""}`);
+      }
+
       setRows([]);
       setFileName("");
       onImported();
