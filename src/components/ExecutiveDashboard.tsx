@@ -458,7 +458,19 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         </div>
       </section>
 
-      {/* ═══ 2) RANKING DA EQUIPE ═══ */}
+      {/* ═══ ATIVIDADE DA EQUIPE ═══ */}
+      <section>
+        <div className="flex items-center gap-2 mb-4">
+          <Users className="h-5 w-5 text-[#8B5CF6]" />
+          <h3 className="font-heading text-lg font-bold text-foreground">Atividade da Equipe</h3>
+        </div>
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
+          <MetricCard label="Total de Visitas" value={String(visitStats.totalVisitas)} icon={<Users className="h-5 w-5" />} color="#8B5CF6" sub={`no período`} />
+          <MetricCard label="Média por Vendedor" value={visitStats.media.toFixed(1)} icon={<BarChart3 className="h-5 w-5" />} color="#3B82F6" sub="visitas / rep" />
+          <MetricCard label="% Meta de Visitas" value={formatPct(visitStats.pctMeta)} icon={<Target className="h-5 w-5" />} color={visitStats.pctMeta >= 100 ? "#22C55E" : visitStats.pctMeta >= 70 ? "#F97316" : "#EF4444"} sub={`${visitStats.totalVisitas} de ${visitStats.totalMeta}`} />
+        </div>
+      </section>
+
       {sortedRanking.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-4">
