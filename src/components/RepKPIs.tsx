@@ -860,7 +860,7 @@ const RepKPIs = ({ userId }: Props) => {
       )}
 
       {/* Save Visits button */}
-      {visits.length > 0 && (
+      {visits.length > 0 && isWeekEditMode && (
         <div className="flex justify-end">
           <Button onClick={handleSave} disabled={saving} size="lg">
             <Save className="h-4 w-4 mr-2" />
