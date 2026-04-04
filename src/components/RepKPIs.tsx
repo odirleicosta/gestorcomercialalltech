@@ -98,6 +98,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [lostImportOpen, setLostImportOpen] = useState(false);
   const [oppImportOpen, setOppImportOpen] = useState(false);
   const [metaImportOpen, setMetaImportOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [importedVisits, setImportedVisits] = useState<{ id: string; data_visita: string; cliente: string; cnpj: string | null; assunto: string | null; descricao: string | null; representative_id: string }[]>([]);
   const [importedPage, setImportedPage] = useState(0);
   const IMPORTED_PAGE_SIZE = 20;
