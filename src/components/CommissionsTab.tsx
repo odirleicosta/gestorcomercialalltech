@@ -172,53 +172,23 @@ const CommissionsTab = ({ userId }: Props) => {
         <h2 className="font-heading text-base sm:text-lg md:text-xl font-bold text-foreground flex items-center gap-2">
           <DollarSign className="h-4 w-4 sm:h-5 sm:w-5" /> Comissões
         </h2>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Select value={String(filterYear)} onValueChange={v => setFilterYear(parseInt(v))}>
-            <SelectTrigger className="w-[80px] bg-secondary/50 border-border text-xs h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {[2024, 2025, 2026, 2027].map(y => (
-                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={filterRep} onValueChange={setFilterRep}>
-            <SelectTrigger className="w-[110px] sm:w-[120px] bg-secondary/50 border-border text-xs h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos</SelectItem>
-              {reps.map(r => (
-                <SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
       </div>
 
-      {/* Period toggle pills */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
-          <PillButton active={periodMode === "year"} onClick={() => setPeriodMode("year")}>Ano</PillButton>
-          <PillButton active={periodMode === "quarter"} onClick={() => setPeriodMode("quarter")}>Trimestre</PillButton>
-          <PillButton active={periodMode === "month"} onClick={() => setPeriodMode("month")}>Mês</PillButton>
-        </div>
-        {periodMode === "quarter" && (
-          <div className="flex items-center gap-1 bg-secondary/50 rounded-full p-0.5">
-            {["T1", "T2", "T3", "T4"].map(q => (
-              <PillButton key={q} active={filterQuarter === q} onClick={() => setFilterQuarter(q)}>{q}</PillButton>
-            ))}
-          </div>
-        )}
-        {periodMode === "month" && (
-          <div className="flex items-center gap-1 flex-wrap">
-            {SHORT_MONTHS.map((m, i) => (
-              <PillButton key={m} active={filterMonth === i} onClick={() => setFilterMonth(i)}>{m}</PillButton>
-            ))}
-          </div>
-        )}
-      </div>
+      <FilterBar
+        year={filterYear}
+        onYearChange={setFilterYear}
+        periodMode={periodMode}
+        onPeriodModeChange={setPeriodMode}
+        month={filterMonth + 1}
+        onMonthChange={(m) => setFilterMonth(m - 1)}
+        quarter={filterQuarter}
+        onQuarterChange={setFilterQuarter}
+        showRep
+        rep={filterRep}
+        onRepChange={setFilterRep}
+        reps={reps}
+        yearOptions={[2024, 2025, 2026, 2027]}
+      />
 
       {/* KPIs */}
       <CommissionKPIs {...yearTotals} />
