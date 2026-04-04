@@ -271,9 +271,15 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   const calcVar = (c: number, p: number) => { if (p === 0) return c > 0 ? 100 : 0; return ((c-p)/p)*100; };
   const vendasVar = calcVar(cur.count, prev.count);
 
-  const handleMonthClick = (m: number) => { setFilterMonth(m); setFilterMode("month"); setFilterQuarter(null); };
-  const handleQuarterClick = (qi: number) => { setFilterMode("quarter"); setFilterQuarter(qi); };
-  const handleYearClick = () => { setFilterMode("year"); setFilterQuarter(null); };
+  const handleFilterPeriodMode = (mode: "month" | "quarter" | "year") => {
+    if (mode === "month") { setFilterMode("month"); setFilterQuarter(null); }
+    else if (mode === "year") { setFilterMode("year"); setFilterQuarter(null); }
+  };
+  const handleFilterQuarter = (q: string) => {
+    const idx = ["T1","T2","T3","T4"].indexOf(q);
+    setFilterMode("quarter"); setFilterQuarter(idx >= 0 ? idx : 0);
+  };
+  const filterQuarterStr = filterQuarter !== null ? `T${filterQuarter + 1}` : "T1";
 
   const statusColor = (pct: number) => pct >= 100 ? "text-[#22C55E]" : pct >= 70 ? "text-[#F97316]" : "text-[#EF4444]";
   const statusBg = (pct: number) => pct >= 100 ? "bg-[#22C55E]" : pct >= 70 ? "bg-[#F97316]" : "bg-[#EF4444]";
