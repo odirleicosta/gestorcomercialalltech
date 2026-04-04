@@ -157,7 +157,7 @@ const VisitImport = ({ userId, reps, open, onClose, onImported }: Props) => {
         const batch = records.slice(i, i + BATCH);
         const { data, error } = await supabase
           .from("visitas_importadas" as any)
-          .upsert(batch as any, { onConflict: "user_id,hash_linha", ignoreDuplicates: true })
+          .upsert(batch as any, { onConflict: "user_id,representative_id,hash_linha", ignoreDuplicates: true })
           .select("hash_linha");
         if (error) throw error;
         const returned = (data as any[]) || [];
