@@ -27,7 +27,7 @@ import CommissionsTab from "@/components/CommissionsTab";
 import CommissionGate from "@/components/CommissionGate";
 import Auth from "@/components/Auth";
 import BottomNavBar from "@/components/BottomNavBar";
-import BiImport from "@/components/BiImport";
+
 import ClosingRadar from "@/components/ClosingRadar";
 import RepKPIs from "@/components/RepKPIs";
 import KpiErrorBoundary from "@/components/KpiErrorBoundary";
