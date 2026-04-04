@@ -692,14 +692,19 @@ const RepKPIs = ({ userId }: Props) => {
                     <Badge variant="secondary">{row.meta}</Badge>
                   </TableCell>
                   <TableCell className="text-center">
-                    <Input
-                      type="number"
-                      min={0}
-                      className="w-20 mx-auto text-center h-9"
-                      value={row.quantidade || ""}
-                      onChange={(e) => handleChange(row.representative_id, e.target.value)}
-                      placeholder="0"
-                    />
+                    {isWeekEditMode ? (
+                      <Input
+                        type="number"
+                        min={0}
+                        className="w-20 mx-auto text-center h-9"
+                        value={row.quantidade || ""}
+                        onChange={(e) => handleChange(row.representative_id, e.target.value)}
+                        placeholder="0"
+                      />
+                    ) : (
+                      <Badge variant="outline">{row.quantidade}</Badge>
+                    )}
+                  </TableCell>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2 justify-center">
