@@ -256,6 +256,7 @@ const VisitImport = ({ userId, reps, open, onClose, onImported }: Props) => {
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-primary" />
             Importar Visitas por Planilha
+            <Badge variant="outline" className="text-[10px] ml-2 font-mono">v3-insert</Badge>
           </DialogTitle>
         </DialogHeader>
 

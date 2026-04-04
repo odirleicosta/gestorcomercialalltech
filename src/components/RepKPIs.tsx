@@ -271,26 +271,39 @@ const RepKPIs = ({ userId }: Props) => {
 
   useEffect(() => { loadImportedVisits(); }, [loadImportedVisits]);
 
-  // Refresh visit data after import
+  // Refresh visit data after import — full reload
   const handleImported = useCallback(async () => {
-    // Reload weekly_visits for current week
-    const { data } = await supabase
+    // Reload weekly_visits for ALL weeks of the year (source of truth)
+    const { data: allVis } = await supabase
       .from("weekly_visits")
-      .select("representative_id, quantidade, meta")
+      .select("representative_id, semana, quantidade, meta")
       .eq("user_id", userId)
-      .eq("ano", filterYear)
-      .eq("semana", filterWeek);
+      .eq("ano", filterYear);
+    setAllYearVisits(allVis || []);
+
+    // Rebuild current week view from the full year data
+    const currentWeekData = (allVis || []).filter((v) => v.semana === filterWeek);
     const rows: VisitRow[] = reps.map((r) => {
-      const existing = data?.find((v) => v.representative_id === r.id);
+      const existing = currentWeekData.find((v) => v.representative_id === r.id);
       return { representative_id: r.id, nome: r.nome, meta: existing?.meta ?? DEFAULT_META, quantidade: existing?.quantidade ?? 0 };
     });
     setVisits(rows);
-    // Reload all year visits for charts
-    const { data: allVis } = await supabase.from("weekly_visits").select("representative_id, semana, quantidade, meta").eq("user_id", userId).eq("ano", filterYear);
-    setAllYearVisits(allVis || []);
-    // Reload imported visits
+
+    // Reload imported visits detail
     await loadImportedVisits();
-    toast.success("Dados de visitas atualizados");
+
+    // Check if imported weeks differ from current filter
+    const weeksWithData = new Set((allVis || []).filter(v => v.quantidade > 0).map(v => v.semana));
+    if (weeksWithData.size > 0 && !weeksWithData.has(filterWeek)) {
+      const firstWeek = Math.min(...Array.from(weeksWithData));
+      toast.info(`Visitas importadas encontradas na semana ${firstWeek}. Ajustando filtro...`);
+      setFilterWeek(firstWeek);
+    } else {
+      toast.success("Dados de visitas atualizados");
+    }
+
+    // Bump refresh key for other dependent components
+    setRefreshKey(k => k + 1);
   }, [userId, filterYear, filterWeek, reps, loadImportedVisits]);
 
   // Load lost deals from independent table
