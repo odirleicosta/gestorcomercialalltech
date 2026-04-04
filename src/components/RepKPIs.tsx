@@ -47,6 +47,16 @@ const getWeekNumber = (d: Date): number => {
   return Math.ceil((diff / 86400000 + start.getDay() + 1) / 7);
 };
 
+const getWeeksForMonth = (month: number, year: number): number[] => {
+  const weeks: number[] = [];
+  const d = new Date(year, month - 1, 1);
+  while (d.getMonth() === month - 1) {
+    weeks.push(getWeekNumber(d));
+    d.setDate(d.getDate() + 7);
+  }
+  return [...new Set(weeks)];
+};
+
 const currentYear = new Date().getFullYear();
 const currentWeek = getWeekNumber(new Date());
 
