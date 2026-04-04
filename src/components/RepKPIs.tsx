@@ -991,10 +991,18 @@ const RepKPIs = ({ userId }: Props) => {
                   <TableRow key={row.representative_id}>
                     <TableCell className="font-medium">{row.nome}</TableCell>
                     <TableCell className="text-center">
-                      <Input type="number" min={0} className="w-20 mx-auto text-center h-9" value={row.qty_proprias || ""} onChange={(e) => handleOppChange(row.representative_id, "qty_proprias", e.target.value)} placeholder="0" />
+                      {isMonthMode ? (
+                        <Input type="number" min={0} className="w-20 mx-auto text-center h-9" value={row.qty_proprias || ""} onChange={(e) => handleOppChange(row.representative_id, "qty_proprias", e.target.value)} placeholder="0" />
+                      ) : (
+                        <Badge variant="outline">{row.qty_proprias}</Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-center">
-                      <Input type="number" min={0} className="w-20 mx-auto text-center h-9" value={row.qty_sdr || ""} onChange={(e) => handleOppChange(row.representative_id, "qty_sdr", e.target.value)} placeholder="0" />
+                      {isMonthMode ? (
+                        <Input type="number" min={0} className="w-20 mx-auto text-center h-9" value={row.qty_sdr || ""} onChange={(e) => handleOppChange(row.representative_id, "qty_sdr", e.target.value)} placeholder="0" />
+                      ) : (
+                        <Badge variant="outline">{row.qty_sdr}</Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-center font-semibold">{total}</TableCell>
                     <TableCell className="text-center">
