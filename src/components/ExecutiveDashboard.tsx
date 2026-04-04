@@ -293,6 +293,44 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   const displayedRanking = showAllReps ? sortedRanking : sortedRanking.slice(0,5);
   const topPerformer = sortedRanking.length > 0 ? sortedRanking[0] : null;
 
+  // ── Atividade da Equipe (visitas) ──
+  const visitStats = useMemo(() => {
+    try {
+      // Compute which ISO weeks belong to active months
+      const weeksInPeriod = new Set<number>();
+      for (const m of activeMonths) {
+        const daysInMonth = new Date(filterYear, m, 0).getDate();
+        for (let d = 1; d <= daysInMonth; d++) {
+          const dt = new Date(filterYear, m - 1, d);
+          const jan1 = new Date(filterYear, 0, 1);
+          const dayOfYear = Math.floor((dt.getTime() - jan1.getTime()) / 86400000) + 1;
+          const weekNum = Math.ceil(dayOfYear / 7);
+          weeksInPeriod.add(weekNum);
+        }
+      }
+
+      const filtered = weeklyVisits.filter(v => {
+        if (!weeksInPeriod.has(v.semana)) return false;
+        if (filterRep !== "all" && v.representative_id !== filterRep) return false;
+        return true;
+      });
+
+      const totalVisitas = filtered.reduce((s, v) => s + v.quantidade, 0);
+      const totalMeta = filtered.reduce((s, v) => s + v.meta, 0);
+
+      // Count distinct active reps
+      const activeRepIds = new Set(repsWithGoals.map(r => r.id));
+      const repsWithVisits = filterRep !== "all" ? 1 : activeRepIds.size;
+      const media = repsWithVisits > 0 ? totalVisitas / repsWithVisits : 0;
+      const pctMeta = totalMeta > 0 ? (totalVisitas / totalMeta) * 100 : 0;
+
+      return { totalVisitas, media, pctMeta, totalMeta };
+    } catch (e) {
+      console.error("visitStats error:", e);
+      return { totalVisitas: 0, media: 0, pctMeta: 0, totalMeta: 0 };
+    }
+  }, [weeklyVisits, activeMonths, filterYear, filterRep, repsWithGoals]);
+
   // ── 6) RESUMO EXECUTIVO ──
   const resumoExecutivo = (() => {
     try {
