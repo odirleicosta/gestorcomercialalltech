@@ -1,68 +1,119 @@
 
-Objetivo: corrigir o motivo real de o sistema marcar as visitas do Lauro como “duplicadas” sem elas aparecerem no app.
+Objetivo: resolver definitivamente a importação de visitas sem permitir duplicidade e sem depender de `upsert + on_conflict`, que é exatamente o ponto que está quebrando agora.
 
-1. Confirmar a causa raiz dupla
-- O código-fonte atual de `VisitImport.tsx` já está certo: usa `onConflict: "user_id,representative_id,hash_linha"`.
-- Mas o tráfego do navegador ainda mostra `on_conflict=user_id,hash_linha`, então a interface em execução está com a lógica antiga.
-- Além disso, a migration aplicada antes não removeu o índice antigo real. O índice original criado foi:
+Diagnóstico confirmado
+- O código-fonte atual de `src/components/VisitImport.tsx` já está com `onConflict: "user_id,representative_id,hash_linha"`.
+- Mas o tráfego real do app ainda mostra `on_conflict=user_id,hash_linha`.
+- O erro exibido agora é:
 ```text
-visitas_importadas_hash_unique (user_id, hash_linha)
+there is no unique or exclusion constraint matching the ON CONFLICT specification
 ```
-- A migration nova tentou remover nomes diferentes, então o bloqueio antigo provavelmente continua ativo no banco.
+- Isso indica o seguinte estado real:
+  1. o banco já não aceita mais conflito por `(user_id, hash_linha)` como antes
+  2. a interface em execução ainda está tentando usar o conflito antigo
+  3. por isso a importação falha antes mesmo de gravar as visitas do Lauro
 
-2. Corrigir o banco de dados
-Criar uma nova migration para:
-- remover explicitamente o índice antigo `visitas_importadas_hash_unique`
-- garantir que só exista a unicidade correta:
+Plano de correção definitiva
+
+1. Tirar o `onConflict` do fluxo de importação
+Em vez de depender de:
+```text
+upsert(... onConflict: ...)
+```
+vou mudar o import para um fluxo determinístico:
+- ler a planilha
+- gerar `hash_linha` para cada linha válida
+- remover duplicadas dentro da própria planilha
+- consultar no banco quais hashes já existem para aquele `user_id + representative_id`
+- inserir com `insert()` apenas as linhas realmente novas
+
+Resultado:
+- não haverá mais dependência de `on_conflict`
+- some o erro 400 atual
+- duplicidade continua bloqueada do jeito certo, por representante
+
+2. Manter a proteção no banco como trava final
+Mesmo tirando a dependência do `upsert`, o banco ainda precisa continuar protegido.
+Vou consolidar a migration para garantir somente esta unicidade:
 ```text
 (user_id, representative_id, hash_linha)
 ```
-Isso evita que visitas iguais de representantes diferentes sejam barradas como duplicadas.
-
-3. Garantir que a interface use a versão nova
-Revisar o fluxo de importação para garantir que a versão publicada/preview use mesmo:
+e remover explicitamente qualquer resquício antigo ligado a:
 ```text
-onConflict: "user_id,representative_id,hash_linha"
+(user_id, hash_linha)
 ```
-Como o snapshot de rede ainda mostra o parâmetro antigo, vou tratar isso como problema de bundle/preview desatualizado e validar a importação na versão atualizada.
 
-4. Validar o comportamento após o ajuste
-Depois da correção:
-- reimportar a planilha do Lauro
-- confirmar que a requisição sai com:
+A migration final precisa ser idempotente:
+- `DROP INDEX IF EXISTS public.visitas_importadas_hash_unique`
+- `DROP CONSTRAINT IF EXISTS visitas_importadas_user_id_hash_linha_key`
+- recriar/garantir apenas a constraint correta:
 ```text
-on_conflict=user_id,representative_id,hash_linha
+visitas_importadas_user_rep_hash_key UNIQUE (user_id, representative_id, hash_linha)
 ```
-- confirmar que surgem registros em `visitas_importadas` para o `representative_id` do Lauro
-- confirmar que `weekly_visits` é preenchido para as semanas corretas
 
-5. Evitar falso negativo na tela
-Há um detalhe importante: a tela de visitas mostra a semana selecionada. No snapshot atual, o app está filtrando a semana 14, enquanto as visitas do Lauro da planilha estão principalmente entre as semanas 2 e 12.
-Então, na validação eu também vou conferir:
-- o detalhamento de visitas importadas
-- semanas anteriores onde o Lauro realmente tem visitas
-Isso evita concluir errado que “não entrou” quando, na verdade, entrou em outra semana.
+3. Recalcular `weekly_visits` sempre a partir da fonte real
+Hoje o sistema ainda pode ficar dessincronizado entre:
+- `visitas_importadas`
+- `weekly_visits`
 
-Detalhes técnicos
+Para eliminar isso de vez, após cada importação eu vou:
+- buscar todas as visitas já salvas daquele representante em `visitas_importadas`
+- reagrupar por `ano + semana`
+- apagar `weekly_visits` daquele representante
+- recriar `weekly_visits` com os totais corretos
+
+Assim:
+- se entrou visita nova, os totais sobem corretamente
+- se tudo já existia, os totais continuam corretos
+- não depende mais de “somar apenas inseridas agora”
+
+4. Bloquear duplicidade em dois níveis
+Vou deixar a proteção completa em dois pontos:
+
+Nível 1 — aplicação
+- duplicada na mesma planilha: ignorada antes de inserir
+- duplicada já existente para o mesmo representante: ignorada antes de inserir
+
+Nível 2 — banco
+- constraint única em `(user_id, representative_id, hash_linha)`
+
+Isso evita:
+- duplicar visita ao importar a mesma planilha duas vezes
+- duplicar linha repetida dentro do próprio arquivo
+- bloquear indevidamente visitas iguais de representantes diferentes
+
+5. Melhorar o feedback para o usuário
+Em vez de erro técnico bruto, o toast vai separar o resultado:
+- quantas visitas novas foram importadas
+- quantas já existiam no sistema para esse representante
+- quantas estavam duplicadas dentro da própria planilha
+
+Exemplo:
 ```text
-Problema 1:
-- frontend rodando ainda com on_conflict antigo
-
-Problema 2:
-- migration anterior não removeu o índice real:
-  visitas_importadas_hash_unique (user_id, hash_linha)
-
-Efeito:
-- o banco continua tratando duplicidade no nível do usuário inteiro
-- Lauro fica bloqueado se outra pessoa já tiver visita com mesmo hash
-- mesmo após importar, a semana visível pode continuar zerada se o filtro estiver em outra semana
+120 visitas importadas, 40 já existentes, 3 duplicadas no arquivo
 ```
+
+Se houver corrida rara de banco por duplicidade, o erro também será tratado com mensagem funcional, não com SQL cru.
 
 Arquivos envolvidos
-- `supabase/migrations/...sql`
 - `src/components/VisitImport.tsx`
+- `supabase/migrations/...sql`
+
+Validação que eu faria após implementar
+1. Importar de novo a planilha do Lauro
+2. Confirmar que a requisição não usa mais:
+```text
+on_conflict=user_id,hash_linha
+```
+Idealmente nem usa `on_conflict`
+3. Confirmar que surgem registros em `visitas_importadas` para o `representative_id` do Lauro
+4. Confirmar que `weekly_visits` é recalculado e o Lauro deixa de aparecer com zero nas semanas corretas
+5. Importar a mesma planilha novamente e verificar que:
+- nenhuma visita duplica
+- o sistema apenas informa que os registros já existiam
 
 Resultado esperado
-- visitas do Lauro deixam de ser barradas por conflito de outro representante
-- a importação passa a gravar os registros dele corretamente
-- os dados aparecem no detalhamento e nas semanas correspondentes
+- o erro atual de importação desaparece
+- as visitas do Lauro passam a gravar corretamente
+- o app deixa de esconder visita importada por falha de agregação
+- o sistema não duplica registros de visitas
