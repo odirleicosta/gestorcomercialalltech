@@ -4,7 +4,7 @@ import FilterBar from "@/components/FilterBar";
 import {
   TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Users,
   AlertTriangle, ArrowUpRight, ArrowDownRight, Gauge,
-  Flame, Trophy, Zap, Minus, FileText, Activity, SlidersHorizontal, ChevronDown,
+  Flame, Trophy, Zap, Minus, FileText, Activity,
   Crosshair, Clock, ArrowRight,
 } from "lucide-react";
 import {
