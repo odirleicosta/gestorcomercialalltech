@@ -39,6 +39,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   const [monthlyGoals, setMonthlyGoals] = useState<MonthlyGoal[]>([]);
   const [activePlan, setActivePlan] = useState<any>(null);
   const [closingDeals, setClosingDeals] = useState<any[]>([]);
+  const [weeklyVisits, setWeeklyVisits] = useState<{representative_id: string; quantidade: number; meta: number; semana: number}[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const now = new Date();
@@ -66,12 +67,13 @@ const ExecutiveDashboard = ({ userId }: Props) => {
     const fetchData = async () => {
       try {
         setLoadError(null);
-        const [dealsRes, repsRes, goalsRes, planRes, closingRes] = await Promise.all([
+        const [dealsRes, repsRes, goalsRes, planRes, closingRes, visitsRes] = await Promise.all([
           supabase.from("deals" as any).select("*").order("created_at", { ascending: false }),
           supabase.from("representatives" as any).select("id, nome, meta_mensal_padrao, meta_quantidade").eq("status", "ATIVO").order("nome"),
           supabase.from("monthly_goals" as any).select("representative_id, meta_quantidade, meta_valor, machine_type, mes").eq("ano", filterYear),
           supabase.from("strategic_plans" as any).select("*").eq("is_active", true).eq("mes", now.getMonth() + 1).eq("ano", now.getFullYear()).limit(1),
           supabase.from("closing_deals" as any).select("*").eq("status", "ativa"),
+          supabase.from("weekly_visits" as any).select("representative_id, quantidade, meta, semana").eq("ano", filterYear),
         ]);
         if (dealsRes.data) setDeals(dealsRes.data as unknown as Deal[]);
         if (repsRes.data) {
@@ -82,6 +84,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         if (goalsRes.data) setMonthlyGoals(goalsRes.data as unknown as MonthlyGoal[]);
         if (planRes.data && (planRes.data as any[]).length > 0) setActivePlan((planRes.data as any[])[0]);
         if (closingRes.data) setClosingDeals(closingRes.data as any[]);
+        if (visitsRes.data) setWeeklyVisits(visitsRes.data as any[]);
       } catch (err) {
         console.error("ExecutiveDashboard fetchData error:", err);
         setLoadError("Não foi possível carregar os dados do dashboard.");
@@ -93,15 +96,19 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   }, []);
 
   useEffect(() => {
-    const fetchGoals = async () => {
+    const fetchYearData = async () => {
       try {
-        const res = await supabase.from("monthly_goals" as any).select("representative_id, meta_quantidade, meta_valor, machine_type, mes").eq("ano", filterYear);
-        if (res.data) setMonthlyGoals(res.data as unknown as MonthlyGoal[]);
+        const [goalsRes, visitsRes] = await Promise.all([
+          supabase.from("monthly_goals" as any).select("representative_id, meta_quantidade, meta_valor, machine_type, mes").eq("ano", filterYear),
+          supabase.from("weekly_visits" as any).select("representative_id, quantidade, meta, semana").eq("ano", filterYear),
+        ]);
+        if (goalsRes.data) setMonthlyGoals(goalsRes.data as unknown as MonthlyGoal[]);
+        if (visitsRes.data) setWeeklyVisits(visitsRes.data as any[]);
       } catch (err) {
-        console.error("ExecutiveDashboard fetchGoals error:", err);
+        console.error("ExecutiveDashboard fetchYearData error:", err);
       }
     };
-    fetchGoals();
+    fetchYearData();
   }, [filterYear]);
 
   // ── helpers ──
@@ -290,6 +297,44 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   const displayedRanking = showAllReps ? sortedRanking : sortedRanking.slice(0,5);
   const topPerformer = sortedRanking.length > 0 ? sortedRanking[0] : null;
 
+  // ── Atividade da Equipe (visitas) ──
+  const visitStats = useMemo(() => {
+    try {
+      // Compute which ISO weeks belong to active months
+      const weeksInPeriod = new Set<number>();
+      for (const m of activeMonths) {
+        const daysInMonth = new Date(filterYear, m, 0).getDate();
+        for (let d = 1; d <= daysInMonth; d++) {
+          const dt = new Date(filterYear, m - 1, d);
+          const jan1 = new Date(filterYear, 0, 1);
+          const dayOfYear = Math.floor((dt.getTime() - jan1.getTime()) / 86400000) + 1;
+          const weekNum = Math.ceil(dayOfYear / 7);
+          weeksInPeriod.add(weekNum);
+        }
+      }
+
+      const filtered = weeklyVisits.filter(v => {
+        if (!weeksInPeriod.has(v.semana)) return false;
+        if (filterRep !== "all" && v.representative_id !== filterRep) return false;
+        return true;
+      });
+
+      const totalVisitas = filtered.reduce((s, v) => s + v.quantidade, 0);
+      const totalMeta = filtered.reduce((s, v) => s + v.meta, 0);
+
+      // Count distinct active reps
+      const activeRepIds = new Set(repsWithGoals.map(r => r.id));
+      const repsWithVisits = filterRep !== "all" ? 1 : activeRepIds.size;
+      const media = repsWithVisits > 0 ? totalVisitas / repsWithVisits : 0;
+      const pctMeta = totalMeta > 0 ? (totalVisitas / totalMeta) * 100 : 0;
+
+      return { totalVisitas, media, pctMeta, totalMeta };
+    } catch (e) {
+      console.error("visitStats error:", e);
+      return { totalVisitas: 0, media: 0, pctMeta: 0, totalMeta: 0 };
+    }
+  }, [weeklyVisits, activeMonths, filterYear, filterRep, repsWithGoals]);
+
   // ── 6) RESUMO EXECUTIVO ──
   const resumoExecutivo = (() => {
     try {
@@ -417,7 +462,19 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         </div>
       </section>
 
-      {/* ═══ 2) RANKING DA EQUIPE ═══ */}
+      {/* ═══ ATIVIDADE DA EQUIPE ═══ */}
+      <section>
+        <div className="flex items-center gap-2 mb-4">
+          <Users className="h-5 w-5 text-[#8B5CF6]" />
+          <h3 className="font-heading text-lg font-bold text-foreground">Atividade da Equipe</h3>
+        </div>
+        <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
+          <MetricCard label="Total de Visitas" value={String(visitStats.totalVisitas)} icon={<Users className="h-5 w-5" />} color="#8B5CF6" sub={`no período`} />
+          <MetricCard label="Média por Vendedor" value={visitStats.media.toFixed(1)} icon={<BarChart3 className="h-5 w-5" />} color="#3B82F6" sub="visitas / rep" />
+          <MetricCard label="% Meta de Visitas" value={formatPct(visitStats.pctMeta)} icon={<Target className="h-5 w-5" />} color={visitStats.pctMeta >= 100 ? "#22C55E" : visitStats.pctMeta >= 70 ? "#F97316" : "#EF4444"} sub={`${visitStats.totalVisitas} de ${visitStats.totalMeta}`} />
+        </div>
+      </section>
+
       {sortedRanking.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-4">
