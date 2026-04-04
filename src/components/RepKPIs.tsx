@@ -405,8 +405,40 @@ const RepKPIs = ({ userId }: Props) => {
     }
   };
 
+  // Determine if we're in single-week edit mode (week selector visible & month mode)
+  const isWeekEditMode = periodMode === "mes" || periodMode === "semana";
+
+  // Aggregated visits based on periodMode using allYearVisits
+  const aggregatedVisits = useMemo(() => {
+    let relevantWeeks: number[];
+    if (periodMode === "semana" || periodMode === "mes") {
+      // In month/week mode, show single week data (editable)
+      return null; // use `visits` state directly
+    } else if (periodMode === "trimestre") {
+      const months = QUARTER_MONTHS[filterQuarter] || [];
+      relevantWeeks = months.flatMap(m => getWeeksForMonth(m, filterYear));
+    } else {
+      relevantWeeks = Array.from({ length: 52 }, (_, i) => i + 1);
+    }
+    const weekSet = new Set(relevantWeeks);
+    const filtered = allYearVisits.filter(v => weekSet.has(v.semana));
+    // Aggregate per rep
+    return reps.map(r => {
+      const repRows = filtered.filter(v => v.representative_id === r.id);
+      return {
+        representative_id: r.id,
+        nome: r.nome,
+        meta: repRows.reduce((s, v) => s + v.meta, 0),
+        quantidade: repRows.reduce((s, v) => s + v.quantidade, 0),
+      };
+    });
+  }, [periodMode, filterQuarter, filterYear, allYearVisits, reps]);
+
+  // Effective visits: aggregated for quarter/year, single-week for month
+  const effectiveVisits = useMemo(() => aggregatedVisits || visits, [aggregatedVisits, visits]);
+
   // Filtered data by rep
-  const filteredVisits = useMemo(() => filterRep === "all" ? visits : visits.filter(v => v.representative_id === filterRep), [visits, filterRep]);
+  const filteredVisits = useMemo(() => filterRep === "all" ? effectiveVisits : effectiveVisits.filter(v => v.representative_id === filterRep), [effectiveVisits, filterRep]);
   const filteredOpportunities = useMemo(() => filterRep === "all" ? opportunities : opportunities.filter(o => o.representative_id === filterRep), [opportunities, filterRep]);
   const filteredGoals = useMemo(() => filterRep === "all" ? goals : goals.filter(g => g.representative_id === filterRep), [goals, filterRep]);
 
