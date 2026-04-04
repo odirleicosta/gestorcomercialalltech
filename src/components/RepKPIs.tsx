@@ -1064,7 +1064,7 @@ const RepKPIs = ({ userId }: Props) => {
             <FileSpreadsheet className="h-3.5 w-3.5 mr-1" /> Importar Planilha
           </Button>
         </div>
-        <GoalImport userId={userId} reps={reps} open={metaImportOpen} onClose={() => setMetaImportOpen(false)} onImported={() => { loadData(); }} />
+        <GoalImport userId={userId} reps={reps} open={metaImportOpen} onClose={() => setMetaImportOpen(false)} onImported={() => { setFilterMonth(prev => prev); }} />
         {/* Goals KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <KpiCard icon={<Flag className="h-5 w-5" />} label="Meta Total" value={String(goalsKpis.totalQtd)} color="text-primary" />
