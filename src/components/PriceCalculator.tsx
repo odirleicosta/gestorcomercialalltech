@@ -826,11 +826,6 @@ const PriceCalculator = () => {
             </KpiErrorBoundary>
           </TabsContent>
 
-          <TabsContent value="importacao">
-            <KpiErrorBoundary fallbackTitle="Erro ao carregar Importação">
-              <BiImport userId={user.id} />
-            </KpiErrorBoundary>
-          </TabsContent>
 
           <TabsContent value="settings">
             <KpiErrorBoundary fallbackTitle="Erro ao carregar Configurações">
