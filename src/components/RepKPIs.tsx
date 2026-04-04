@@ -1037,7 +1037,7 @@ const RepKPIs = ({ userId }: Props) => {
         )}
 
         {/* Save Opp button */}
-        {opportunities.length > 0 && (
+        {opportunities.length > 0 && isMonthMode && (
           <div className="flex justify-end">
             <Button onClick={handleSaveOpp} disabled={savingOpp} size="lg">
               <Save className="h-4 w-4 mr-2" />
