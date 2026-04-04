@@ -895,27 +895,6 @@ const RepKPIs = ({ userId }: Props) => {
 
       {/* ═══ OPORTUNIDADES ═══ */}
       {subTab === "oportunidades" && (<>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Select value={filterRep} onValueChange={setFilterRep}>
-            <SelectTrigger className="w-[140px] text-xs h-8"><Users className="h-3.5 w-3.5 mr-1" /><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Equipe</SelectItem>
-              {reps.map((r) => (<SelectItem key={r.id} value={r.id}>{r.nome}</SelectItem>))}
-            </SelectContent>
-          </Select>
-          <Select value={String(filterYear)} onValueChange={(v) => setFilterYear(Number(v))}>
-            <SelectTrigger className="w-24 text-xs h-8"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {[currentYear - 1, currentYear, currentYear + 1].map((y) => (<SelectItem key={y} value={String(y)}>{y}</SelectItem>))}
-            </SelectContent>
-          </Select>
-          <Select value={String(filterMonth)} onValueChange={(v) => setFilterMonth(Number(v))}>
-            <SelectTrigger className="w-24 text-xs h-8"><Calendar className="h-3.5 w-3.5 mr-1" /><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {MONTHS.map((m, i) => (<SelectItem key={i} value={String(i + 1)}>{m}</SelectItem>))}
-            </SelectContent>
-          </Select>
-        </div>
         {/* Opp KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <KpiCard icon={<Lightbulb className="h-5 w-5" />} label="Total Abertas" value={String(oppKpis.totalAberto)} color="text-primary" />
