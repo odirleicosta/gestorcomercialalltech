@@ -705,7 +705,6 @@ const RepKPIs = ({ userId }: Props) => {
                       <Badge variant="outline">{row.quantidade}</Badge>
                     )}
                   </TableCell>
-                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2 justify-center">
                       <Progress
