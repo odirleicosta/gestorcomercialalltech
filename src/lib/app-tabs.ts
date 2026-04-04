@@ -6,7 +6,6 @@ import {
   Package,
   Settings,
   Target,
-  Upload,
   UserPlus,
   Users,
   Zap,
@@ -15,7 +14,6 @@ import {
 export type AppTabId =
   | "dashboard"
   | "rep-kpis"
-  | "importacao"
   | "registry"
   | "settings"
   | "deals"
@@ -35,7 +33,6 @@ export interface AppTabItem {
 export const PRIMARY_APP_TABS: AppTabItem[] = [
   { value: "dashboard", icon: BarChart3, label: "Dashboard" },
   { value: "rep-kpis", icon: Target, label: "KPIs" },
-  { value: "importacao", icon: Upload, label: "Importação" },
   { value: "registry", icon: Building2, label: "Cadastros" },
   { value: "settings", icon: Settings, label: "Configurações" },
 ];

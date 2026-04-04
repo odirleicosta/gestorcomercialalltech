@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { Eye, Users, Target, TrendingUp, Save, Calendar, BarChart3, Lightbulb, Flag, Filter, Activity, XCircle, AlertTriangle, Plus, Trash2, Edit2, SlidersHorizontal, ChevronDown, FileSpreadsheet } from "lucide-react";
 import VisitImport from "@/components/VisitImport";
 import LostDealImport from "@/components/LostDealImport";
+import OpportunityImport from "@/components/OpportunityImport";
+import GoalImport from "@/components/GoalImport";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -94,6 +96,9 @@ const RepKPIs = ({ userId }: Props) => {
   const [selRadar, setSelRadar] = useState<string[]>([]);
   const [visitImportOpen, setVisitImportOpen] = useState(false);
   const [lostImportOpen, setLostImportOpen] = useState(false);
+  const [oppImportOpen, setOppImportOpen] = useState(false);
+  const [metaImportOpen, setMetaImportOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [importedVisits, setImportedVisits] = useState<{ id: string; data_visita: string; cliente: string; cnpj: string | null; assunto: string | null; descricao: string | null; representative_id: string }[]>([]);
   const [importedPage, setImportedPage] = useState(0);
   const IMPORTED_PAGE_SIZE = 20;
@@ -186,7 +191,7 @@ const RepKPIs = ({ userId }: Props) => {
       setOpportunities(rows);
     };
     load();
-  }, [reps, filterYear, filterMonth, userId]);
+  }, [reps, filterYear, filterMonth, userId, refreshKey]);
 
   // Load monthly goals (all machine_types from Representatives tab)
   useEffect(() => {
@@ -214,7 +219,7 @@ const RepKPIs = ({ userId }: Props) => {
       setGoals(rows);
     };
     load();
-  }, [reps, filterYear, filterMonth, userId]);
+  }, [reps, filterYear, filterMonth, userId, refreshKey]);
 
   // Load closed deals for Metas tab (by month)
   useEffect(() => {
@@ -963,6 +968,12 @@ const RepKPIs = ({ userId }: Props) => {
 
       {/* ═══ OPORTUNIDADES ═══ */}
       {subTab === "oportunidades" && (<>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setOppImportOpen(true)}>
+            <FileSpreadsheet className="h-3.5 w-3.5 mr-1" /> Importar Planilha
+          </Button>
+        </div>
+        <OpportunityImport userId={userId} reps={reps} open={oppImportOpen} onClose={() => setOppImportOpen(false)} onImported={() => setRefreshKey(k => k + 1)} />
         {/* Opp KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <KpiCard icon={<Lightbulb className="h-5 w-5" />} label="Total Abertas" value={String(oppKpis.totalAberto)} color="text-primary" />
@@ -1049,6 +1060,12 @@ const RepKPIs = ({ userId }: Props) => {
 
       {/* ═══ METAS ═══ */}
       {subTab === "metas" && (<>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setMetaImportOpen(true)}>
+            <FileSpreadsheet className="h-3.5 w-3.5 mr-1" /> Importar Planilha
+          </Button>
+        </div>
+        <GoalImport userId={userId} reps={reps} open={metaImportOpen} onClose={() => setMetaImportOpen(false)} onImported={() => setRefreshKey(k => k + 1)} />
         {/* Goals KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <KpiCard icon={<Flag className="h-5 w-5" />} label="Meta Total" value={String(goalsKpis.totalQtd)} color="text-primary" />

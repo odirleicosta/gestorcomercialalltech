@@ -11,7 +11,7 @@ import {
   DollarSign, Percent, TrendingUp, Package, Receipt,
   Save, AlertTriangle, History, Calculator, RotateCcw, User, StickyNote,
   Building2, Plus, Wrench, Copy, Users, BarChart3, LogOut, UserPlus, Zap,
-  Moon, Sun, PanelLeftClose, PanelLeft, Crosshair, Target, Upload, Settings,
+  Moon, Sun, PanelLeftClose, PanelLeft, Crosshair, Target, Settings,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,7 +27,7 @@ import CommissionsTab from "@/components/CommissionsTab";
 import CommissionGate from "@/components/CommissionGate";
 import Auth from "@/components/Auth";
 import BottomNavBar from "@/components/BottomNavBar";
-import BiImport from "@/components/BiImport";
+
 import ClosingRadar from "@/components/ClosingRadar";
 import RepKPIs from "@/components/RepKPIs";
 import KpiErrorBoundary from "@/components/KpiErrorBoundary";
@@ -826,11 +826,6 @@ const PriceCalculator = () => {
             </KpiErrorBoundary>
           </TabsContent>
 
-          <TabsContent value="importacao">
-            <KpiErrorBoundary fallbackTitle="Erro ao carregar Importação">
-              <BiImport userId={user.id} />
-            </KpiErrorBoundary>
-          </TabsContent>
 
           <TabsContent value="settings">
             <KpiErrorBoundary fallbackTitle="Erro ao carregar Configurações">
