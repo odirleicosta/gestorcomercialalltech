@@ -1,17 +1,23 @@
 
 
-# Remover filtros duplicados das sub-abas Visitas, Oportunidades e Metas
+# Conectar aba Visitas ao FilterBar (periodMode)
 
 ## Problema
-As sub-abas Visitas, Oportunidades e Metas ainda têm seus próprios selects de Equipe/Ano/Mês internos, duplicando o FilterBar unificado que já existe no topo.
+A aba **Visitas** sempre carrega dados de uma única semana (`filterWeek`), ignorando o modo de período selecionado no FilterBar. Quando o usuário seleciona T2, Mês ou Ano, os KPIs e a tabela de visitas não mudam — ficam presos na última semana selecionada.
 
-## Alterações em `src/components/RepKPIs.tsx`
+A aba **Desempenho** já funciona corretamente porque usa `allYearVisits` e agrega por `relevantWeeks`.
 
-1. **Sub-aba Visitas (linhas ~590-621)**: Remover os `<Select>` de Equipe, Ano e Semana. Manter apenas os botões "Importar Planilha" e "Excluir Todas". O filtro de semana já está no FilterBar via `showWeek`.
+## Solução em `src/components/RepKPIs.tsx`
 
-2. **Sub-aba Oportunidades (linhas ~898-917)**: Remover completamente o bloco `<div>` com os 3 `<Select>` (Equipe, Ano, Mês).
+1. **Refatorar `filteredVisits` e `kpis`** para agregar dados de `allYearVisits` conforme o `periodMode`:
+   - **month**: somar todas as semanas do mês selecionado
+   - **quarter**: somar todas as semanas do trimestre
+   - **year**: somar todas as semanas do ano
+   - Quando `showWeek` estiver ativo (e periodMode = month), manter o comportamento atual de semana única
 
-3. **Sub-aba Metas (linhas ~997-1016)**: Remover completamente o bloco `<div>` com os 3 `<Select>` (Equipe, Ano, Mês).
+2. **Atualizar `chartData`** para usar os mesmos dados agregados
 
-Nenhuma lógica de filtragem precisa mudar pois os estados `filterRep`, `filterYear`, `filterMonth` já são controlados pelo FilterBar no topo e compartilhados por todas as sub-abas.
+3. **Manter editabilidade**: a edição inline de visitas continua operando por semana (usando `filterWeek`), mas os KPIs e tabela de leitura mostram o agregado do período
+
+4. **Tabela de visitas**: quando em modo trimestre/ano, a tabela mostra totais agregados (somente leitura); quando em modo mês/semana, mantém os inputs editáveis por semana
 
