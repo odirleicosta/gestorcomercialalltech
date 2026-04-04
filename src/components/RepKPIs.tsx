@@ -582,19 +582,19 @@ const RepKPIs = ({ userId }: Props) => {
   // Closed deals grouped by rep + machine_type for Metas tab
   const closedByRepType = useMemo(() => {
     const map: Record<string, Record<string, number>> = {};
-    for (const d of closedDealsForMetas) {
+    for (const d of effectiveClosedDeals) {
       const repId = d.representative_id || "__none__";
       if (!map[repId]) map[repId] = {};
       const mt = d.machine_type || "Outro";
       map[repId][mt] = (map[repId][mt] || 0) + 1;
     }
     return map;
-  }, [closedDealsForMetas]);
+  }, [effectiveClosedDeals]);
 
   const totalRealizadoQtd = useMemo(() => {
-    if (filterRep === "all") return closedDealsForMetas.length;
-    return closedDealsForMetas.filter(d => d.representative_id === filterRep).length;
-  }, [closedDealsForMetas, filterRep]);
+    if (filterRep === "all") return effectiveClosedDeals.length;
+    return effectiveClosedDeals.filter(d => d.representative_id === filterRep).length;
+  }, [effectiveClosedDeals, filterRep]);
 
   const formatBrl = (v: number) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `${(v / 1_000).toFixed(0)}k` : String(v);
 
