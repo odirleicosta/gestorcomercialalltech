@@ -6,7 +6,6 @@ import {
   Package,
   Settings,
   Target,
-  Upload,
   UserPlus,
   Users,
   Zap,
