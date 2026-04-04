@@ -328,10 +328,17 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       const media = repsWithVisits > 0 ? totalVisitas / repsWithVisits : 0;
       const pctMeta = totalMeta > 0 ? (totalVisitas / totalMeta) * 100 : 0;
 
-      return { totalVisitas, media, pctMeta, totalMeta };
+      // Per-rep visit totals
+      const perRep = new Map<string, number>();
+      const allFiltered = weeklyVisits.filter(v => weeksInPeriod.has(v.semana));
+      for (const v of allFiltered) {
+        perRep.set(v.representative_id, (perRep.get(v.representative_id) || 0) + v.quantidade);
+      }
+
+      return { totalVisitas, media, pctMeta, totalMeta, perRep };
     } catch (e) {
       console.error("visitStats error:", e);
-      return { totalVisitas: 0, media: 0, pctMeta: 0, totalMeta: 0 };
+      return { totalVisitas: 0, media: 0, pctMeta: 0, totalMeta: 0, perRep: new Map<string, number>() };
     }
   }, [weeklyVisits, activeMonths, filterYear, filterRep, repsWithGoals]);
 
@@ -509,6 +516,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                     <div className="flex items-center gap-2 sm:gap-3 mt-0.5 sm:mt-1 flex-wrap">
                       <span className="text-[10px] sm:text-xs text-muted-foreground">Meta: <b>{rep.metaQtd}</b></span>
                       <span className="text-[10px] sm:text-xs font-semibold text-foreground">Vendido: <b>{rep.count}</b></span>
+                      <span className="text-[10px] sm:text-xs text-muted-foreground">Visitas: <b>{visitStats.perRep.get(rep.id) || 0}</b></span>
                       <span className={`text-[10px] sm:text-xs font-bold ${statusColor(pct)}`}>{formatPct(pct)}</span>
                       {faltaRep > 0 && <span className="text-[10px] sm:text-xs text-muted-foreground hidden sm:inline">Faltam: <b>{faltaRep}</b></span>}
                     </div>
