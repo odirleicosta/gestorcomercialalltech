@@ -1059,6 +1059,12 @@ const RepKPIs = ({ userId }: Props) => {
 
       {/* ═══ METAS ═══ */}
       {subTab === "metas" && (<>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setMetaImportOpen(true)}>
+            <FileSpreadsheet className="h-3.5 w-3.5 mr-1" /> Importar Planilha
+          </Button>
+        </div>
+        <GoalImport userId={userId} reps={reps} open={metaImportOpen} onClose={() => setMetaImportOpen(false)} onImported={() => { loadData(); }} />
         {/* Goals KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <KpiCard icon={<Flag className="h-5 w-5" />} label="Meta Total" value={String(goalsKpis.totalQtd)} color="text-primary" />
