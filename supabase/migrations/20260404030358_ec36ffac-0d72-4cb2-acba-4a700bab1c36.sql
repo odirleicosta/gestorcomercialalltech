@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS public.visitas_importadas_hash_unique;
