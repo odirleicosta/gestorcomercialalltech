@@ -408,21 +408,23 @@ const RepKPIs = ({ userId }: Props) => {
   // Determine if we're in single-week edit mode (week selector visible & month mode)
   const isWeekEditMode = periodMode === "mes" || periodMode === "semana";
 
+  // Shared: relevant months for current period mode
+  const relevantMonths = useMemo(() => {
+    if (periodMode === "trimestre") return QUARTER_MONTHS[filterQuarter] || [];
+    if (periodMode === "ano") return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    return [filterMonth];
+  }, [periodMode, filterQuarter, filterMonth]);
+
+  const isMonthMode = periodMode === "mes" || periodMode === "semana";
+
   // Aggregated visits based on periodMode using allYearVisits
   const aggregatedVisits = useMemo(() => {
-    let relevantWeeks: number[];
-    if (periodMode === "semana" || periodMode === "mes") {
-      // In month/week mode, show single week data (editable)
-      return null; // use `visits` state directly
-    } else if (periodMode === "trimestre") {
-      const months = QUARTER_MONTHS[filterQuarter] || [];
-      relevantWeeks = months.flatMap(m => getWeeksForMonth(m, filterYear));
-    } else {
-      relevantWeeks = Array.from({ length: 52 }, (_, i) => i + 1);
-    }
+    if (isMonthMode) return null;
+    const relevantWeeks = periodMode === "trimestre"
+      ? (QUARTER_MONTHS[filterQuarter] || []).flatMap(m => getWeeksForMonth(m, filterYear))
+      : Array.from({ length: 52 }, (_, i) => i + 1);
     const weekSet = new Set(relevantWeeks);
     const filtered = allYearVisits.filter(v => weekSet.has(v.semana));
-    // Aggregate per rep
     return reps.map(r => {
       const repRows = filtered.filter(v => v.representative_id === r.id);
       return {
@@ -432,15 +434,54 @@ const RepKPIs = ({ userId }: Props) => {
         quantidade: repRows.reduce((s, v) => s + v.quantidade, 0),
       };
     });
-  }, [periodMode, filterQuarter, filterYear, allYearVisits, reps]);
+  }, [isMonthMode, periodMode, filterQuarter, filterYear, allYearVisits, reps]);
 
   // Effective visits: aggregated for quarter/year, single-week for month
   const effectiveVisits = useMemo(() => aggregatedVisits || visits, [aggregatedVisits, visits]);
 
+  // Aggregated opportunities based on periodMode
+  const effectiveOpportunities = useMemo(() => {
+    if (isMonthMode) return opportunities;
+    const monthSet = new Set(relevantMonths);
+    return reps.map(r => {
+      const repRows = allYearOpps.filter(o => o.representative_id === r.id && monthSet.has(o.mes));
+      return {
+        representative_id: r.id,
+        nome: r.nome,
+        qty_proprias: repRows.reduce((s, o) => s + (o.qty_proprias || 0), 0),
+        qty_sdr: repRows.reduce((s, o) => s + (o.qty_sdr || 0), 0),
+      };
+    });
+  }, [isMonthMode, relevantMonths, allYearOpps, reps, opportunities]);
+
+  // Aggregated goals based on periodMode
+  const effectiveGoals = useMemo(() => {
+    if (isMonthMode) return goals;
+    const monthSet = new Set(relevantMonths);
+    return reps.map(r => {
+      const repGoals = allYearGoals.filter(g => g.representative_id === r.id && monthSet.has(g.mes));
+      const meta_quantidade = repGoals.reduce((s, g) => s + (g.meta_quantidade || 0), 0);
+      const byType: Record<string, number> = {};
+      repGoals.forEach(g => { if (g.machine_type && g.meta_quantidade > 0) byType[g.machine_type] = (byType[g.machine_type] || 0) + g.meta_quantidade; });
+      return { representative_id: r.id, nome: r.nome, meta_quantidade, byType };
+    });
+  }, [isMonthMode, relevantMonths, allYearGoals, reps, goals]);
+
+  // Aggregated closed deals for metas based on periodMode
+  const effectiveClosedDeals = useMemo(() => {
+    if (isMonthMode) return closedDealsForMetas;
+    const monthSet = new Set(relevantMonths);
+    return (allYearClosedDeals || []).filter(d => {
+      if (!d.closed_at) return false;
+      const m = new Date(d.closed_at).getMonth() + 1;
+      return monthSet.has(m);
+    });
+  }, [isMonthMode, relevantMonths, allYearClosedDeals, closedDealsForMetas]);
+
   // Filtered data by rep
   const filteredVisits = useMemo(() => filterRep === "all" ? effectiveVisits : effectiveVisits.filter(v => v.representative_id === filterRep), [effectiveVisits, filterRep]);
-  const filteredOpportunities = useMemo(() => filterRep === "all" ? opportunities : opportunities.filter(o => o.representative_id === filterRep), [opportunities, filterRep]);
-  const filteredGoals = useMemo(() => filterRep === "all" ? goals : goals.filter(g => g.representative_id === filterRep), [goals, filterRep]);
+  const filteredOpportunities = useMemo(() => filterRep === "all" ? effectiveOpportunities : effectiveOpportunities.filter(o => o.representative_id === filterRep), [effectiveOpportunities, filterRep]);
+  const filteredGoals = useMemo(() => filterRep === "all" ? effectiveGoals : effectiveGoals.filter(g => g.representative_id === filterRep), [effectiveGoals, filterRep]);
 
   // KPIs
   const kpis = useMemo(() => {
