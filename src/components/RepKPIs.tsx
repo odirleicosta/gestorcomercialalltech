@@ -520,61 +520,29 @@ const RepKPIs = ({ userId }: Props) => {
 
   return (
     <div className="space-y-6">
-      {/* ═══ FILTRO GLOBAL (só Desempenho) ═══ */}
-      {subTab === "desempenho" && (
-        filterExpanded ? (
-          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0">Ano</span>
-              <div className="flex gap-1">
-                {[currentYear - 1, currentYear, currentYear + 1].map(y => (
-                  <button key={y} onClick={() => setFilterYear(y)} className={btnClass(filterYear === y)}>{y}</button>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0">Visão</span>
-              <div className="flex gap-1 flex-wrap">
-                <button onClick={() => setPeriodMode("mes")} className={btnClass(periodMode === "mes")}>Mês</button>
-                {["T1", "T2", "T3", "T4"].map(q => (
-                  <button key={q} onClick={() => { setPeriodMode("trimestre"); setFilterQuarter(q); setFilterExpanded(false); }} className={btnClass(periodMode === "trimestre" && filterQuarter === q)}>{q}</button>
-                ))}
-                <button onClick={() => { setPeriodMode("ano"); setFilterExpanded(false); }} className={btnClass(periodMode === "ano")}>Ano</button>
-              </div>
-            </div>
-            {periodMode === "mes" && (
-              <div className="flex items-start gap-2">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0 mt-1">Mês</span>
-                <div className="flex flex-wrap gap-1">
-                  {MONTHS.map((m, i) => (
-                    <button key={i} onClick={() => { setFilterMonth(i + 1); setFilterExpanded(false); }} className={btnClass(filterMonth === i + 1)}>{m}</button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {reps.length > 0 && (
-              <div className="flex items-start gap-2">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0 mt-1">Rep.</span>
-                <div className="flex flex-wrap gap-1">
-                  <button onClick={() => { setFilterRep("all"); setFilterExpanded(false); }} className={btnClass(filterRep === "all")}>Todos</button>
-                  {reps.map(r => (
-                    <button key={r.id} onClick={() => { setFilterRep(r.id); setFilterExpanded(false); }} className={btnClass(filterRep === r.id)}>{r.nome.split(" ").slice(0, 2).join(" ")}</button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <button
-            onClick={() => setFilterExpanded(true)}
-            className="inline-flex items-center gap-2 bg-primary/10 hover:bg-primary/15 text-primary border border-primary/20 rounded-full px-4 py-1.5 transition-all group"
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            <span className="text-xs sm:text-sm font-semibold">{desempenhoPeriodLabel}{filterRep !== "all" ? ` · ${reps.find(r => r.id === filterRep)?.nome?.split(" ").slice(0,2).join(" ")}` : ""}</span>
-            <ChevronDown className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 transition-opacity" />
-          </button>
-        )
-      )}
+      {/* ═══ FILTRO GLOBAL ═══ */}
+      <FilterBar
+        year={filterYear}
+        onYearChange={setFilterYear}
+        periodMode={periodMode === "mes" || periodMode === "semana" ? "month" : periodMode === "trimestre" ? "quarter" : "year"}
+        onPeriodModeChange={(m) => {
+          if (m === "month") setPeriodMode("mes");
+          else if (m === "quarter") setPeriodMode("trimestre");
+          else setPeriodMode("ano");
+        }}
+        month={filterMonth}
+        onMonthChange={setFilterMonth}
+        quarter={filterQuarter}
+        onQuarterChange={setFilterQuarter}
+        showRep
+        rep={filterRep}
+        onRepChange={setFilterRep}
+        reps={reps}
+        showWeek={subTab === "visitas"}
+        week={filterWeek}
+        onWeekChange={setFilterWeek}
+        maxWeek={52}
+      />
 
       {/* Sub-tabs */}
       <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
