@@ -157,36 +157,19 @@ const VisitImport = ({ userId, reps, open, onClose, onImported }: Props) => {
         });
       }
 
-      // 2. Fetch existing hashes for this user+rep to skip already-imported rows
-      const { data: existingRows, error: fetchErr } = await supabase
-        .from("visitas_importadas" as any)
-        .select("hash_linha")
-        .eq("user_id", userId)
-        .eq("representative_id", selectedRep);
-      if (fetchErr) throw fetchErr;
-
-      const existingHashes = new Set((existingRows as any[] || []).map((r: any) => r.hash_linha));
-      const newRecords = uniqueRecords.filter((r) => !existingHashes.has(r.hash_linha));
-      const alreadyExisted = uniqueRecords.length - newRecords.length;
-
-      // 3. Insert only truly new records in batches
+      // 2. Upsert in batches — constraint: (user_id, representative_id, hash_linha)
       let inserted = 0;
       const BATCH = 50;
-      for (let i = 0; i < newRecords.length; i += BATCH) {
-        const batch = newRecords.slice(i, i + BATCH);
+      for (let i = 0; i < uniqueRecords.length; i += BATCH) {
+        const batch = uniqueRecords.slice(i, i + BATCH);
         const { data, error } = await supabase
           .from("visitas_importadas" as any)
-          .insert(batch as any)
+          .upsert(batch as any, { onConflict: "user_id,representative_id,hash_linha", ignoreDuplicates: true })
           .select("id");
-        if (error) {
-          // Handle rare race condition where constraint catches a duplicate
-          if (error.code === "23505") {
-            continue; // skip batch with conflict, move on
-          }
-          throw error;
-        }
+        if (error) throw error;
         inserted += (data as any[] || []).length;
       }
+      const alreadyExisted = uniqueRecords.length - inserted;
 
       // 4. ALWAYS recalculate weekly_visits from the full source of truth
       const { data: allVisits } = await supabase
@@ -256,7 +239,7 @@ const VisitImport = ({ userId, reps, open, onClose, onImported }: Props) => {
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-primary" />
             Importar Visitas por Planilha
-            <Badge variant="outline" className="text-[10px] ml-2 font-mono">v3-insert</Badge>
+            <Badge variant="outline" className="text-[10px] ml-2 font-mono">v4-upsert</Badge>
           </DialogTitle>
         </DialogHeader>
 
