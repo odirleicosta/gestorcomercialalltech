@@ -136,114 +136,100 @@ const VisitImport = ({ userId, reps, open, onClose, onImported }: Props) => {
 
     setImporting(true);
     try {
-      const records = validRows.map((r) => ({
-        user_id: userId,
-        representative_id: selectedRep,
-        data_visita: r.data_visita,
-        cliente: r.cliente,
-        cnpj: r.cnpj || null,
-        assunto: r.assunto || null,
-        descricao: r.descricao || null,
-        hash_linha: hashRow(r),
-      }));
-      // Build a set of hashes to track which ones actually get inserted
-      const allHashes = records.map(r => r.hash_linha);
+      // 1. Build records and deduplicate within the file itself
+      const seen = new Set<string>();
+      const uniqueRecords: { user_id: string; representative_id: string; data_visita: string; cliente: string; cnpj: string | null; assunto: string | null; descricao: string | null; hash_linha: string }[] = [];
+      let dupsInFile = 0;
 
-      // Insert in batches, skipping duplicates
+      for (const r of validRows) {
+        const hash = hashRow(r);
+        if (seen.has(hash)) { dupsInFile++; continue; }
+        seen.add(hash);
+        uniqueRecords.push({
+          user_id: userId,
+          representative_id: selectedRep,
+          data_visita: r.data_visita,
+          cliente: r.cliente,
+          cnpj: r.cnpj || null,
+          assunto: r.assunto || null,
+          descricao: r.descricao || null,
+          hash_linha: hash,
+        });
+      }
+
+      // 2. Fetch existing hashes for this user+rep to skip already-imported rows
+      const { data: existingRows, error: fetchErr } = await supabase
+        .from("visitas_importadas" as any)
+        .select("hash_linha")
+        .eq("user_id", userId)
+        .eq("representative_id", selectedRep);
+      if (fetchErr) throw fetchErr;
+
+      const existingHashes = new Set((existingRows as any[] || []).map((r: any) => r.hash_linha));
+      const newRecords = uniqueRecords.filter((r) => !existingHashes.has(r.hash_linha));
+      const alreadyExisted = uniqueRecords.length - newRecords.length;
+
+      // 3. Insert only truly new records in batches
       let inserted = 0;
-      const insertedHashes = new Set<string>();
       const BATCH = 50;
-      for (let i = 0; i < records.length; i += BATCH) {
-        const batch = records.slice(i, i + BATCH);
+      for (let i = 0; i < newRecords.length; i += BATCH) {
+        const batch = newRecords.slice(i, i + BATCH);
         const { data, error } = await supabase
           .from("visitas_importadas" as any)
-          .upsert(batch as any, { onConflict: "user_id,representative_id,hash_linha", ignoreDuplicates: true })
-          .select("hash_linha");
-        if (error) throw error;
-        const returned = (data as any[]) || [];
-        inserted += returned.length;
-        returned.forEach((r: any) => insertedHashes.add(r.hash_linha));
-      }
-      const skipped = records.length - inserted;
-
-      // Aggregate ONLY actually inserted visits by week
-      const weekGroups: Record<string, number> = {};
-      for (let i = 0; i < validRows.length; i++) {
-        const hash = allHashes[i];
-        if (!insertedHashes.has(hash)) continue; // skip duplicates
-        const r = validRows[i];
-        const d = new Date(r.data_visita + "T12:00:00");
-        const ano = d.getFullYear();
-        const semana = getWeekNumber(d);
-        const key = `${ano}-${semana}`;
-        weekGroups[key] = (weekGroups[key] || 0) + 1;
+          .insert(batch as any)
+          .select("id");
+        if (error) {
+          // Handle rare race condition where constraint catches a duplicate
+          if (error.code === "23505") {
+            continue; // skip batch with conflict, move on
+          }
+          throw error;
+        }
+        inserted += (data as any[] || []).length;
       }
 
-      for (const [key, qty] of Object.entries(weekGroups)) {
-        const [ano, semana] = key.split("-").map(Number);
-        const { data: existing } = await supabase
-          .from("weekly_visits")
-          .select("id, quantidade")
-          .eq("user_id", userId)
-          .eq("representative_id", selectedRep)
-          .eq("ano", ano)
-          .eq("semana", semana)
-          .maybeSingle();
+      // 4. ALWAYS recalculate weekly_visits from the full source of truth
+      const { data: allVisits } = await supabase
+        .from("visitas_importadas" as any)
+        .select("data_visita")
+        .eq("user_id", userId)
+        .eq("representative_id", selectedRep);
 
-        if (existing) {
-          await supabase
-            .from("weekly_visits")
-            .update({ quantidade: existing.quantidade + qty })
-            .eq("id", existing.id);
-        } else {
-          await supabase
-            .from("weekly_visits")
-            .insert({ user_id: userId, representative_id: selectedRep, ano, semana, quantidade: qty, meta: 16 });
+      // Delete existing weekly_visits for this rep
+      await supabase
+        .from("weekly_visits")
+        .delete()
+        .eq("user_id", userId)
+        .eq("representative_id", selectedRep);
+
+      if (allVisits && allVisits.length > 0) {
+        const weekTotals: Record<string, number> = {};
+        for (const v of allVisits as any[]) {
+          const d = new Date(v.data_visita + "T12:00:00");
+          const ano = d.getFullYear();
+          const semana = getWeekNumber(d);
+          const key = `${ano}-${semana}`;
+          weekTotals[key] = (weekTotals[key] || 0) + 1;
+        }
+
+        const weekRecords = Object.entries(weekTotals).map(([key, qty]) => {
+          const [ano, semana] = key.split("-").map(Number);
+          return { user_id: userId, representative_id: selectedRep, ano, semana, quantidade: qty, meta: 16 };
+        });
+        if (weekRecords.length > 0) {
+          await supabase.from("weekly_visits").insert(weekRecords);
         }
       }
 
-      // If all rows were duplicates, recalculate weekly_visits from existing data
-      if (inserted === 0 && skipped > 0) {
-        // Fetch ALL visitas_importadas for this rep
-        const { data: allVisits } = await supabase
-          .from("visitas_importadas" as any)
-          .select("data_visita")
-          .eq("user_id", userId)
-          .eq("representative_id", selectedRep);
-
-        if (allVisits && allVisits.length > 0) {
-          // Aggregate by week
-          const weekTotals: Record<string, number> = {};
-          for (const v of allVisits as any[]) {
-            const d = new Date(v.data_visita + "T12:00:00");
-            const ano = d.getFullYear();
-            const semana = getWeekNumber(d);
-            const key = `${ano}-${semana}`;
-            weekTotals[key] = (weekTotals[key] || 0) + 1;
-          }
-
-          // Delete existing weekly_visits for this rep
-          await supabase
-            .from("weekly_visits")
-            .delete()
-            .eq("user_id", userId)
-            .eq("representative_id", selectedRep);
-
-          // Insert recalculated totals
-          const weekRecords = Object.entries(weekTotals).map(([key, qty]) => {
-            const [ano, semana] = key.split("-").map(Number);
-            return { user_id: userId, representative_id: selectedRep, ano, semana, quantidade: qty, meta: 16 };
-          });
-          if (weekRecords.length > 0) {
-            await supabase.from("weekly_visits").insert(weekRecords);
-          }
-
-          toast.success(`${skipped} registros já existentes — weekly_visits recalculado (${allVisits.length} visitas)`);
-        } else {
-          toast.info(`${skipped} duplicadas ignoradas, nenhum registro encontrado para recalcular`);
-        }
+      // 5. Clear feedback
+      const parts: string[] = [];
+      if (inserted > 0) parts.push(`${inserted} visitas importadas`);
+      if (alreadyExisted > 0) parts.push(`${alreadyExisted} já existentes`);
+      if (dupsInFile > 0) parts.push(`${dupsInFile} duplicadas no arquivo`);
+      if (inserted === 0 && alreadyExisted > 0) {
+        toast.info(parts.join(", ") + " — weekly_visits recalculado");
       } else {
-        toast.success(`${inserted} visitas importadas${skipped > 0 ? `, ${skipped} duplicadas ignoradas` : ""}`);
+        toast.success(parts.join(", "));
       }
 
       setRows([]);
