@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import FilterBar from "@/components/FilterBar";
 import { DollarSign } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import CommissionKPIs from "./commissions/CommissionKPIs";
