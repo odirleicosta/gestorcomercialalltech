@@ -972,7 +972,7 @@ const RepKPIs = ({ userId }: Props) => {
             <FileSpreadsheet className="h-3.5 w-3.5 mr-1" /> Importar Planilha
           </Button>
         </div>
-        <OpportunityImport userId={userId} reps={reps} open={oppImportOpen} onClose={() => setOppImportOpen(false)} onImported={() => { loadData(); }} />
+        <OpportunityImport userId={userId} reps={reps} open={oppImportOpen} onClose={() => setOppImportOpen(false)} onImported={() => { setFilterMonth(prev => prev); }} />
         {/* Opp KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <KpiCard icon={<Lightbulb className="h-5 w-5" />} label="Total Abertas" value={String(oppKpis.totalAberto)} color="text-primary" />
