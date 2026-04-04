@@ -1,70 +1,52 @@
 
-Do I know what the issue is? Yes.
 
-Problema exato
-- Há 2 falhas ao mesmo tempo:
-  1. o app em execução ainda dispara o fluxo antigo de `upsert(... onConflict=user_id,hash_linha)` — isso está provado pelo snapshot de rede;
-  2. mesmo quando a importação gravar, `RepKPIs` recarrega principalmente a semana filtrada no momento, então o Lauro pode continuar parecendo zerado se as visitas ficaram em outras semanas.
-- O repositório atual já mostra `VisitImport.tsx` sem `upsert`, então o preview do usuário está rodando um bundle antigo ou um fluxo ainda não consolidado.
-- As migrations de `visitas_importadas` ficaram fragmentadas: a original criou unicidade em `(user_id, hash_linha)` e as posteriores tentaram corrigir por cima. Precisa consolidar isso de forma idempotente.
+## Plano: Correção definitiva da importação de visitas
 
-Plano final de correção
+### Causa raiz identificada
 
-1. Consolidar o banco
-- Criar uma migration única de saneamento para `visitas_importadas` que:
-  - remova índices/constraints antigos ligados a `(user_id, hash_linha)`;
-  - elimine duplicatas reais por `(user_id, representative_id, hash_linha)` se houver alguma;
-  - recrie exatamente 1 índice único correto:
-    `UNIQUE (user_id, representative_id, hash_linha)`.
-- Resultado: o banco vira a trava final certa e não bloqueia visitas iguais de representantes diferentes.
+O problema é duplo:
 
-2. Blindar o importador de visitas
-- Revisar `src/components/VisitImport.tsx` para garantir que ele use apenas:
-  - leitura da planilha;
-  - deduplicação dentro do arquivo;
-  - consulta dos hashes já existentes do mesmo representante;
-  - `insert()` apenas dos registros novos.
-- Sem `upsert` e sem `onConflict`.
-- Melhorar a tolerância a corrida: se um lote encontrar `23505`, reprocessar linha a linha para não perder registros válidos por causa de 1 duplicada.
+1. **Banco**: A constraint foi criada como `CREATE UNIQUE INDEX` em vez de `ALTER TABLE ADD CONSTRAINT ... UNIQUE`. O PostgREST exige uma **CONSTRAINT** real para aceitar `on_conflict` — um índice único sozinho não funciona.
 
-3. Recalcular `weekly_visits` sempre da fonte real
-- Após importar, buscar todas as visitas de `visitas_importadas` daquele representante e reconstruir `weekly_visits` do zero.
-- Isso evita:
-  - somar em cima de dados velhos;
-  - inconsistência após reimportação;
-  - duplicidade nos totais semanais.
+2. **Código**: O `VisitImport.tsx` atual usa `.insert()` puro, mas o browser está rodando um bundle antigo que ainda usa `.upsert()` com `on_conflict=user_id,hash_linha`. Para resolver de vez, vou trocar para `.upsert()` com o `onConflict` correto, alinhado à constraint nova.
 
-4. Corrigir o “importou mas não aparece”
-- Ajustar `src/components/RepKPIs.tsx` para o pós-importação não depender só da semana atualmente selecionada.
-- Depois do import:
-  - recarregar detalhes completos;
-  - recarregar totais anuais;
-  - se a semana atual estiver vazia mas houver visitas em outras semanas, informar as semanas importadas e/ou mudar o filtro para a primeira semana com dados.
-- Resultado: o Lauro deixa de parecer com zero quando o problema era só o filtro semanal.
+### Mudanças
 
-5. Validar que o usuário está no bundle certo
-- Adicionar um marcador visível no fluxo novo do importador (ex.: texto/toast de versão do import).
-- Na validação, confirmar que a requisição nova para `visitas_importadas` não contém `on_conflict`.
-- Isso elimina a ambiguidade entre “código já corrigido” e “preview ainda antigo”.
+**1. Migration — Criar CONSTRAINT real (não apenas INDEX)**
 
-Arquivos envolvidos
-- `src/components/VisitImport.tsx`
-- `src/components/RepKPIs.tsx`
-- `supabase/migrations/...sql`
+```sql
+-- Remover index que não serve como constraint para PostgREST
+DROP INDEX IF EXISTS public.visitas_importadas_user_rep_hash_key;
+DROP INDEX IF EXISTS public.visitas_importadas_hash_unique;
 
-Validação final
-1. Abrir o importador e confirmar o marcador da versão nova.
-2. Importar a planilha do Lauro.
-3. Confirmar que não existe mais request `...visitas_importadas?on_conflict=...`.
-4. Confirmar que surgem registros do Lauro em `visitas_importadas`.
-5. Confirmar que `weekly_visits` é recriado corretamente.
-6. Reimportar a mesma planilha e verificar:
-   - nenhuma duplicação;
-   - feedback claro de “já existentes” e “duplicadas no arquivo”.
-7. Confirmar que o Lauro aparece no app na semana correta, mesmo que não fosse a semana filtrada antes.
+-- Remover constraints antigas caso existam
+ALTER TABLE public.visitas_importadas 
+  DROP CONSTRAINT IF EXISTS visitas_importadas_user_rep_hash_key;
+ALTER TABLE public.visitas_importadas 
+  DROP CONSTRAINT IF EXISTS visitas_importadas_hash_unique;
+ALTER TABLE public.visitas_importadas 
+  DROP CONSTRAINT IF EXISTS visitas_importadas_user_id_hash_linha_key;
 
-Resultado esperado
-- o erro `there is no unique or exclusion constraint matching the ON CONFLICT specification` desaparece;
-- o sistema não duplica registros de visitas;
-- representantes diferentes podem ter visitas com mesmo hash sem conflito indevido;
-- as visitas do Lauro passam a aparecer no app de forma visível e consistente.
+-- Criar a CONSTRAINT UNIQUE real (PostgREST exige constraint, não index)
+ALTER TABLE public.visitas_importadas 
+  ADD CONSTRAINT visitas_importadas_user_rep_hash_key 
+  UNIQUE (user_id, representative_id, hash_linha);
+```
+
+**2. `src/components/VisitImport.tsx` — Usar upsert com onConflict correto**
+
+Trocar o fluxo de `insert()` para `upsert()` com `onConflict: "user_id,representative_id,hash_linha"` e `ignoreDuplicates: true`. Remove a lógica manual de buscar hashes existentes, simplificando o código:
+
+- Deduplicar dentro do arquivo (manter)
+- Usar `.upsert(batch, { onConflict: "user_id,representative_id,hash_linha", ignoreDuplicates: true })` em lotes de 50
+- Contar inseridos vs ignorados
+- Recalcular `weekly_visits` a partir de `visitas_importadas` (manter)
+
+**3. Badge de versão** — Atualizar para `v4-upsert` para confirmar visualmente que o bundle novo está ativo.
+
+### Resultado esperado
+- O erro `there is no unique or exclusion constraint matching the ON CONFLICT specification` desaparece
+- Visitas importam corretamente sem duplicar
+- Representantes diferentes podem ter visitas com mesmo hash
+- O badge `v4-upsert` confirma que o código novo está rodando
+
