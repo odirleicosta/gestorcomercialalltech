@@ -18,19 +18,6 @@ const QUARTER_MONTHS: Record<string, number[]> = {
 
 type PeriodMode = "year" | "quarter" | "month";
 
-const PillButton = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) => (
-  <button
-    onClick={onClick}
-    className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-      active
-        ? "bg-primary text-primary-foreground shadow-sm"
-        : "bg-secondary text-muted-foreground hover:bg-secondary/80"
-    }`}
-  >
-    {children}
-  </button>
-);
-
 const CommissionsTab = ({ userId }: Props) => {
   const [deals, setDeals] = useState<DealCommission[]>([]);
   const [reps, setReps] = useState<RepOption[]>([]);
