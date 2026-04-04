@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import FilterBar from "@/components/FilterBar";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -514,77 +515,34 @@ const RepKPIs = ({ userId }: Props) => {
 
   const formatBrl = (v: number) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `${(v / 1_000).toFixed(0)}k` : String(v);
 
-  const desempenhoPeriodLabel = useMemo(() => {
-    if (periodMode === "ano") return `${filterYear}`;
-    if (periodMode === "trimestre") return `${filterQuarter} ${filterYear}`;
-    return `${MONTHS[filterMonth - 1]} ${filterYear}`;
-  }, [periodMode, filterMonth, filterYear, filterQuarter]);
-
-  const btnClass = (active: boolean) =>
-    `px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-medium transition-all ${active ? "bg-primary text-primary-foreground shadow-sm" : "bg-secondary text-muted-foreground hover:bg-secondary/80 border border-border"}`;
-
-  const [filterExpanded, setFilterExpanded] = useState(false);
-  const [lostFilterExpanded, setLostFilterExpanded] = useState(false);
 
 
 
   return (
     <div className="space-y-6">
-      {/* ═══ FILTRO GLOBAL (só Desempenho) ═══ */}
-      {subTab === "desempenho" && (
-        filterExpanded ? (
-          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0">Ano</span>
-              <div className="flex gap-1">
-                {[currentYear - 1, currentYear, currentYear + 1].map(y => (
-                  <button key={y} onClick={() => setFilterYear(y)} className={btnClass(filterYear === y)}>{y}</button>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0">Visão</span>
-              <div className="flex gap-1 flex-wrap">
-                <button onClick={() => setPeriodMode("mes")} className={btnClass(periodMode === "mes")}>Mês</button>
-                {["T1", "T2", "T3", "T4"].map(q => (
-                  <button key={q} onClick={() => { setPeriodMode("trimestre"); setFilterQuarter(q); setFilterExpanded(false); }} className={btnClass(periodMode === "trimestre" && filterQuarter === q)}>{q}</button>
-                ))}
-                <button onClick={() => { setPeriodMode("ano"); setFilterExpanded(false); }} className={btnClass(periodMode === "ano")}>Ano</button>
-              </div>
-            </div>
-            {periodMode === "mes" && (
-              <div className="flex items-start gap-2">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0 mt-1">Mês</span>
-                <div className="flex flex-wrap gap-1">
-                  {MONTHS.map((m, i) => (
-                    <button key={i} onClick={() => { setFilterMonth(i + 1); setFilterExpanded(false); }} className={btnClass(filterMonth === i + 1)}>{m}</button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {reps.length > 0 && (
-              <div className="flex items-start gap-2">
-                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0 mt-1">Rep.</span>
-                <div className="flex flex-wrap gap-1">
-                  <button onClick={() => { setFilterRep("all"); setFilterExpanded(false); }} className={btnClass(filterRep === "all")}>Todos</button>
-                  {reps.map(r => (
-                    <button key={r.id} onClick={() => { setFilterRep(r.id); setFilterExpanded(false); }} className={btnClass(filterRep === r.id)}>{r.nome.split(" ").slice(0, 2).join(" ")}</button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          <button
-            onClick={() => setFilterExpanded(true)}
-            className="inline-flex items-center gap-2 bg-primary/10 hover:bg-primary/15 text-primary border border-primary/20 rounded-full px-4 py-1.5 transition-all group"
-          >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            <span className="text-xs sm:text-sm font-semibold">{desempenhoPeriodLabel}{filterRep !== "all" ? ` · ${reps.find(r => r.id === filterRep)?.nome?.split(" ").slice(0,2).join(" ")}` : ""}</span>
-            <ChevronDown className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 transition-opacity" />
-          </button>
-        )
-      )}
+      {/* ═══ FILTRO GLOBAL ═══ */}
+      <FilterBar
+        year={filterYear}
+        onYearChange={setFilterYear}
+        periodMode={periodMode === "mes" || periodMode === "semana" ? "month" : periodMode === "trimestre" ? "quarter" : "year"}
+        onPeriodModeChange={(m) => {
+          if (m === "month") setPeriodMode("mes");
+          else if (m === "quarter") setPeriodMode("trimestre");
+          else setPeriodMode("ano");
+        }}
+        month={filterMonth}
+        onMonthChange={setFilterMonth}
+        quarter={filterQuarter}
+        onQuarterChange={setFilterQuarter}
+        showRep
+        rep={filterRep}
+        onRepChange={setFilterRep}
+        reps={reps}
+        showWeek={subTab === "visitas"}
+        week={filterWeek}
+        onWeekChange={setFilterWeek}
+        maxWeek={52}
+      />
 
       {/* Sub-tabs */}
       <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
@@ -1747,79 +1705,24 @@ const RepKPIs = ({ userId }: Props) => {
 
         return (
           <>
-            {/* Filter badge / expandable panel */}
-            {lostFilterExpanded ? (
-              <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0">Ano</span>
-                  <div className="flex gap-1">
-                    {[currentYear - 1, currentYear, currentYear + 1].map(y => (
-                      <button key={y} onClick={() => setFilterYear(y)} className={btnClass(filterYear === y)}>{y}</button>
-                    ))}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0">Visão</span>
-                  <div className="flex gap-1 flex-wrap">
-                    <button onClick={() => setPeriodMode("mes")} className={btnClass(periodMode === "mes")}>Mês</button>
-                    {["T1", "T2", "T3", "T4"].map(q => (
-                      <button key={q} onClick={() => { setPeriodMode("trimestre"); setFilterQuarter(q); setLostFilterExpanded(false); }} className={btnClass(periodMode === "trimestre" && filterQuarter === q)}>{q}</button>
-                    ))}
-                    <button onClick={() => { setPeriodMode("ano"); setLostFilterExpanded(false); }} className={btnClass(periodMode === "ano")}>Ano</button>
-                  </div>
-                </div>
-                {periodMode === "mes" && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0 mt-1">Mês</span>
-                    <div className="flex flex-wrap gap-1">
-                      {MONTHS.map((m, i) => (
-                        <button key={i} onClick={() => { setFilterMonth(i + 1); setLostFilterExpanded(false); }} className={btnClass(filterMonth === i + 1)}>{m}</button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {reps.length > 0 && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0 mt-1">Rep.</span>
-                    <div className="flex flex-wrap gap-1">
-                      <button onClick={() => { setFilterRep("all"); setLostFilterExpanded(false); }} className={btnClass(filterRep === "all")}>Todos</button>
-                      {reps.map(r => (
-                        <button key={r.id} onClick={() => { setFilterRep(r.id); setLostFilterExpanded(false); }} className={btnClass(filterRep === r.id)}>{r.nome.split(" ").slice(0, 2).join(" ")}</button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 flex-wrap">
-                <button
-                  onClick={() => setLostFilterExpanded(true)}
-                  className="inline-flex items-center gap-2 bg-destructive/10 hover:bg-destructive/15 text-destructive border border-destructive/20 rounded-full px-4 py-1.5 transition-all group"
-                >
-                  <SlidersHorizontal className="h-3.5 w-3.5" />
-                  <span className="text-xs sm:text-sm font-semibold">{periodLabel}{filterRep !== "all" ? ` · ${reps.find(r => r.id === filterRep)?.nome?.split(" ").slice(0, 2).join(" ")}` : ""}</span>
-                  <ChevronDown className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 transition-opacity" />
-                </button>
-                <div className="ml-auto flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setLostImportOpen(true)} className="gap-1.5">
-                    <FileSpreadsheet className="h-4 w-4" /> Importar Planilha
-                  </Button>
-                  <Button variant="destructive" size="sm" className="gap-1.5" onClick={async () => {
-                    if (!confirm("Tem certeza que deseja excluir TODAS as negociações perdidas? Esta ação não pode ser desfeita.")) return;
-                    const { error } = await supabase.from("negociacoes_perdidas" as any).delete().eq("user_id", userId);
-                    if (error) { toast.error("Erro ao excluir"); return; }
-                    toast.success("Todas as negociações perdidas foram excluídas");
-                    loadLostDeals();
-                  }}>
-                    <Trash2 className="h-4 w-4" /> Excluir Todas
-                  </Button>
-                  <Button size="sm" onClick={() => { resetLostForm(); setLostFormOpen(true); }} className="gap-1.5">
-                    <Plus className="h-4 w-4" /> Registrar Perda
-                  </Button>
-                </div>
-              </div>
-            )}
-
+            {/* Action buttons for perdidas */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button variant="outline" size="sm" onClick={() => setLostImportOpen(true)} className="gap-1.5">
+                <FileSpreadsheet className="h-4 w-4" /> Importar Planilha
+              </Button>
+              <Button variant="destructive" size="sm" className="gap-1.5" onClick={async () => {
+                if (!confirm("Tem certeza que deseja excluir TODAS as negociações perdidas? Esta ação não pode ser desfeita.")) return;
+                const { error } = await supabase.from("negociacoes_perdidas" as any).delete().eq("user_id", userId);
+                if (error) { toast.error("Erro ao excluir"); return; }
+                toast.success("Todas as negociações perdidas foram excluídas");
+                loadLostDeals();
+              }}>
+                <Trash2 className="h-4 w-4" /> Excluir Todas
+              </Button>
+              <Button size="sm" onClick={() => { resetLostForm(); setLostFormOpen(true); }} className="gap-1.5">
+                <Plus className="h-4 w-4" /> Registrar Perda
+              </Button>
+            </div>
             {/* KPI Summary */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <KpiCard icon={<XCircle className="h-5 w-5" />} label="Total Perdidas" value={String(total)} color="text-destructive" />

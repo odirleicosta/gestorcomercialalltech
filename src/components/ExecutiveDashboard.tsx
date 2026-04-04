@@ -1,11 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
 import SafeComponent from "@/components/SafeComponent";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import FilterBar from "@/components/FilterBar";
 import {
   TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Users,
   AlertTriangle, ArrowUpRight, ArrowDownRight, Gauge,
-  Flame, Trophy, Zap, Minus, FileText, Activity, SlidersHorizontal, ChevronDown,
+  Flame, Trophy, Zap, Minus, FileText, Activity,
   Crosshair, Clock, ArrowRight,
 } from "lucide-react";
 import {
@@ -272,9 +271,15 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   const calcVar = (c: number, p: number) => { if (p === 0) return c > 0 ? 100 : 0; return ((c-p)/p)*100; };
   const vendasVar = calcVar(cur.count, prev.count);
 
-  const handleMonthClick = (m: number) => { setFilterMonth(m); setFilterMode("month"); setFilterQuarter(null); };
-  const handleQuarterClick = (qi: number) => { setFilterMode("quarter"); setFilterQuarter(qi); };
-  const handleYearClick = () => { setFilterMode("year"); setFilterQuarter(null); };
+  const handleFilterPeriodMode = (mode: "month" | "quarter" | "year") => {
+    if (mode === "month") { setFilterMode("month"); setFilterQuarter(null); }
+    else if (mode === "year") { setFilterMode("year"); setFilterQuarter(null); }
+  };
+  const handleFilterQuarter = (q: string) => {
+    const idx = ["T1","T2","T3","T4"].indexOf(q);
+    setFilterMode("quarter"); setFilterQuarter(idx >= 0 ? idx : 0);
+  };
+  const filterQuarterStr = filterQuarter !== null ? `T${filterQuarter + 1}` : "T1";
 
   const statusColor = (pct: number) => pct >= 100 ? "text-[#22C55E]" : pct >= 70 ? "text-[#F97316]" : "text-[#EF4444]";
   const statusBg = (pct: number) => pct >= 100 ? "bg-[#22C55E]" : pct >= 70 ? "bg-[#F97316]" : "bg-[#EF4444]";
@@ -327,63 +332,20 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         </div>
       </div>
 
-      {/* ═══ FILTROS ═══ */}
-      {/* ═══ FILTRO COMPACTO ═══ */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <button className="inline-flex items-center gap-2 bg-primary/10 hover:bg-primary/15 text-primary border border-primary/20 rounded-full px-4 py-1.5 transition-all group">
-            <SlidersHorizontal className="h-3.5 w-3.5" />
-            <span className="text-xs sm:text-sm font-semibold">{periodLabel}{filterRep !== "all" ? ` · ${reps.find(r => r.id === filterRep)?.nome?.split(" ").slice(0,2).join(" ")}` : ""}</span>
-            <ChevronDown className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 transition-opacity" />
-          </button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-auto max-w-[calc(100vw-2rem)] p-4 space-y-3">
-          {/* Ano */}
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0">Ano</span>
-            <div className="flex gap-1">
-              {[2025,2026,2027].map(y => (
-                <button key={y} onClick={() => setFilterYear(y)} className={`px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterYear === y ? "bg-primary text-primary-foreground shadow-sm" : "bg-secondary text-muted-foreground hover:bg-secondary/80 border border-border"}`}>{y}</button>
-              ))}
-            </div>
-          </div>
-          {/* Visão */}
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0">Visão</span>
-            <div className="flex gap-1 flex-wrap">
-              <button onClick={() => handleMonthClick(filterMonth)} className={`px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterMode === "month" ? "bg-primary text-primary-foreground shadow-sm" : "bg-secondary text-muted-foreground hover:bg-secondary/80 border border-border"}`}>Mês</button>
-              {QUARTERS.map((q,i) => (
-                <button key={i} onClick={() => handleQuarterClick(i)} className={`px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterMode === "quarter" && filterQuarter === i ? "bg-primary text-primary-foreground shadow-sm" : "bg-secondary text-muted-foreground hover:bg-secondary/80 border border-border"}`}>{q.label}</button>
-              ))}
-              <button onClick={handleYearClick} className={`px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterMode === "year" ? "bg-primary text-primary-foreground shadow-sm" : "bg-secondary text-muted-foreground hover:bg-secondary/80 border border-border"}`}>Ano</button>
-            </div>
-          </div>
-          {/* Mês (só no modo month) */}
-          {filterMode === "month" && (
-            <div className="flex items-start gap-2">
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0 mt-1">Mês</span>
-              <div className="flex flex-wrap gap-1">
-                {SHORT_MONTHS.map((m, i) => {
-                  const mn = i+1;
-                  return <button key={i} onClick={() => handleMonthClick(mn)} className={`px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterMonth === mn ? "bg-primary text-primary-foreground shadow-sm" : "bg-secondary text-muted-foreground hover:bg-secondary/80 border border-border"}`}>{m}</button>;
-                })}
-              </div>
-            </div>
-          )}
-          {/* Representante */}
-          {reps.length > 0 && (
-            <div className="flex items-start gap-2">
-              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide w-12 shrink-0 mt-1">Rep.</span>
-              <div className="flex flex-wrap gap-1">
-                <button onClick={() => setFilterRep("all")} className={`px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterRep === "all" ? "bg-primary text-primary-foreground shadow-sm" : "bg-secondary text-muted-foreground hover:bg-secondary/80 border border-border"}`}>Todos</button>
-                {reps.map(r => (
-                  <button key={r.id} onClick={() => setFilterRep(r.id)} className={`px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-medium transition-all ${filterRep === r.id ? "bg-primary text-primary-foreground shadow-sm" : "bg-secondary text-muted-foreground hover:bg-secondary/80 border border-border"}`}>{r.nome.split(" ").slice(0,2).join(" ")}</button>
-                ))}
-              </div>
-            </div>
-          )}
-        </PopoverContent>
-      </Popover>
+      <FilterBar
+        year={filterYear}
+        onYearChange={setFilterYear}
+        periodMode={filterMode}
+        onPeriodModeChange={handleFilterPeriodMode}
+        month={filterMonth}
+        onMonthChange={(m) => { setFilterMonth(m); setFilterMode("month"); setFilterQuarter(null); }}
+        quarter={filterQuarterStr}
+        onQuarterChange={handleFilterQuarter}
+        showRep
+        rep={filterRep}
+        onRepChange={setFilterRep}
+        reps={reps}
+      />
 
       {/* ═══ 1) STATUS DO MÊS ═══ */}
       <section className="bg-gradient-to-br from-[#1E293B] to-[#0F172A] rounded-2xl p-4 sm:p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
