@@ -191,7 +191,7 @@ const RepKPIs = ({ userId }: Props) => {
       setOpportunities(rows);
     };
     load();
-  }, [reps, filterYear, filterMonth, userId]);
+  }, [reps, filterYear, filterMonth, userId, refreshKey]);
 
   // Load monthly goals (all machine_types from Representatives tab)
   useEffect(() => {
