@@ -5,7 +5,7 @@ import {
   TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Users,
   AlertTriangle, ArrowUpRight, ArrowDownRight, Gauge,
   Flame, Trophy, Zap, Minus, FileText, Activity,
-  Crosshair, Clock, ArrowRight,
+  Crosshair, Clock, ArrowRight, Eye,
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
