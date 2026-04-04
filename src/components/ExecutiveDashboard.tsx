@@ -39,6 +39,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   const [monthlyGoals, setMonthlyGoals] = useState<MonthlyGoal[]>([]);
   const [activePlan, setActivePlan] = useState<any>(null);
   const [closingDeals, setClosingDeals] = useState<any[]>([]);
+  const [weeklyVisits, setWeeklyVisits] = useState<{representative_id: string; quantidade: number; meta: number; semana: number}[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const now = new Date();
