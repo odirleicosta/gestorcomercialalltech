@@ -47,6 +47,16 @@ const getWeekNumber = (d: Date): number => {
   return Math.ceil((diff / 86400000 + start.getDay() + 1) / 7);
 };
 
+const getWeeksForMonth = (month: number, year: number): number[] => {
+  const weeks: number[] = [];
+  const d = new Date(year, month - 1, 1);
+  while (d.getMonth() === month - 1) {
+    weeks.push(getWeekNumber(d));
+    d.setDate(d.getDate() + 7);
+  }
+  return [...new Set(weeks)];
+};
+
 const currentYear = new Date().getFullYear();
 const currentWeek = getWeekNumber(new Date());
 
@@ -395,8 +405,40 @@ const RepKPIs = ({ userId }: Props) => {
     }
   };
 
+  // Determine if we're in single-week edit mode (week selector visible & month mode)
+  const isWeekEditMode = periodMode === "mes" || periodMode === "semana";
+
+  // Aggregated visits based on periodMode using allYearVisits
+  const aggregatedVisits = useMemo(() => {
+    let relevantWeeks: number[];
+    if (periodMode === "semana" || periodMode === "mes") {
+      // In month/week mode, show single week data (editable)
+      return null; // use `visits` state directly
+    } else if (periodMode === "trimestre") {
+      const months = QUARTER_MONTHS[filterQuarter] || [];
+      relevantWeeks = months.flatMap(m => getWeeksForMonth(m, filterYear));
+    } else {
+      relevantWeeks = Array.from({ length: 52 }, (_, i) => i + 1);
+    }
+    const weekSet = new Set(relevantWeeks);
+    const filtered = allYearVisits.filter(v => weekSet.has(v.semana));
+    // Aggregate per rep
+    return reps.map(r => {
+      const repRows = filtered.filter(v => v.representative_id === r.id);
+      return {
+        representative_id: r.id,
+        nome: r.nome,
+        meta: repRows.reduce((s, v) => s + v.meta, 0),
+        quantidade: repRows.reduce((s, v) => s + v.quantidade, 0),
+      };
+    });
+  }, [periodMode, filterQuarter, filterYear, allYearVisits, reps]);
+
+  // Effective visits: aggregated for quarter/year, single-week for month
+  const effectiveVisits = useMemo(() => aggregatedVisits || visits, [aggregatedVisits, visits]);
+
   // Filtered data by rep
-  const filteredVisits = useMemo(() => filterRep === "all" ? visits : visits.filter(v => v.representative_id === filterRep), [visits, filterRep]);
+  const filteredVisits = useMemo(() => filterRep === "all" ? effectiveVisits : effectiveVisits.filter(v => v.representative_id === filterRep), [effectiveVisits, filterRep]);
   const filteredOpportunities = useMemo(() => filterRep === "all" ? opportunities : opportunities.filter(o => o.representative_id === filterRep), [opportunities, filterRep]);
   const filteredGoals = useMemo(() => filterRep === "all" ? goals : goals.filter(g => g.representative_id === filterRep), [goals, filterRep]);
 
@@ -650,14 +692,18 @@ const RepKPIs = ({ userId }: Props) => {
                     <Badge variant="secondary">{row.meta}</Badge>
                   </TableCell>
                   <TableCell className="text-center">
-                    <Input
-                      type="number"
-                      min={0}
-                      className="w-20 mx-auto text-center h-9"
-                      value={row.quantidade || ""}
-                      onChange={(e) => handleChange(row.representative_id, e.target.value)}
-                      placeholder="0"
-                    />
+                    {isWeekEditMode ? (
+                      <Input
+                        type="number"
+                        min={0}
+                        className="w-20 mx-auto text-center h-9"
+                        value={row.quantidade || ""}
+                        onChange={(e) => handleChange(row.representative_id, e.target.value)}
+                        placeholder="0"
+                      />
+                    ) : (
+                      <Badge variant="outline">{row.quantidade}</Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2 justify-center">
@@ -814,7 +860,7 @@ const RepKPIs = ({ userId }: Props) => {
       )}
 
       {/* Save Visits button */}
-      {visits.length > 0 && (
+      {visits.length > 0 && isWeekEditMode && (
         <div className="flex justify-end">
           <Button onClick={handleSave} disabled={saving} size="lg">
             <Save className="h-4 w-4 mr-2" />
@@ -1027,16 +1073,6 @@ const RepKPIs = ({ userId }: Props) => {
 
       {/* ═══ DESEMPENHO ═══ */}
       {subTab === "desempenho" && (() => {
-        // Helper: get weeks that belong to a given month (approximate)
-        const getWeeksForMonth = (month: number, year: number): number[] => {
-          const weeks: number[] = [];
-          const d = new Date(year, month - 1, 1);
-          while (d.getMonth() === month - 1) {
-            weeks.push(getWeekNumber(d));
-            d.setDate(d.getDate() + 7);
-          }
-          return [...new Set(weeks)];
-        };
 
         // Determine which weeks and months are in scope
         let relevantWeeks: number[] = [];
