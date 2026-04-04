@@ -47,13 +47,11 @@ export const HIDDEN_APP_TABS: AppTabItem[] = [
   { value: "deep-analysis", icon: Zap, label: "Análise Profunda" },
 ];
 
-/** Bottom nav shows first 4 primary tabs */
-export const BOTTOM_NAV_TABS: AppTabItem[] = PRIMARY_APP_TABS.slice(0, 4);
+/** Bottom nav shows first 3 primary tabs */
+export const BOTTOM_NAV_TABS: AppTabItem[] = PRIMARY_APP_TABS.slice(0, 3);
 
 /** "Mais" sheet on mobile — remaining primary tabs */
-export const SECONDARY_APP_TABS: AppTabItem[] = [
-  PRIMARY_APP_TABS[4], // Configurações
-];
+export const SECONDARY_APP_TABS: AppTabItem[] = PRIMARY_APP_TABS.slice(3);
 
 /** Sidebar shows all 5 primary tabs */
 export const SIDEBAR_APP_TABS: AppTabItem[] = PRIMARY_APP_TABS;
