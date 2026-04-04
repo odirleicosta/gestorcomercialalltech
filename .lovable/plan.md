@@ -1,37 +1,54 @@
 
 
-## Plano: Integrar importação de planilha de visitas com análise no KPIs
+# Filtro unificado: barra fixa no topo para todo o app
 
-### Problema atual
-O botão "Importar Planilha" na sub-aba Visitas salva os dados na tabela `visitas_importadas`, mas a aba KPIs lê apenas da tabela `weekly_visits`. Os dados importados nunca são usados para análise. O callback `onImported` está vazio (`{ /* refresh data */ }`).
+## Problema atual
+O app tem 4 padrões de filtro diferentes:
+- **Dashboard**: Popover (badge clicável)
+- **KPIs > Desempenho**: Painel expansível com pills
+- **KPIs > Perdidas**: Painel expansível com pills (variante vermelha)
+- **Comissões**: Select dropdowns + pills inline
 
-### Solução
-Após importar a planilha, agregar automaticamente as visitas importadas por representante/semana e popular a tabela `weekly_visits`. Além disso, exibir uma seção de detalhamento das visitas importadas abaixo da tabela resumo semanal.
+Isso gera inconsistência visual e confusão.
 
-### Etapas
+## Solução
+Criar um componente reutilizável `<FilterBar />` que renderiza uma barra horizontal sempre visível com selects compactos lado a lado.
 
-**1. Atualizar `VisitImport.tsx` — pós-importação, agregar em `weekly_visits`**
-- Após inserir em `visitas_importadas`, agrupar os registros por `(representative_id, ano, semana)` usando a data da visita
-- Para cada grupo, fazer upsert em `weekly_visits` somando a quantidade de visitas ao valor existente
-- Isso faz os KPI cards e gráficos refletirem os dados importados imediatamente
+## Componente novo: `src/components/FilterBar.tsx`
 
-**2. Atualizar `RepKPIs.tsx` — callback `onImported` funcional**
-- No `onImported`, recarregar os dados de `weekly_visits` e `visitas_importadas` para atualizar a tela
-- Adicionar um novo `useEffect` para carregar registros de `visitas_importadas` filtrados por ano/representante
-- Exibir uma tabela expandível abaixo dos gráficos mostrando o detalhe das visitas importadas (data, cliente, CNPJ, assunto, descrição)
+```text
+┌──────────────────────────────────────────────────────────────┐
+│  [2025 ▾]  [Mês ▾ / T1-T4 / Ano]  [Jan ▾]  [Todos Reps ▾] │
+└──────────────────────────────────────────────────────────────┘
+```
 
-**3. Seção "Detalhamento de Visitas" na sub-aba Visitas**
-- Nova seção com tabela paginada (ScrollArea) mostrando todas as visitas importadas do período
-- Filtros de representante e ano já existentes serão reutilizados
-- Badge com total de visitas importadas no período
+- **Ano**: Select compacto (2024-2027)
+- **Visão**: Toggle group inline (Mês | T1 | T2 | T3 | T4 | Ano)
+- **Mês**: Select compacto (aparece só quando Visão = Mês)
+- **Representante**: Select compacto (Todos + lista)
+- Props configuráveis: `showWeek?`, `showRep?`, `showPeriodMode?` para adaptar a cada contexto
+- Responsivo: em mobile, usa `flex-wrap` para quebrar em 2 linhas
 
-### Arquivos modificados
-- `src/components/VisitImport.tsx` — agregar visitas em `weekly_visits` após importação
-- `src/components/RepKPIs.tsx` — carregar/exibir visitas importadas, callback `onImported` funcional
+## Arquivos alterados
 
-### Detalhes técnicos
-- A agregação por semana usa a função `getWeekNumber()` já existente no código
-- O upsert em `weekly_visits` usará `onConflict: "user_id,representative_id,ano,semana"` com soma incremental
-- A tabela `visitas_importadas` já tem RLS configurado corretamente
-- Nenhuma alteração destrutiva no banco de dados
+1. **`src/components/FilterBar.tsx`** (novo)
+   - Componente puro com props: `year`, `onYearChange`, `periodMode`, `onPeriodModeChange`, `month`, `onMonthChange`, `quarter`, `onQuarterChange`, `rep`, `onRepChange`, `reps[]`, `showWeek?`, `week?`, `onWeekChange?`
+   - Usa `Select` compactos do shadcn + toggle group para período
+   - Estilo: `bg-card border rounded-xl p-2 flex items-center gap-2 flex-wrap`
+
+2. **`src/components/ExecutiveDashboard.tsx`**
+   - Remover o Popover de filtro (linhas 330-386)
+   - Substituir por `<FilterBar ... />`
+
+3. **`src/components/RepKPIs.tsx`**
+   - Remover `filterExpanded`, `lostFilterExpanded` e os painéis expansíveis duplicados
+   - Colocar um `<FilterBar />` único acima das sub-tabs, compartilhado por todas as sub-abas
+   - Na sub-aba Visitas: adicionar seletor de semana dentro do FilterBar via prop `showWeek`
+
+4. **`src/components/CommissionsTab.tsx`**
+   - Remover os Select dropdowns e PillButtons do header
+   - Substituir por `<FilterBar ... />`
+
+## Resultado
+Um único padrão visual para filtros em todo o app: barra compacta, sempre visível, sem cliques extras para expandir/abrir.
 
