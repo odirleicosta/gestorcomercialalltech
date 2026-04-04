@@ -1073,16 +1073,6 @@ const RepKPIs = ({ userId }: Props) => {
 
       {/* ═══ DESEMPENHO ═══ */}
       {subTab === "desempenho" && (() => {
-        // Helper: get weeks that belong to a given month (approximate)
-        const getWeeksForMonth = (month: number, year: number): number[] => {
-          const weeks: number[] = [];
-          const d = new Date(year, month - 1, 1);
-          while (d.getMonth() === month - 1) {
-            weeks.push(getWeekNumber(d));
-            d.setDate(d.getDate() + 7);
-          }
-          return [...new Set(weeks)];
-        };
 
         // Determine which weeks and months are in scope
         let relevantWeeks: number[] = [];
