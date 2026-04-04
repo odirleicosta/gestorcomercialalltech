@@ -219,7 +219,7 @@ const RepKPIs = ({ userId }: Props) => {
       setGoals(rows);
     };
     load();
-  }, [reps, filterYear, filterMonth, userId]);
+  }, [reps, filterYear, filterMonth, userId, refreshKey]);
 
   // Load closed deals for Metas tab (by month)
   useEffect(() => {
