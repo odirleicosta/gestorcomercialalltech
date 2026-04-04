@@ -515,17 +515,6 @@ const RepKPIs = ({ userId }: Props) => {
 
   const formatBrl = (v: number) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : v >= 1_000 ? `${(v / 1_000).toFixed(0)}k` : String(v);
 
-  const desempenhoPeriodLabel = useMemo(() => {
-    if (periodMode === "ano") return `${filterYear}`;
-    if (periodMode === "trimestre") return `${filterQuarter} ${filterYear}`;
-    return `${MONTHS[filterMonth - 1]} ${filterYear}`;
-  }, [periodMode, filterMonth, filterYear, filterQuarter]);
-
-  const btnClass = (active: boolean) =>
-    `px-2.5 py-1 rounded-full text-[10px] sm:text-xs font-medium transition-all ${active ? "bg-primary text-primary-foreground shadow-sm" : "bg-secondary text-muted-foreground hover:bg-secondary/80 border border-border"}`;
-
-  const [filterExpanded, setFilterExpanded] = useState(false);
-  const [lostFilterExpanded, setLostFilterExpanded] = useState(false);
 
 
 
