@@ -328,10 +328,17 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       const media = repsWithVisits > 0 ? totalVisitas / repsWithVisits : 0;
       const pctMeta = totalMeta > 0 ? (totalVisitas / totalMeta) * 100 : 0;
 
-      return { totalVisitas, media, pctMeta, totalMeta };
+      // Per-rep visit totals
+      const perRep = new Map<string, number>();
+      const allFiltered = weeklyVisits.filter(v => weeksInPeriod.has(v.semana));
+      for (const v of allFiltered) {
+        perRep.set(v.representative_id, (perRep.get(v.representative_id) || 0) + v.quantidade);
+      }
+
+      return { totalVisitas, media, pctMeta, totalMeta, perRep };
     } catch (e) {
       console.error("visitStats error:", e);
-      return { totalVisitas: 0, media: 0, pctMeta: 0, totalMeta: 0 };
+      return { totalVisitas: 0, media: 0, pctMeta: 0, totalMeta: 0, perRep: new Map<string, number>() };
     }
   }, [weeklyVisits, activeMonths, filterYear, filterRep, repsWithGoals]);
 
