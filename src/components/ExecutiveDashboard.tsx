@@ -488,7 +488,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       <section>
         <div className="flex items-center gap-2 mb-4">
           <Users className="h-5 w-5 text-[#8B5CF6]" />
-          <h3 className="font-heading text-lg font-bold text-foreground">Atividade da Equipe</h3>
+          <h3 className="font-heading text-lg font-bold text-white">Atividade da Equipe</h3>
         </div>
         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
           <div className="bg-card rounded-xl border border-border p-4 sm:p-5 shadow-sm text-center">
