@@ -1725,7 +1725,7 @@ const RepKPIs = ({ userId }: Props) => {
 
       {/* ═══ NEGOCIAÇÕES PERDIDAS ═══ */}
       {subTab === "perdidas" && (() => {
-        const filtered = lostDeals.filter(d => {
+        const periodFiltered = lostDeals.filter(d => {
           if (filterRep !== "all" && d.representative_id !== filterRep) return false;
           const dt = new Date(d.data_perda + "T00:00:00");
           if (dt.getFullYear() !== filterYear) return false;
@@ -1737,18 +1737,19 @@ const RepKPIs = ({ userId }: Props) => {
           return true;
         });
 
-        const total = filtered.reduce((s, d) => s + ((d as any).quantidade || 1), 0);
-        const totalValor = filtered.reduce((s, d) => s + (d.deal_value || 0), 0);
+        const total = periodFiltered.reduce((s, d) => s + ((d as any).quantidade || 1), 0);
+        const totalValor = periodFiltered.reduce((s, d) => s + (d.deal_value || 0), 0);
 
-        const byRep: Record<string, number> = {};
-        filtered.forEach(d => {
+        const byRep: Record<string, { repId: string | null; count: number }> = {};
+        periodFiltered.forEach(d => {
           const repName = reps.find(r => r.id === d.representative_id)?.nome || "Sem Rep";
-          byRep[repName] = (byRep[repName] || 0) + ((d as any).quantidade || 1);
+          if (!byRep[repName]) byRep[repName] = { repId: d.representative_id, count: 0 };
+          byRep[repName].count += ((d as any).quantidade || 1);
         });
-        const repData = Object.entries(byRep).sort((a, b) => b[1] - a[1]).map(([nome, count]) => ({ nome, count }));
+        const repData = Object.entries(byRep).sort((a, b) => b[1].count - a[1].count).map(([nome, v]) => ({ nome, count: v.count, repId: v.repId }));
 
         const byMotivo: Record<string, number> = {};
-        filtered.forEach(d => {
+        periodFiltered.forEach(d => {
           const motivo = d.motivo_perda || "Não informado";
           byMotivo[motivo] = (byMotivo[motivo] || 0) + ((d as any).quantidade || 1);
         });
@@ -1757,11 +1758,24 @@ const RepKPIs = ({ userId }: Props) => {
         }));
 
         const bySubmotivo: Record<string, number> = {};
-        filtered.forEach(d => {
+        periodFiltered.forEach(d => {
           const sub = d.motivo_perda_detalhe || "Não informado";
           bySubmotivo[sub] = (bySubmotivo[sub] || 0) + ((d as any).quantidade || 1);
         });
         const submotivoData = Object.entries(bySubmotivo).sort((a, b) => b[1] - a[1]).map(([submotivo, count]) => ({ submotivo, count }));
+
+        // Apply interactive filters on detail
+        const filtered = periodFiltered.filter(d => {
+          if (lostFilterRep) {
+            const repName = reps.find(r => r.id === d.representative_id)?.nome || "Sem Rep";
+            if (repName !== lostFilterRep) return false;
+          }
+          if (lostFilterMotivo && (d.motivo_perda || "Não informado") !== lostFilterMotivo) return false;
+          if (lostFilterSubmotivo && (d.motivo_perda_detalhe || "Não informado") !== lostFilterSubmotivo) return false;
+          return true;
+        });
+
+        const hasActiveFilter = lostFilterRep || lostFilterMotivo || lostFilterSubmotivo;
 
         const formatBrlFull = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         const SHORT_MONTH_NAMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -1796,7 +1810,32 @@ const RepKPIs = ({ userId }: Props) => {
               <KpiCard icon={<Flag className="h-5 w-5" />} label="Motivos Distintos" value={String(Object.keys(byMotivo).length)} color="text-muted-foreground" />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Active Filters */}
+            {hasActiveFilter && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground font-medium flex items-center gap-1"><Filter className="h-3 w-3" /> Filtros:</span>
+                {lostFilterRep && (
+                  <Badge variant="secondary" className="gap-1 cursor-pointer hover:bg-destructive/10" onClick={() => setLostFilterRep(null)}>
+                    <Users className="h-3 w-3" /> {lostFilterRep} <XCircle className="h-3 w-3 ml-0.5" />
+                  </Badge>
+                )}
+                {lostFilterMotivo && (
+                  <Badge variant="secondary" className="gap-1 cursor-pointer hover:bg-destructive/10" onClick={() => setLostFilterMotivo(null)}>
+                    <AlertTriangle className="h-3 w-3" /> {lostFilterMotivo} <XCircle className="h-3 w-3 ml-0.5" />
+                  </Badge>
+                )}
+                {lostFilterSubmotivo && (
+                  <Badge variant="secondary" className="gap-1 cursor-pointer hover:bg-destructive/10" onClick={() => setLostFilterSubmotivo(null)}>
+                    <Flag className="h-3 w-3" /> {lostFilterSubmotivo} <XCircle className="h-3 w-3 ml-0.5" />
+                  </Badge>
+                )}
+                <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground" onClick={() => { setLostFilterRep(null); setLostFilterMotivo(null); setLostFilterSubmotivo(null); }}>
+                  Limpar todos
+                </Button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* Por Representante */}
               <Card className="p-4">
                 <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -1811,7 +1850,11 @@ const RepKPIs = ({ userId }: Props) => {
                   </TableHeader>
                   <TableBody>
                     {repData.map(r => (
-                      <TableRow key={r.nome}>
+                      <TableRow
+                        key={r.nome}
+                        className={`cursor-pointer transition-colors hover:bg-primary/5 ${lostFilterRep === r.nome ? "bg-primary/10 border-l-2 border-l-primary" : ""}`}
+                        onClick={() => setLostFilterRep(prev => prev === r.nome ? null : r.nome)}
+                      >
                         <TableCell className="font-medium">{r.nome}</TableCell>
                         <TableCell className="text-center font-bold">{r.count}</TableCell>
                       </TableRow>
@@ -1839,7 +1882,11 @@ const RepKPIs = ({ userId }: Props) => {
                   </TableHeader>
                   <TableBody>
                     {motivoData.map(m => (
-                      <TableRow key={m.motivo}>
+                      <TableRow
+                        key={m.motivo}
+                        className={`cursor-pointer transition-colors hover:bg-destructive/5 ${lostFilterMotivo === m.motivo ? "bg-destructive/10 border-l-2 border-l-destructive" : ""}`}
+                        onClick={() => setLostFilterMotivo(prev => prev === m.motivo ? null : m.motivo)}
+                      >
                         <TableCell className="font-medium text-sm">{m.motivo}</TableCell>
                         <TableCell className="text-center">{m.count}</TableCell>
                         <TableCell className="text-right">{m.pct.toFixed(1)}%</TableCell>
@@ -1853,30 +1900,12 @@ const RepKPIs = ({ userId }: Props) => {
                   </TableBody>
                 </Table>
               </Card>
-            </div>
 
-            {/* Motivo Chart */}
-            {motivoData.length > 0 && (
-              <Card className="p-4 sm:p-6">
-                <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-destructive" /> Motivos de Perda
-                </h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={motivoData} layout="vertical" margin={{ top: 5, right: 30, left: 10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
-                    <YAxis dataKey="motivo" type="category" width={180} tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                    <Tooltip contentStyle={{ borderRadius: 8, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} formatter={(v: number) => [v, "Qtd"]} />
-                    <Bar dataKey="count" name="Qtd" fill="hsl(var(--destructive))" radius={[0, 6, 6, 0]} maxBarSize={32} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Card>
-            )}
-
-            {/* Submotivo */}
-            {submotivoData.length > 0 && submotivoData[0].submotivo !== "Não informado" && (
+              {/* Submotivo da Perda */}
               <Card className="p-4">
-                <h3 className="text-sm font-semibold text-foreground mb-3">Submotivo da Perda</h3>
+                <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                  <Flag className="h-4 w-4 text-accent" /> Submotivo
+                </h3>
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
@@ -1885,20 +1914,24 @@ const RepKPIs = ({ userId }: Props) => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {submotivoData.map(s => (
-                      <TableRow key={s.submotivo}>
+                    {submotivoData.length > 0 ? submotivoData.map(s => (
+                      <TableRow
+                        key={s.submotivo}
+                        className={`cursor-pointer transition-colors hover:bg-accent/5 ${lostFilterSubmotivo === s.submotivo ? "bg-accent/10 border-l-2 border-l-accent" : ""}`}
+                        onClick={() => setLostFilterSubmotivo(prev => prev === s.submotivo ? null : s.submotivo)}
+                      >
                         <TableCell className="font-medium text-sm">{s.submotivo}</TableCell>
                         <TableCell className="text-center">{s.count}</TableCell>
                       </TableRow>
-                    ))}
-                    <TableRow className="bg-muted/30 font-bold">
-                      <TableCell>Total</TableCell>
-                      <TableCell className="text-center font-bold">{total}</TableCell>
-                    </TableRow>
+                    )) : (
+                      <TableRow>
+                        <TableCell colSpan={2} className="text-center text-muted-foreground text-xs py-4">Sem submotivos</TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </Card>
-            )}
+            </div>
 
             {/* Detail Table */}
             <Card className="p-4 overflow-hidden">
