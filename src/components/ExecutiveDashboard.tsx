@@ -569,18 +569,18 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
       {/* ═══ RITMO COMERCIAL ═══ */}
       <section className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">
-        <div className="bg-card rounded-xl border border-border p-4 sm:p-6 shadow-sm">
+        <div className="rounded-xl border border-white/[0.06] p-4 sm:p-6 shadow-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
           <div className="flex items-center gap-2 mb-3 sm:mb-4">
-            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-[#3B82F6]/10 flex items-center justify-center">
-              <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-[#3B82F6]" />
+            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-[#3B82F6]/15 flex items-center justify-center">
+              <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-[#60A5FA]" />
             </div>
             <div>
-              <h4 className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase">Ritmo Atual</h4>
-              <p className="font-heading text-xl sm:text-3xl font-black text-foreground">{ritmoAtual.toFixed(1)} <span className="text-sm sm:text-lg text-muted-foreground">máq / semana</span></p>
+              <h4 className="text-[10px] sm:text-xs font-semibold text-white/40 uppercase">Ritmo Atual</h4>
+              <p className="font-heading text-xl sm:text-3xl font-black text-white">{ritmoAtual.toFixed(1)} <span className="text-sm sm:text-lg text-white/35">máq / semana</span></p>
             </div>
           </div>
-          <div className={`rounded-lg px-4 py-3 ${noRitmo ? "bg-[#22C55E]/10" : "bg-[#EF4444]/10"}`}>
-            <p className={`text-sm font-medium ${noRitmo ? "text-[#22C55E]" : "text-[#EF4444]"}`}>
+          <div className={`rounded-lg px-4 py-3 ${noRitmo ? "bg-[#22C55E]/[0.08] border border-[#22C55E]/20" : "bg-[#EF4444]/[0.08] border border-[#EF4444]/20"}`}>
+            <p className={`text-sm font-medium ${noRitmo ? "text-[#4ade80]" : "text-[#F87171]"}`}>
               {noRitmo
                 ? faltam === 0
                   ? "✓ Meta já foi atingida! Manter o momento."
@@ -590,28 +590,28 @@ const ExecutiveDashboard = ({ userId }: Props) => {
             </p>
           </div>
         </div>
-        <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
+        <div className="rounded-xl border border-white/[0.06] p-6 shadow-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
           <div className="flex items-center gap-2 mb-4">
-            <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${noRitmo ? "bg-[#22C55E]/10" : "bg-[#EF4444]/10"}`}>
-              <Gauge className={`h-5 w-5 ${noRitmo ? "text-[#22C55E]" : "text-[#EF4444]"}`} />
+            <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${noRitmo ? "bg-[#22C55E]/15" : "bg-[#EF4444]/15"}`}>
+              <Gauge className={`h-5 w-5 ${noRitmo ? "text-[#4ade80]" : "text-[#F87171]"}`} />
             </div>
             <div>
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase">Ritmo Necessário</h4>
-              <p className="font-heading text-3xl font-black text-foreground">{faltam === 0 ? "0.0" : ritmoNecessario.toFixed(1)} <span className="text-lg text-muted-foreground">/ semana</span></p>
+              <h4 className="text-xs font-semibold text-white/40 uppercase">Ritmo Necessário</h4>
+              <p className="font-heading text-3xl font-black text-white">{faltam === 0 ? "0.0" : ritmoNecessario.toFixed(1)} <span className="text-lg text-white/35">/ semana</span></p>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div className="text-center bg-muted/50 rounded-lg py-2">
-              <p className="text-xs text-muted-foreground">Dias passados</p>
-              <p className="font-heading text-xl font-black text-foreground">{elapsedDays}</p>
+            <div className="text-center rounded-lg py-2" style={{ background: 'rgba(255,255,255,0.04)' }}>
+              <p className="text-xs text-white/35">Dias passados</p>
+              <p className="font-heading text-xl font-black text-white">{elapsedDays}</p>
             </div>
-            <div className="text-center bg-muted/50 rounded-lg py-2">
-              <p className="text-xs text-muted-foreground">Dias restantes</p>
-              <p className="font-heading text-xl font-black text-foreground">{diasRestantes}</p>
+            <div className="text-center rounded-lg py-2" style={{ background: 'rgba(255,255,255,0.04)' }}>
+              <p className="text-xs text-white/35">Dias restantes</p>
+              <p className="font-heading text-xl font-black text-white">{diasRestantes}</p>
             </div>
-            <div className="text-center bg-muted/50 rounded-lg py-2">
-              <p className="text-xs text-muted-foreground">Total dias</p>
-              <p className="font-heading text-xl font-black text-foreground">{totalDaysPeriod}</p>
+            <div className="text-center rounded-lg py-2" style={{ background: 'rgba(255,255,255,0.04)' }}>
+              <p className="text-xs text-white/35">Total dias</p>
+              <p className="font-heading text-xl font-black text-white">{totalDaysPeriod}</p>
             </div>
           </div>
         </div>
