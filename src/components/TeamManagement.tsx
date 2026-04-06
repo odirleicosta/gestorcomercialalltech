@@ -72,7 +72,7 @@ const QUARTER_MONTHS: Record<string, number[]> = {
   T4: [10, 11, 12],
 };
 
-type PeriodMode = "mes" | "trimestre" | "ano";
+type PeriodMode = "month" | "quarter" | "year";
 
 const TeamManagement = ({ userId }: Props) => {
   const [reps, setReps] = useState<Rep[]>([]);
