@@ -98,7 +98,7 @@ const FilterBar = ({
       </div>
 
       {/* Month selector (only in month mode) */}
-      {periodMode === "month" && (
+      {(periodMode === "month" || periodMode === "week") && (
         <>
           <div className="w-px h-5 bg-border hidden sm:block" />
           <Select value={String(month)} onValueChange={v => onMonthChange(parseInt(v))}>
