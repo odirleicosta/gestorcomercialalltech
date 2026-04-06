@@ -620,8 +620,8 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       {/* ═══ RESULTADO FINANCEIRO ═══ */}
       <section>
         <div className="flex items-center gap-2 mb-4">
-          <DollarSign className="h-5 w-5 text-[#22C55E]" />
-          <h3 className="font-heading text-lg font-bold text-foreground">Resultado Financeiro</h3>
+          <DollarSign className="h-5 w-5 text-[#4ade80]" />
+          <h3 className="font-heading text-lg font-bold text-white">Resultado Financeiro</h3>
         </div>
         <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
           <MetricCard label="Faturamento FOB" value={cur.count > 0 ? formatCompact(cur.basePrice) : "—"} icon={<DollarSign className="h-4 w-4" />} color="#3B82F6" sub={cur.count > 0 ? formatBrlCompact(cur.basePriceBrl) : undefined} />
