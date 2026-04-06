@@ -240,7 +240,7 @@ const TeamManagement = ({ userId }: Props) => {
         const metaSemanal = Math.ceil(meta / totalWeeks);
 
         const closedDeals = deals.filter((d) => {
-          if (d.representative_id !== rep.id || d.status !== "fechado") return false;
+          if (d.representative_id !== rep.id || d.status !== "closed") return false;
           if (!d.closed_at) return false;
           const dt = new Date(d.closed_at);
           return dt.getFullYear() === filterYear && activeMonths.includes(dt.getMonth() + 1);
