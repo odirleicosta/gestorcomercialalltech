@@ -229,6 +229,7 @@ const TeamManagement = ({ userId }: Props) => {
           ...rep,
           sold,
           meta,
+          metaSemanal,
           pct,
           remaining,
           perWeek,
