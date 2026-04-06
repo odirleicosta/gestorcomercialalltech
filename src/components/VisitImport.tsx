@@ -31,8 +31,6 @@ interface ParsedRow {
 
 const normalize = (s: string) => s?.toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") ?? "";
 
-const EXPECTED_COLS = ["data modificação", "data modificacao", "assunto", "cnpj", "cliente", "descrição", "descricao"];
-
 const findCol = (headers: string[], ...names: string[]): number =>
   headers.findIndex((h) => names.some((n) => normalize(h).includes(n)));
 
@@ -60,6 +58,45 @@ const parseExcelDate = (v: any): string | null => {
   if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
   return null;
 };
+
+const getWeekNumber = (d: Date): number => {
+  const start = new Date(d.getFullYear(), 0, 1);
+  const diff = d.getTime() - start.getTime() + (start.getTimezoneOffset() - d.getTimezoneOffset()) * 60000;
+  return Math.ceil((diff / 86400000 + start.getDay() + 1) / 7);
+};
+
+async function recalcWeeklyVisits(userId: string, representativeId: string) {
+  const { data: allVisits } = await supabase
+    .from("visitas_importadas" as any)
+    .select("data_visita")
+    .eq("user_id", userId)
+    .eq("representative_id", representativeId);
+
+  await supabase
+    .from("weekly_visits")
+    .delete()
+    .eq("user_id", userId)
+    .eq("representative_id", representativeId);
+
+  if (allVisits && allVisits.length > 0) {
+    const weekTotals: Record<string, number> = {};
+    for (const v of allVisits as any[]) {
+      const d = new Date(v.data_visita + "T12:00:00");
+      const ano = d.getFullYear();
+      const semana = getWeekNumber(d);
+      const key = `${ano}-${semana}`;
+      weekTotals[key] = (weekTotals[key] || 0) + 1;
+    }
+
+    const weekRecords = Object.entries(weekTotals).map(([key, qty]) => {
+      const [ano, semana] = key.split("-").map(Number);
+      return { user_id: userId, representative_id: representativeId, ano, semana, quantidade: qty, meta: 16 };
+    });
+    if (weekRecords.length > 0) {
+      await supabase.from("weekly_visits").insert(weekRecords);
+    }
+  }
+}
 
 const VisitImport = ({ userId, reps, open, onClose, onImported }: Props) => {
   const [rows, setRows] = useState<ParsedRow[]>([]);
@@ -124,19 +161,13 @@ const VisitImport = ({ userId, reps, open, onClose, onImported }: Props) => {
     e.target.value = "";
   }, []);
 
-  const getWeekNumber = (d: Date): number => {
-    const start = new Date(d.getFullYear(), 0, 1);
-    const diff = d.getTime() - start.getTime() + (start.getTimezoneOffset() - d.getTimezoneOffset()) * 60000;
-    return Math.ceil((diff / 86400000 + start.getDay() + 1) / 7);
-  };
-
   const handleImport = async () => {
     if (!selectedRep) { toast.error("Selecione o representante"); return; }
     if (validRows.length === 0) { toast.error("Nenhuma linha válida para importar"); return; }
 
     setImporting(true);
     try {
-      // 1. Build records and deduplicate within the file itself
+      // 1. Build records and deduplicate within the file
       const seen = new Set<string>();
       const uniqueRecords: { user_id: string; representative_id: string; data_visita: string; cliente: string; cnpj: string | null; assunto: string | null; descricao: string | null; hash_linha: string }[] = [];
       let dupsInFile = 0;
@@ -171,40 +202,10 @@ const VisitImport = ({ userId, reps, open, onClose, onImported }: Props) => {
       }
       const alreadyExisted = uniqueRecords.length - inserted;
 
-      // 4. ALWAYS recalculate weekly_visits from the full source of truth
-      const { data: allVisits } = await supabase
-        .from("visitas_importadas" as any)
-        .select("data_visita")
-        .eq("user_id", userId)
-        .eq("representative_id", selectedRep);
+      // 3. Recalculate weekly_visits from source of truth
+      await recalcWeeklyVisits(userId, selectedRep);
 
-      // Delete existing weekly_visits for this rep
-      await supabase
-        .from("weekly_visits")
-        .delete()
-        .eq("user_id", userId)
-        .eq("representative_id", selectedRep);
-
-      if (allVisits && allVisits.length > 0) {
-        const weekTotals: Record<string, number> = {};
-        for (const v of allVisits as any[]) {
-          const d = new Date(v.data_visita + "T12:00:00");
-          const ano = d.getFullYear();
-          const semana = getWeekNumber(d);
-          const key = `${ano}-${semana}`;
-          weekTotals[key] = (weekTotals[key] || 0) + 1;
-        }
-
-        const weekRecords = Object.entries(weekTotals).map(([key, qty]) => {
-          const [ano, semana] = key.split("-").map(Number);
-          return { user_id: userId, representative_id: selectedRep, ano, semana, quantidade: qty, meta: 16 };
-        });
-        if (weekRecords.length > 0) {
-          await supabase.from("weekly_visits").insert(weekRecords);
-        }
-      }
-
-      // 5. Clear feedback
+      // 4. Feedback
       const parts: string[] = [];
       if (inserted > 0) parts.push(`${inserted} visitas importadas`);
       if (alreadyExisted > 0) parts.push(`${alreadyExisted} já existentes`);
@@ -220,7 +221,12 @@ const VisitImport = ({ userId, reps, open, onClose, onImported }: Props) => {
       onImported();
       onClose();
     } catch (err: any) {
-      toast.error("Erro na importação: " + (err.message || "erro desconhecido"));
+      const msg = err.message || "erro desconhecido";
+      if (msg.includes("no unique or exclusion constraint")) {
+        toast.error("Erro de constraint no banco. Execute a migration mais recente antes de importar novamente.");
+      } else {
+        toast.error("Erro na importação: " + msg);
+      }
     } finally {
       setImporting(false);
     }
@@ -239,12 +245,11 @@ const VisitImport = ({ userId, reps, open, onClose, onImported }: Props) => {
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-primary" />
             Importar Visitas por Planilha
-            <Badge variant="outline" className="text-[10px] ml-2 font-mono">v4-upsert</Badge>
+            <Badge variant="outline" className="text-[10px] ml-2 font-mono">v5-constraint</Badge>
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 flex-1 overflow-hidden flex flex-col">
-          {/* File upload */}
           {rows.length === 0 && (
             <div className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-8 text-center">
               <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
@@ -261,7 +266,6 @@ const VisitImport = ({ userId, reps, open, onClose, onImported }: Props) => {
             </div>
           )}
 
-          {/* Rep selector + stats */}
           {rows.length > 0 && (
             <>
               <div className="flex flex-wrap items-end gap-4">
@@ -291,7 +295,6 @@ const VisitImport = ({ userId, reps, open, onClose, onImported }: Props) => {
                 <p className="text-xs text-muted-foreground ml-auto">{fileName}</p>
               </div>
 
-              {/* Preview table */}
               <ScrollArea className="flex-1 border rounded-md max-h-[400px]">
                 <Table>
                   <TableHeader>
