@@ -484,55 +484,57 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
       {sortedRanking.length > 0 && (
         <section>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-[#F97316]" />
-              <h3 className="font-heading text-lg font-bold text-foreground">Ranking da Equipe</h3>
+          <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-border">
+              <div className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-[#F97316]" />
+                <h3 className="font-heading text-base font-bold text-foreground">Ranking de Reps</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-[10px] font-mono">{periodLabel}</Badge>
+                {sortedRanking.length > 5 && (
+                  <button onClick={() => setShowAllReps(!showAllReps)} className="text-xs font-semibold text-[#3B82F6] hover:underline">
+                    {showAllReps ? "Menos" : "Ver todos"}
+                  </button>
+                )}
+              </div>
             </div>
-            {sortedRanking.length > 5 && (
-              <button onClick={() => setShowAllReps(!showAllReps)} className="text-xs font-semibold text-[#3B82F6] hover:underline">
-                {showAllReps ? "Mostrar menos" : "Ver todos"}
-              </button>
-            )}
-          </div>
-          <div className="space-y-2">
-            {displayedRanking.map((rep, idx) => {
-              const faltaRep = Math.max(0, rep.metaQtd - rep.count);
-              const pct = rep.pctQtd;
-              const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx+1}º`;
-              const bg = idx === 0 ? "bg-primary/5 border-primary/30"
-                : idx === 1 ? "bg-muted/50 border-border"
-                : idx === 2 ? "bg-[#F97316]/5 border-[#F97316]/20"
-                : "bg-card border-border";
+            {/* Rows */}
+            <div className="divide-y divide-border/50">
+              {displayedRanking.map((rep, idx) => {
+                const pct = rep.pctQtd;
+                const avatarColors = ["#3B82F6", "#22C55E", "#F59E0B", "#8B5CF6", "#EF4444", "#06B6D4"];
+                const avatarColor = avatarColors[idx % avatarColors.length];
+                const initials = rep.nome.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
+                const progressColor = pct >= 70 ? "#22C55E" : pct >= 40 ? "#3B82F6" : "#EF4444";
 
-              return (
-                <div key={rep.id} onClick={() => setFilterRep(rep.id)} className={`rounded-xl border p-3 sm:p-4 flex items-center gap-2 sm:gap-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer ${bg}`}>
-                  <span className="text-lg sm:text-2xl w-7 sm:w-10 text-center flex-shrink-0">{medal}</span>
-                  <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-muted flex items-center justify-center text-xs sm:text-sm font-bold text-foreground flex-shrink-0">
-                    {rep.nome.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-heading text-sm sm:text-base font-bold text-foreground truncate">{rep.nome}</p>
-                    <div className="flex items-center gap-2 sm:gap-3 mt-0.5 sm:mt-1 flex-wrap">
-                      <span className="text-[10px] sm:text-xs text-muted-foreground">Meta: <b>{rep.metaQtd}</b></span>
-                      <span className="text-[10px] sm:text-xs font-semibold text-foreground">Vendido: <b>{rep.count}</b></span>
-                      <span className="text-[10px] sm:text-xs text-muted-foreground">Visitas: <b>{visitStats.perRep.get(rep.id) || 0}</b></span>
-                      <span className={`text-[10px] sm:text-xs font-bold ${statusColor(pct)}`}>{formatPct(pct)}</span>
-                      {faltaRep > 0 && <span className="text-[10px] sm:text-xs text-muted-foreground hidden sm:inline">Faltam: <b>{faltaRep}</b></span>}
-                    </div>
-                    {/* Mini progress */}
-                    <div className="w-full max-w-[200px] h-1.5 bg-muted rounded-full mt-1.5 sm:mt-2 overflow-hidden">
-                      <div className={`h-full rounded-full transition-all duration-700 ${statusBg(pct)}`} style={{ width: `${Math.min(pct, 100)}%` }} />
-                    </div>
-                  </div>
-                  <div className="flex-shrink-0 text-right hidden sm:block">
-                    <span className={`inline-flex items-center text-xs font-bold uppercase px-2.5 py-1 rounded-full ${statusBgLight(pct)} ${statusColor(pct)}`}>
-                      {statusLabel(pct)}
+                return (
+                  <div key={rep.id} onClick={() => setFilterRep(rep.id)} className="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-muted/50 transition-colors cursor-pointer">
+                    {/* Position */}
+                    <span className={`text-sm font-bold w-6 text-center shrink-0 ${idx === 0 ? "text-[#F59E0B]" : "text-muted-foreground"}`}>
+                      {idx === 0 ? "🥇" : `${idx + 1}º`}
                     </span>
+                    {/* Avatar */}
+                    <div className="h-[30px] w-[30px] rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{ backgroundColor: avatarColor }}>
+                      {initials}
+                    </div>
+                    {/* Name + progress */}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">{rep.nome}</p>
+                      <div className="w-full max-w-[180px] h-[3px] bg-muted rounded-full mt-1.5 overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: progressColor }} />
+                      </div>
+                    </div>
+                    {/* Value */}
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold text-foreground tabular-nums">{rep.count}/{rep.metaQtd}</p>
+                      <p className={`text-[10px] font-semibold ${pct >= 70 ? "text-[#22C55E]" : pct >= 40 ? "text-[#3B82F6]" : "text-[#EF4444]"}`}>{formatPct(pct)}</p>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </section>
       )}
@@ -587,17 +589,77 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         </div>
       </section>
 
-      {/* ═══ 4) RESULTADO FINANCEIRO ═══ */}
+      {/* ═══ 4) RESULTADO FINANCEIRO — Hero Card + Secondary KPIs ═══ */}
       <section>
         <div className="flex items-center gap-2 mb-4">
           <DollarSign className="h-5 w-5 text-[#22C55E]" />
           <h3 className="font-heading text-lg font-bold text-foreground">Resultado Financeiro</h3>
         </div>
+
+        {/* Hero card — Faturamento FOB */}
+        <div className="bg-[#1a2744] rounded-2xl p-5 sm:p-7 mb-4 shadow-xl">
+          <p className="text-white/55 text-xs uppercase tracking-wide mb-1">{periodLabel}</p>
+          <p className="text-4xl font-bold text-white tracking-tight">
+            {cur.count > 0 ? formatCompact(cur.basePrice) : "—"}
+          </p>
+          <p className="text-white/45 text-xs mt-1">
+            {cur.count > 0 ? formatBrlCompact(cur.basePriceBrl) : "—"}
+          </p>
+          {/* Progress bar */}
+          {(() => {
+            const totalMetaVal = filterRep !== "all"
+              ? (repRanking.find(r => r.id === filterRep)?.metaVal || 0)
+              : repRanking.reduce((s, r) => s + (r.metaVal || 0), 0);
+            const pctFat = totalMetaVal > 0 ? Math.min((cur.basePrice / totalMetaVal) * 100, 100) : 0;
+            const pctFatRaw = totalMetaVal > 0 ? (cur.basePrice / totalMetaVal) * 100 : 0;
+            return (
+              <>
+                <div className="w-full h-1 bg-white/12 rounded-full mt-4 overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${pctFat}%`, backgroundColor: '#4ade80' }} />
+                </div>
+                <div className="flex justify-between mt-2">
+                  <span className="text-white/45 text-xs">Meta {totalMetaVal > 0 ? formatCompact(totalMetaVal) : "—"}</span>
+                  <span className="text-white/45 text-xs">Realizado {totalMetaVal > 0 ? formatPct(pctFatRaw) : "—"}</span>
+                </div>
+              </>
+            );
+          })()}
+        </div>
+
+        {/* Secondary KPI cards with trend badges */}
         <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
-          <MetricCard label="FOB Total" value={cur.count > 0 ? formatCompact(cur.basePrice) : "—"} icon={<DollarSign className="h-5 w-5" />} color="#3B82F6" sub={`${cur.count} vendas`} />
-          <MetricCard label="Ticket Médio" value={cur.count > 0 ? formatCompact(ticketMedio) : "—"} icon={<BarChart3 className="h-5 w-5" />} color="#8B5CF6" sub="FOB / máquina" />
-          <MetricCard label="Margem Média" value={cur.count > 0 ? formatPct(margemMedia) : "—"} icon={<Zap className="h-5 w-5" />} color={margemMedia >= 0 ? "#22C55E" : "#EF4444"} sub="Lucro líq. / preço base" />
-          <MetricCard label="FOB Total BRL" value={cur.count > 0 ? formatBrlCompact(cur.basePriceBrl) : "—"} icon={<DollarSign className="h-5 w-5" />} color="#F97316" sub="Convertido em R$" />
+          <KpiSecondaryCard
+            label="Máquinas Vendidas"
+            value={String(cur.count)}
+            icon={<Target className="h-4 w-4" />}
+            iconBg="#22C55E"
+            trend={prev.count > 0 ? ((cur.count - prev.count) / prev.count) * 100 : cur.count > 0 ? 100 : 0}
+            pctMeta={totalMetaQtd > 0 ? (cur.count / totalMetaQtd) * 100 : 0}
+          />
+          <KpiSecondaryCard
+            label="Margem Média"
+            value={cur.count > 0 ? formatPct(margemMedia) : "—"}
+            icon={<Zap className="h-4 w-4" />}
+            iconBg="#3B82F6"
+            trend={prev.basePrice > 0 ? margemMedia - (prev.netProfit / prev.basePrice) * 100 : 0}
+            pctMeta={margemMedia > 0 ? Math.min(margemMedia / 20 * 100, 100) : 0}
+          />
+          <KpiSecondaryCard
+            label="Lucro Líquido"
+            value={cur.count > 0 ? formatCompact(cur.netProfit) : "—"}
+            icon={<TrendingUp className="h-4 w-4" />}
+            iconBg="#22C55E"
+            trend={prev.netProfit > 0 ? ((cur.netProfit - prev.netProfit) / prev.netProfit) * 100 : cur.netProfit > 0 ? 100 : 0}
+            pctMeta={cur.basePrice > 0 ? Math.min((cur.netProfit / cur.basePrice) * 100 / 15 * 100, 100) : 0}
+          />
+          <KpiSecondaryCard
+            label="Comissões"
+            value={cur.count > 0 ? formatCompact(commTotal) : "—"}
+            icon={<DollarSign className="h-4 w-4" />}
+            iconBg="#F59E0B"
+            trend={prev.sellerComm + prev.managerComm > 0 ? ((commTotal - (prev.sellerComm + prev.managerComm)) / (prev.sellerComm + prev.managerComm)) * 100 : commTotal > 0 ? 100 : 0}
+            pctMeta={cur.basePrice > 0 ? Math.min((commTotal / cur.basePrice) * 100 / 5 * 100, 100) : 0}
+          />
         </div>
       </section>
 
@@ -861,7 +923,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   );
 };
 
-/* --- Sub-component --- */
+/* --- Sub-components --- */
 const MetricCard = ({ label, value, icon, color, sub }: {
   label: string; value: string; icon: React.ReactNode; color: string; sub?: string;
 }) => (
@@ -874,5 +936,29 @@ const MetricCard = ({ label, value, icon, color, sub }: {
     {sub && <p className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">{sub}</p>}
   </div>
 );
+
+const KpiSecondaryCard = ({ label, value, icon, iconBg, trend, pctMeta }: {
+  label: string; value: string; icon: React.ReactNode; iconBg: string; trend: number; pctMeta: number;
+}) => {
+  const progressColor = pctMeta >= 70 ? "#22C55E" : pctMeta >= 40 ? "#3B82F6" : "#EF4444";
+  const trendPositive = trend >= 0;
+  return (
+    <div className="bg-card rounded-xl border border-border p-3 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between mb-2 sm:mb-3">
+        <span className="text-[9px] sm:text-xs font-semibold text-muted-foreground uppercase leading-tight">{label}</span>
+        <div className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${iconBg}20`, color: iconBg }}>{icon}</div>
+      </div>
+      <p className="text-2xl font-semibold tracking-tight text-foreground truncate">{value}</p>
+      {trend !== 0 && (
+        <span className={`inline-flex items-center text-xs px-1.5 py-0.5 rounded mt-1.5 ${trendPositive ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"}`}>
+          {trendPositive ? "+" : ""}{trend.toFixed(0)}%
+        </span>
+      )}
+      <div className="w-full h-[3px] bg-muted rounded-full mt-3 overflow-hidden">
+        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(pctMeta, 100)}%`, backgroundColor: progressColor }} />
+      </div>
+    </div>
+  );
+};
 
 export default ExecutiveDashboard;

@@ -27,18 +27,19 @@ const BottomNavBar = ({ activeTab, onTabChange, onLogout, theme, onToggleTheme }
               <button
                 key={value}
                 onClick={() => onTabChange(value)}
-                className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg min-w-[60px] transition-all duration-200 ${
+                className={`flex flex-col items-center gap-0.5 min-w-[60px] transition-all duration-200 ${
                   isActive
-                    ? "text-primary"
-                    : "text-muted-foreground"
+                    ? "bg-[#1a2744] rounded-2xl px-4 py-2"
+                    : "px-2 py-1.5 rounded-lg"
                 }`}
               >
-                <div className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-200 ${
-                  isActive ? "bg-primary/10" : ""
+                <Icon
+                  className={`h-5 w-5 transition-all duration-200 ${isActive ? "text-white" : "text-muted-foreground"}`}
+                  strokeWidth={isActive ? 2.5 : 2}
+                />
+                <span className={`text-[10px] leading-tight transition-all duration-200 ${
+                  isActive ? "text-white font-semibold" : "text-muted-foreground font-medium"
                 }`}>
-                  <Icon className="h-5 w-5" strokeWidth={isActive ? 2.5 : 2} />
-                </div>
-                <span className={`text-[10px] leading-tight font-medium ${isActive ? "font-semibold" : ""}`}>
                   {label}
                 </span>
               </button>
@@ -48,16 +49,19 @@ const BottomNavBar = ({ activeTab, onTabChange, onLogout, theme, onToggleTheme }
           {/* More button */}
           <button
             onClick={() => setMoreOpen(true)}
-            className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg min-w-[60px] transition-all duration-200 ${
-              isMoreActive ? "text-primary" : "text-muted-foreground"
+            className={`flex flex-col items-center gap-0.5 min-w-[60px] transition-all duration-200 ${
+              isMoreActive
+                ? "bg-[#1a2744] rounded-2xl px-4 py-2"
+                : "px-2 py-1.5 rounded-lg"
             }`}
           >
-            <div className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-200 ${
-              isMoreActive ? "bg-primary/10" : ""
+            <MoreHorizontal
+              className={`h-5 w-5 transition-all duration-200 ${isMoreActive ? "text-white" : "text-muted-foreground"}`}
+              strokeWidth={isMoreActive ? 2.5 : 2}
+            />
+            <span className={`text-[10px] leading-tight transition-all duration-200 ${
+              isMoreActive ? "text-white font-semibold" : "text-muted-foreground font-medium"
             }`}>
-              <MoreHorizontal className="h-5 w-5" strokeWidth={isMoreActive ? 2.5 : 2} />
-            </div>
-            <span className={`text-[10px] leading-tight font-medium ${isMoreActive ? "font-semibold" : ""}`}>
               Mais
             </span>
           </button>
