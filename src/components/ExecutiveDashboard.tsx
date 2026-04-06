@@ -862,10 +862,10 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                     { label: "Fecham em 7d", count: alertNearDate.length, icon: <Flame className="h-4 w-4" />, color: "#F97316" },
                     { label: "Com risco", count: alertRisk.length, icon: <AlertTriangle className="h-4 w-4" />, color: "#EF4444" },
                   ].map(({ label, count, icon, color }) => count > 0 ? (
-                    <div key={label} className="bg-card rounded-xl border border-border p-3 text-center">
-                      <div className="h-8 w-8 mx-auto rounded-lg flex items-center justify-center mb-1" style={{ backgroundColor: `${color}15`, color }}>{icon}</div>
-                      <p className="font-heading text-xl font-black text-foreground">{count}</p>
-                      <p className="text-[10px] text-muted-foreground">{label}</p>
+                    <div key={label} className="rounded-xl border border-white/[0.06] p-3 text-center" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                      <div className="h-8 w-8 mx-auto rounded-lg flex items-center justify-center mb-1" style={{ backgroundColor: `${color}20`, color }}>{icon}</div>
+                      <p className="font-heading text-xl font-black text-white">{count}</p>
+                      <p className="text-[10px] text-white/35">{label}</p>
                     </div>
                   ) : null)}
                 </div>
