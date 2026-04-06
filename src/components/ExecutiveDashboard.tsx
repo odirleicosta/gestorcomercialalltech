@@ -399,73 +399,74 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         reps={reps}
       />
 
-      {/* ═══ 1) STATUS DO MÊS ═══ */}
-      <section className="bg-gradient-to-br from-[#1E293B] to-[#0F172A] rounded-2xl p-4 sm:p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/[0.02] rounded-full -translate-y-32 translate-x-32" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/[0.02] rounded-full translate-y-24 -translate-x-24" />
-        <div className="relative">
-          <div className="flex items-center gap-2 mb-4 sm:mb-6">
-            <Target className="h-4 w-4 sm:h-5 sm:w-5 text-[#3B82F6]" />
-            <h3 className="font-heading text-sm sm:text-lg font-bold uppercase tracking-wider">Status do Período</h3>
-          </div>
-
-          <div className={`grid grid-cols-3 ${activePlan ? "md:grid-cols-6" : "md:grid-cols-5"} gap-3 sm:gap-4 md:gap-6 mb-4 sm:mb-6`}>
-            <div>
-              <p className="text-white/50 text-[10px] sm:text-xs uppercase tracking-wider mb-1">Meta Oficial</p>
-              <p className="font-heading text-2xl sm:text-4xl font-black">{totalMetaQtd}</p>
-            </div>
-            {activePlan && (
-              <div>
-                <p className="text-white/50 text-[10px] sm:text-xs uppercase tracking-wider mb-1">Meta Planejada</p>
-                <p className="font-heading text-2xl sm:text-4xl font-black text-[#3B82F6]">{totalMetaQtd + activePlan.qty_machines}</p>
-                <p className="text-[10px] text-white/40 mt-0.5 hidden sm:block">+{activePlan.qty_machines} máq.</p>
-              </div>
-            )}
-            <div>
-              <p className="text-white/50 text-[10px] sm:text-xs uppercase tracking-wider mb-1">Vendidas</p>
-              <p className="font-heading text-2xl sm:text-4xl font-black text-[#22C55E]">{totalSold}</p>
-            </div>
-            <div>
-              <p className="text-white/50 text-[10px] sm:text-xs uppercase tracking-wider mb-1">Projeção</p>
-              <p className={`font-heading text-2xl sm:text-4xl font-black ${projPct >= 100 ? "text-[#22C55E]" : projPct >= 70 ? "text-[#F97316]" : "text-[#EF4444]"}`}>{projQtd}</p>
-            </div>
-            <div>
-              <p className="text-white/50 text-[10px] sm:text-xs uppercase tracking-wider mb-1">% Atingido</p>
-              <p className={`font-heading text-2xl sm:text-4xl font-black ${statusColor(pctAtingido)}`}>{formatPct(pctAtingido)}</p>
-            </div>
-            <div>
-              <p className="text-white/50 text-[10px] sm:text-xs uppercase tracking-wider mb-1">Faltam</p>
-              <p className={`font-heading text-2xl sm:text-4xl font-black ${faltam === 0 ? "text-[#22C55E]" : "text-white"}`}>{faltam}</p>
-            </div>
-          </div>
-
-          {/* Dual progress bars when plan exists */}
-          {activePlan && (
-            <div className="mb-2">
-              <div className="flex justify-between text-[10px] text-white/40 mb-1">
-                <span>Meta Oficial: {totalMetaQtd}</span>
-                <span>Meta Planejada: {totalMetaQtd + activePlan.qty_machines}</span>
-              </div>
-            </div>
-          )}
-
-          {/* Progress bar */}
-          <div className="w-full h-4 bg-white/10 rounded-full overflow-hidden mb-3">
-            <div className={`h-full rounded-full transition-all duration-1000 ${pctAtingido >= 100 ? "bg-[#22C55E]" : pctAtingido >= 70 ? "bg-[#F97316]" : "bg-[#EF4444]"}`} style={{ width: `${Math.min(pctAtingido, 100)}%` }} />
-          </div>
-
-          {/* Frase automática */}
-          <p className="text-white/70 text-sm leading-relaxed">
-            {faltam === 0
-              ? `🏆 Meta batida! Equipe já vendeu ${totalSold} máquinas no período.`
-              : `No ritmo atual fecharemos ${projQtd} máquinas. Faltam ${faltam} para a meta.`}
-            {vendasVar !== 0 && (
-              <span className={`ml-2 inline-flex items-center gap-0.5 text-xs font-bold px-2 py-0.5 rounded-full ${vendasVar > 0 ? "bg-[#22C55E]/20 text-[#22C55E]" : "bg-[#EF4444]/20 text-[#EF4444]"}`}>
-                {vendasVar > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                {vendasVar > 0 ? "+" : ""}{vendasVar.toFixed(0)}% vs anterior
-              </span>
-            )}
+      {/* ═══ 1) KPI HERO + KPIs SECUNDÁRIOS ═══ */}
+      <section className="grid gap-4 lg:grid-cols-[1.45fr_1fr] lg:items-stretch">
+        <div className="bg-[#1a2744] rounded-2xl p-5 sm:p-7 shadow-xl">
+          <p className="text-white/55 text-xs uppercase tracking-wide mb-1">{periodLabel}</p>
+          <p className="text-4xl font-bold text-white tracking-tight">
+            {cur.count > 0 ? formatCompact(cur.basePrice) : "—"}
           </p>
+          <p className="text-white/45 text-xs mt-1">
+            {cur.count > 0 ? formatBrlCompact(cur.basePriceBrl) : "—"}
+          </p>
+
+          {(() => {
+            const totalMetaVal = filterRep !== "all"
+              ? (repRanking.find(r => r.id === filterRep)?.metaVal || 0)
+              : repRanking.reduce((s, r) => s + (r.metaVal || 0), 0);
+            const pctFatRaw = totalMetaVal > 0 ? (cur.basePrice / totalMetaVal) * 100 : 0;
+            const pctFat = Math.min(pctFatRaw, 100);
+
+            return (
+              <>
+                <div className="w-full h-1 bg-white/12 rounded-full mt-4 overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-1000"
+                    style={{ width: `${pctFat}%`, backgroundColor: "#4ade80" }}
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-2 text-white/45 text-xs">
+                  <span>Meta {totalMetaVal > 0 ? formatCompact(totalMetaVal) : "—"}</span>
+                  <span>Realizado {totalMetaVal > 0 ? formatPct(pctFatRaw) : "—"}</span>
+                </div>
+              </>
+            );
+          })()}
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
+          <KpiSecondaryCard
+            label="Máquinas Vendidas"
+            value={String(cur.count)}
+            icon={<Target className="h-4 w-4" />}
+            iconBg="#22C55E"
+            trend={prev.count > 0 ? ((cur.count - prev.count) / prev.count) * 100 : cur.count > 0 ? 100 : 0}
+            pctMeta={totalMetaQtd > 0 ? (cur.count / totalMetaQtd) * 100 : 0}
+          />
+          <KpiSecondaryCard
+            label="Margem Média"
+            value={cur.count > 0 ? formatPct(margemMedia) : "—"}
+            icon={<Zap className="h-4 w-4" />}
+            iconBg="#3B82F6"
+            trend={prev.basePrice > 0 ? margemMedia - (prev.netProfit / prev.basePrice) * 100 : 0}
+            pctMeta={margemMedia > 0 ? Math.min((margemMedia / 20) * 100, 100) : 0}
+          />
+          <KpiSecondaryCard
+            label="Lucro Líquido"
+            value={cur.count > 0 ? formatCompact(cur.netProfit) : "—"}
+            icon={<TrendingUp className="h-4 w-4" />}
+            iconBg="#22C55E"
+            trend={prev.netProfit > 0 ? ((cur.netProfit - prev.netProfit) / prev.netProfit) * 100 : cur.netProfit > 0 ? 100 : 0}
+            pctMeta={cur.basePrice > 0 ? Math.min((((cur.netProfit / cur.basePrice) * 100) / 15) * 100, 100) : 0}
+          />
+          <KpiSecondaryCard
+            label="Comissões"
+            value={cur.count > 0 ? formatCompact(commTotal) : "—"}
+            icon={<DollarSign className="h-4 w-4" />}
+            iconBg="#F59E0B"
+            trend={prev.sellerComm + prev.managerComm > 0 ? ((commTotal - (prev.sellerComm + prev.managerComm)) / (prev.sellerComm + prev.managerComm)) * 100 : commTotal > 0 ? 100 : 0}
+            pctMeta={cur.basePrice > 0 ? Math.min((((commTotal / cur.basePrice) * 100) / 5) * 100, 100) : 0}
+          />
         </div>
       </section>
 
