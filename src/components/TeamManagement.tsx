@@ -99,7 +99,7 @@ const TeamManagement = ({ userId }: Props) => {
     const load = async () => {
       setLoading(true);
       const [repsRes, dealsRes, goalsRes, oppsRes, visitsRes, closingRes] = await Promise.all([
-        supabase.from("representatives").select("id, nome, meta_quantidade").eq("user_id", userId).eq("status", "ativo"),
+        supabase.from("representatives").select("id, nome, meta_quantidade").eq("user_id", userId).ilike("status", "ativo"),
         supabase.from("deals").select("id, representative_id, status, closed_at, created_at, machine_type").eq("user_id", userId),
         supabase.from("monthly_goals").select("representative_id, mes, ano, meta_quantidade").eq("user_id", userId),
         supabase.from("monthly_opportunities").select("representative_id, mes, ano, quantidade").eq("user_id", userId),
