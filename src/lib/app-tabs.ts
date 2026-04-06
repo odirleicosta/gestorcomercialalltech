@@ -8,6 +8,7 @@ import {
   Target,
   UserPlus,
   Users,
+  UsersRound,
   Zap,
 } from "lucide-react";
 
