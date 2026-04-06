@@ -1740,8 +1740,19 @@ const RepKPIs = ({ userId }: Props) => {
         const total = periodFiltered.reduce((s, d) => s + ((d as any).quantidade || 1), 0);
         const totalValor = periodFiltered.reduce((s, d) => s + (d.deal_value || 0), 0);
 
+        // Cross-filtered data for summary tables
+        const crossFiltered = periodFiltered.filter(d => {
+          if (lostFilterRep) {
+            const repName = reps.find(r => r.id === d.representative_id)?.nome || "Sem Rep";
+            if (repName !== lostFilterRep) return false;
+          }
+          if (lostFilterMotivo && (d.motivo_perda || "Não informado") !== lostFilterMotivo) return false;
+          if (lostFilterSubmotivo && (d.motivo_perda_detalhe || "Não informado") !== lostFilterSubmotivo) return false;
+          return true;
+        });
+
         const byRep: Record<string, { repId: string | null; count: number }> = {};
-        periodFiltered.forEach(d => {
+        crossFiltered.forEach(d => {
           const repName = reps.find(r => r.id === d.representative_id)?.nome || "Sem Rep";
           if (!byRep[repName]) byRep[repName] = { repId: d.representative_id, count: 0 };
           byRep[repName].count += ((d as any).quantidade || 1);
@@ -1749,16 +1760,17 @@ const RepKPIs = ({ userId }: Props) => {
         const repData = Object.entries(byRep).sort((a, b) => b[1].count - a[1].count).map(([nome, v]) => ({ nome, count: v.count, repId: v.repId }));
 
         const byMotivo: Record<string, number> = {};
-        periodFiltered.forEach(d => {
+        crossFiltered.forEach(d => {
           const motivo = d.motivo_perda || "Não informado";
           byMotivo[motivo] = (byMotivo[motivo] || 0) + ((d as any).quantidade || 1);
         });
+        const crossTotal = crossFiltered.reduce((s, d) => s + ((d as any).quantidade || 1), 0);
         const motivoData = Object.entries(byMotivo).sort((a, b) => b[1] - a[1]).map(([motivo, count]) => ({
-          motivo, count, pct: total > 0 ? (count / total * 100) : 0,
+          motivo, count, pct: crossTotal > 0 ? (count / crossTotal * 100) : 0,
         }));
 
         const bySubmotivo: Record<string, number> = {};
-        periodFiltered.forEach(d => {
+        crossFiltered.forEach(d => {
           const sub = d.motivo_perda_detalhe || "Não informado";
           bySubmotivo[sub] = (bySubmotivo[sub] || 0) + ((d as any).quantidade || 1);
         });
