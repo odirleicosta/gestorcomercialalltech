@@ -407,12 +407,12 @@ const ExecutiveDashboard = ({ userId }: Props) => {
           <div>
             <p className="text-white/50 text-[10px] uppercase tracking-[0.2em] font-semibold mb-4">{periodLabel}</p>
             <div className="flex items-baseline gap-3">
-              <span className="text-7xl sm:text-8xl font-black text-white tracking-tighter drop-shadow-[0_2px_12px_rgba(255,255,255,0.12)]">{totalSold}</span>
+              <span className="text-8xl sm:text-9xl font-black text-white tracking-tighter drop-shadow-[0_4px_16px_rgba(255,255,255,0.15)]" style={{ textShadow: "0 0 40px rgba(255,255,255,0.08)" }}>{totalSold}</span>
               <span className="text-xl sm:text-2xl font-medium text-white/25">/ {totalMetaQtd}</span>
               <span className="text-base text-white/20 font-normal">máquinas</span>
             </div>
             <div className="flex items-center gap-3 mt-3 flex-wrap">
-              <span className={`inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1 rounded-full ${
+              <span className={`inline-flex items-center gap-1.5 text-sm font-extrabold px-3.5 py-1.5 rounded-full shadow-sm ${
                 pctAtingido >= 100 ? "bg-[#22C55E]/20 text-[#4ade80]" :
                 pctAtingido >= 70 ? "bg-[#F59E0B]/20 text-[#FBBF24]" :
                 "bg-[#EF4444]/20 text-[#F87171]"
@@ -430,11 +430,16 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                 <span>Necessário: <span className="text-white/60 font-semibold">{ritmoNecessario.toFixed(1)} máq/semana</span></span>
               </div>
             )}
+            {faltam > 0 && diasRestantes > 0 && diasRestantes <= 21 && (
+              <p className="mt-2 text-xs font-bold text-[#F87171]/90 animate-pulse">
+                ⚡ Precisa fechar {Math.ceil(faltam / Math.max(1, Math.ceil(diasRestantes / 7)))} máquinas nos próximos 7 dias
+              </p>
+            )}
           </div>
 
           {/* Progress bar */}
           <div className="mt-6">
-            <div className="w-full h-3.5 bg-white/[0.07] rounded-full overflow-hidden shadow-inner">
+            <div className="w-full h-4 bg-white/[0.07] rounded-full overflow-hidden shadow-[inset_0_2px_4px_rgba(0,0,0,0.3)]">
               <div
                 className="h-full rounded-full transition-all duration-1000 shadow-lg"
                 style={{
