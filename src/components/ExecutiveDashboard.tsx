@@ -399,55 +399,68 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         reps={reps}
       />
 
-      {/* ═══ 1) KPI HERO + KPIs SECUNDÁRIOS ═══ */}
-      <section className="grid gap-4 lg:grid-cols-[1.45fr_1fr] lg:items-stretch">
-        <div className="bg-[#1a2744] rounded-2xl p-5 sm:p-7 shadow-xl">
-          <p className="text-white/55 text-xs uppercase tracking-wide mb-1">{periodLabel}</p>
-          <p className="text-4xl font-bold text-white tracking-tight">
-            {cur.count > 0 ? formatCompact(cur.basePrice) : "—"}
-          </p>
-          <p className="text-white/45 text-xs mt-1">
-            {cur.count > 0 ? formatBrlCompact(cur.basePriceBrl) : "—"}
-          </p>
+      {/* ═══ 1) HERO — MÁQUINAS VENDIDAS ═══ */}
+      <section className="grid gap-4 lg:grid-cols-[1.5fr_1fr] lg:items-stretch">
+        <div className="bg-[#1a2744] rounded-2xl p-5 sm:p-7 shadow-xl flex flex-col justify-between">
+          <div>
+            <p className="text-white/50 text-[10px] uppercase tracking-widest font-semibold mb-3">{periodLabel}</p>
+            <div className="flex items-baseline gap-3">
+              <span className="text-5xl sm:text-6xl font-black text-white tracking-tighter">{totalSold}</span>
+              <span className="text-xl sm:text-2xl font-semibold text-white/40">/ {totalMetaQtd}</span>
+              <span className="text-lg text-white/35 font-medium">máquinas</span>
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${
+                pctAtingido >= 100 ? "bg-[#22C55E]/20 text-[#4ade80]" :
+                pctAtingido >= 70 ? "bg-[#F59E0B]/20 text-[#FBBF24]" :
+                "bg-[#EF4444]/20 text-[#F87171]"
+              }`}>
+                {pctAtingido >= 100 ? "✓" : pctAtingido >= 70 ? "●" : "⚠"} {formatPct(pctAtingido)}
+              </span>
+              <span className="text-white/30 text-xs">
+                {faltam > 0 ? `Faltam ${faltam}` : "Meta batida!"}
+              </span>
+            </div>
+          </div>
 
-          {(() => {
-            const totalMetaVal = filterRep !== "all"
-              ? (repRanking.find(r => r.id === filterRep)?.metaVal || 0)
-              : repRanking.reduce((s, r) => s + (r.metaVal || 0), 0);
-            const pctFatRaw = totalMetaVal > 0 ? (cur.basePrice / totalMetaVal) * 100 : 0;
-            const pctFat = Math.min(pctFatRaw, 100);
-
-            return (
-              <>
-                <div className="w-full h-1 bg-white/12 rounded-full mt-4 overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-1000"
-                    style={{ width: `${pctFat}%`, backgroundColor: "#4ade80" }}
-                  />
-                </div>
-                <div className="flex items-center justify-between mt-2 text-white/45 text-xs">
-                  <span>Meta {totalMetaVal > 0 ? formatCompact(totalMetaVal) : "—"}</span>
-                  <span>Realizado {totalMetaVal > 0 ? formatPct(pctFatRaw) : "—"}</span>
-                </div>
-              </>
-            );
-          })()}
+          {/* Progress bar */}
+          <div className="mt-5">
+            <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-1000"
+                style={{
+                  width: `${Math.min(pctAtingido, 100)}%`,
+                  backgroundColor: pctAtingido >= 100 ? "#4ade80" : pctAtingido >= 70 ? "#FBBF24" : "#F87171",
+                }}
+              />
+            </div>
+            <div className="flex items-center justify-between mt-2 text-white/35 text-[10px]">
+              <span>Faturamento: {cur.count > 0 ? formatCompact(cur.basePrice) : "—"}</span>
+              <span>Projeção: {projQtd} máq ({formatPct(projPct)})</span>
+            </div>
+          </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-2">
+        {/* KPIs SECUNDÁRIOS */}
+        <div className="grid gap-3 sm:grid-cols-2">
           <KpiSecondaryCard
-            label="Máquinas Vendidas"
-            value={String(cur.count)}
-            icon={<Target className="h-4 w-4" />}
-            iconBg="#22C55E"
-            trend={prev.count > 0 ? ((cur.count - prev.count) / prev.count) * 100 : cur.count > 0 ? 100 : 0}
-            pctMeta={totalMetaQtd > 0 ? (cur.count / totalMetaQtd) * 100 : 0}
+            label="Faturamento FOB"
+            value={cur.count > 0 ? formatCompact(cur.basePrice) : "—"}
+            icon={<DollarSign className="h-4 w-4" />}
+            iconBg="#3B82F6"
+            trend={prev.basePrice > 0 ? ((cur.basePrice - prev.basePrice) / prev.basePrice) * 100 : cur.basePrice > 0 ? 100 : 0}
+            pctMeta={(() => {
+              const totalMetaVal = filterRep !== "all"
+                ? (repRanking.find(r => r.id === filterRep)?.metaVal || 0)
+                : repRanking.reduce((s, r) => s + (r.metaVal || 0), 0);
+              return totalMetaVal > 0 ? (cur.basePrice / totalMetaVal) * 100 : 0;
+            })()}
           />
           <KpiSecondaryCard
             label="Margem Média"
             value={cur.count > 0 ? formatPct(margemMedia) : "—"}
             icon={<Zap className="h-4 w-4" />}
-            iconBg="#3B82F6"
+            iconBg="#8B5CF6"
             trend={prev.basePrice > 0 ? margemMedia - (prev.netProfit / prev.basePrice) * 100 : 0}
             pctMeta={margemMedia > 0 ? Math.min((margemMedia / 20) * 100, 100) : 0}
           />
@@ -477,20 +490,31 @@ const ExecutiveDashboard = ({ userId }: Props) => {
           <h3 className="font-heading text-lg font-bold text-foreground">Atividade da Equipe</h3>
         </div>
         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
-          <MetricCard label="Total de Visitas" value={String(visitStats.totalVisitas)} icon={<Eye className="h-5 w-5" />} color="#8B5CF6" sub={`no período`} />
-          <MetricCard label="Média por Vendedor" value={visitStats.media.toFixed(1)} icon={<Users className="h-5 w-5" />} color="#3B82F6" sub="visitas / rep" />
-          <MetricCard label="% Meta de Visitas" value={formatPct(visitStats.pctMeta)} icon={<Target className="h-5 w-5" />} color={visitStats.pctMeta >= 100 ? "#22C55E" : visitStats.pctMeta >= 70 ? "#F97316" : "#EF4444"} sub={`${visitStats.totalVisitas} de ${visitStats.totalMeta}`} />
+          <div className="bg-card rounded-xl border border-border p-4 sm:p-5 shadow-sm text-center">
+            <p className="font-heading text-3xl sm:text-4xl font-black text-foreground">{visitStats.totalVisitas}</p>
+            <p className="text-xs text-muted-foreground mt-1">Visitas no período</p>
+          </div>
+          <div className="bg-card rounded-xl border border-border p-4 sm:p-5 shadow-sm text-center">
+            <p className="font-heading text-3xl sm:text-4xl font-black text-foreground">{visitStats.media.toFixed(1)}</p>
+            <p className="text-xs text-muted-foreground mt-1">Média por vendedor</p>
+          </div>
+          <div className="bg-card rounded-xl border border-border p-4 sm:p-5 shadow-sm text-center">
+            <p className={`font-heading text-3xl sm:text-4xl font-black ${visitStats.pctMeta >= 100 ? "text-[#22C55E]" : visitStats.pctMeta >= 70 ? "text-[#F97316]" : "text-[#EF4444]"}`}>
+              {formatPct(visitStats.pctMeta)}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">{visitStats.totalVisitas} de {visitStats.totalMeta} visitas</p>
+          </div>
         </div>
       </section>
 
+      {/* ═══ RANKING DE REPS — MÁQUINAS ═══ */}
       {sortedRanking.length > 0 && (
         <section>
           <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-            {/* Header */}
             <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-border">
               <div className="flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-[#F97316]" />
-                <h3 className="font-heading text-base font-bold text-foreground">Ranking de Reps</h3>
+                <Trophy className="h-5 w-5 text-[#F59E0B]" />
+                <h3 className="font-heading text-base font-bold text-foreground">Ranking — Máquinas Vendidas</h3>
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="text-[10px] font-mono">{periodLabel}</Badge>
@@ -501,36 +525,38 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                 )}
               </div>
             </div>
-            {/* Rows */}
             <div className="divide-y divide-border/50">
               {displayedRanking.map((rep, idx) => {
                 const pct = rep.pctQtd;
-                const avatarColors = ["#3B82F6", "#22C55E", "#F59E0B", "#8B5CF6", "#EF4444", "#06B6D4"];
+                const medals = ["🥇", "🥈", "🥉"];
+                const medal = idx < 3 ? medals[idx] : null;
+                const avatarColors = ["#F59E0B", "#94A3B8", "#CD7F32", "#3B82F6", "#22C55E", "#8B5CF6"];
                 const avatarColor = avatarColors[idx % avatarColors.length];
-                const initials = rep.nome.split(" ").map(w => w[0]).slice(0, 2).join("").toUpperCase();
-                const progressColor = pct >= 70 ? "#22C55E" : pct >= 40 ? "#3B82F6" : "#EF4444";
+                const initials = rep.nome.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase();
+                const progressColor = pct >= 100 ? "#22C55E" : pct >= 70 ? "#F59E0B" : "#EF4444";
+                const visitCount = visitStats.perRep.get(rep.id) || 0;
 
                 return (
-                  <div key={rep.id} onClick={() => setFilterRep(rep.id)} className="flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-muted/50 transition-colors cursor-pointer">
-                    {/* Position */}
-                    <span className={`text-sm font-bold w-6 text-center shrink-0 ${idx === 0 ? "text-[#F59E0B]" : "text-muted-foreground"}`}>
-                      {idx === 0 ? "🥇" : `${idx + 1}º`}
+                  <div key={rep.id} onClick={() => setFilterRep(rep.id)} className={`flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-muted/50 transition-colors cursor-pointer ${idx === 0 ? "bg-[#F59E0B]/[0.04]" : ""}`}>
+                    <span className="text-base font-bold w-7 text-center shrink-0">
+                      {medal || <span className="text-muted-foreground text-sm">#{idx + 1}</span>}
                     </span>
-                    {/* Avatar */}
-                    <div className="h-[30px] w-[30px] rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{ backgroundColor: avatarColor }}>
+                    <div className="h-[32px] w-[32px] rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{ backgroundColor: avatarColor }}>
                       {initials}
                     </div>
-                    {/* Name + progress */}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground truncate">{rep.nome}</p>
-                      <div className="w-full max-w-[180px] h-[3px] bg-muted rounded-full mt-1.5 overflow-hidden">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold text-foreground truncate">{rep.nome}</p>
+                        {pct >= 100 && <span className="text-[9px] bg-[#22C55E]/15 text-[#22C55E] font-bold px-1.5 py-0.5 rounded-full shrink-0">META ✓</span>}
+                      </div>
+                      <div className="w-full max-w-[200px] h-[4px] bg-muted rounded-full mt-1.5 overflow-hidden">
                         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: progressColor }} />
                       </div>
                     </div>
-                    {/* Value */}
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-foreground tabular-nums">{rep.count}/{rep.metaQtd}</p>
-                      <p className={`text-[10px] font-semibold ${pct >= 70 ? "text-[#22C55E]" : pct >= 40 ? "text-[#3B82F6]" : "text-[#EF4444]"}`}>{formatPct(pct)}</p>
+                    <div className="text-right shrink-0 space-y-0.5">
+                      <p className="text-sm font-black text-foreground tabular-nums">{rep.count} / {rep.metaQtd}</p>
+                      <p className={`text-[10px] font-semibold ${pct >= 100 ? "text-[#22C55E]" : pct >= 70 ? "text-[#F59E0B]" : "text-[#EF4444]"}`}>{formatPct(pct)}</p>
+                      <p className="text-[9px] text-muted-foreground">{visitCount} visitas</p>
                     </div>
                   </div>
                 );
@@ -540,7 +566,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         </section>
       )}
 
-      {/* ═══ 3) RITMO COMERCIAL ═══ */}
+      {/* ═══ RITMO COMERCIAL ═══ */}
       <section className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">
         <div className="bg-card rounded-xl border border-border p-4 sm:p-6 shadow-sm">
           <div className="flex items-center gap-2 mb-3 sm:mb-4">
@@ -549,7 +575,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
             </div>
             <div>
               <h4 className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase">Ritmo Atual</h4>
-              <p className="font-heading text-xl sm:text-3xl font-black text-foreground">{ritmoAtual.toFixed(1)} <span className="text-sm sm:text-lg text-muted-foreground">/ semana</span></p>
+              <p className="font-heading text-xl sm:text-3xl font-black text-foreground">{ritmoAtual.toFixed(1)} <span className="text-sm sm:text-lg text-muted-foreground">máq / semana</span></p>
             </div>
           </div>
           <div className={`rounded-lg px-4 py-3 ${noRitmo ? "bg-[#22C55E]/10" : "bg-[#EF4444]/10"}`}>
@@ -557,8 +583,8 @@ const ExecutiveDashboard = ({ userId }: Props) => {
               {noRitmo
                 ? faltam === 0
                   ? "✓ Meta já foi atingida! Manter o momento."
-                  : `✓ Ritmo atual é suficiente. Continue vendendo ${ritmoAtual.toFixed(1)} máquinas/semana para bater a meta.`
-                : `⚠ Ritmo insuficiente. É necessário acelerar para ${ritmoNecessario.toFixed(1)} máquinas/semana nos próximos ${Math.ceil(diasRestantes)} dias.`
+                  : `✓ Ritmo suficiente — vendendo ${ritmoAtual.toFixed(1)} máq/sem.`
+                : `⚠ Ritmo insuficiente — precisa ${ritmoNecessario.toFixed(1)} máq/sem nos próximos ${Math.ceil(diasRestantes)} dias.`
               }
             </p>
           </div>
@@ -590,89 +616,28 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         </div>
       </section>
 
-      {/* ═══ 4) RESULTADO FINANCEIRO — Hero Card + Secondary KPIs ═══ */}
+      {/* ═══ RESULTADO FINANCEIRO ═══ */}
       <section>
         <div className="flex items-center gap-2 mb-4">
           <DollarSign className="h-5 w-5 text-[#22C55E]" />
           <h3 className="font-heading text-lg font-bold text-foreground">Resultado Financeiro</h3>
         </div>
-
-        {/* Hero card — Faturamento FOB */}
-        <div className="bg-[#1a2744] rounded-2xl p-5 sm:p-7 mb-4 shadow-xl">
-          <p className="text-white/55 text-xs uppercase tracking-wide mb-1">{periodLabel}</p>
-          <p className="text-4xl font-bold text-white tracking-tight">
-            {cur.count > 0 ? formatCompact(cur.basePrice) : "—"}
-          </p>
-          <p className="text-white/45 text-xs mt-1">
-            {cur.count > 0 ? formatBrlCompact(cur.basePriceBrl) : "—"}
-          </p>
-          {/* Progress bar */}
-          {(() => {
-            const totalMetaVal = filterRep !== "all"
-              ? (repRanking.find(r => r.id === filterRep)?.metaVal || 0)
-              : repRanking.reduce((s, r) => s + (r.metaVal || 0), 0);
-            const pctFat = totalMetaVal > 0 ? Math.min((cur.basePrice / totalMetaVal) * 100, 100) : 0;
-            const pctFatRaw = totalMetaVal > 0 ? (cur.basePrice / totalMetaVal) * 100 : 0;
-            return (
-              <>
-                <div className="w-full h-1 bg-white/12 rounded-full mt-4 overflow-hidden">
-                  <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${pctFat}%`, backgroundColor: '#4ade80' }} />
-                </div>
-                <div className="flex justify-between mt-2">
-                  <span className="text-white/45 text-xs">Meta {totalMetaVal > 0 ? formatCompact(totalMetaVal) : "—"}</span>
-                  <span className="text-white/45 text-xs">Realizado {totalMetaVal > 0 ? formatPct(pctFatRaw) : "—"}</span>
-                </div>
-              </>
-            );
-          })()}
-        </div>
-
-        {/* Secondary KPI cards with trend badges */}
         <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
-          <KpiSecondaryCard
-            label="Máquinas Vendidas"
-            value={String(cur.count)}
-            icon={<Target className="h-4 w-4" />}
-            iconBg="#22C55E"
-            trend={prev.count > 0 ? ((cur.count - prev.count) / prev.count) * 100 : cur.count > 0 ? 100 : 0}
-            pctMeta={totalMetaQtd > 0 ? (cur.count / totalMetaQtd) * 100 : 0}
-          />
-          <KpiSecondaryCard
-            label="Margem Média"
-            value={cur.count > 0 ? formatPct(margemMedia) : "—"}
-            icon={<Zap className="h-4 w-4" />}
-            iconBg="#3B82F6"
-            trend={prev.basePrice > 0 ? margemMedia - (prev.netProfit / prev.basePrice) * 100 : 0}
-            pctMeta={margemMedia > 0 ? Math.min(margemMedia / 20 * 100, 100) : 0}
-          />
-          <KpiSecondaryCard
-            label="Lucro Líquido"
-            value={cur.count > 0 ? formatCompact(cur.netProfit) : "—"}
-            icon={<TrendingUp className="h-4 w-4" />}
-            iconBg="#22C55E"
-            trend={prev.netProfit > 0 ? ((cur.netProfit - prev.netProfit) / prev.netProfit) * 100 : cur.netProfit > 0 ? 100 : 0}
-            pctMeta={cur.basePrice > 0 ? Math.min((cur.netProfit / cur.basePrice) * 100 / 15 * 100, 100) : 0}
-          />
-          <KpiSecondaryCard
-            label="Comissões"
-            value={cur.count > 0 ? formatCompact(commTotal) : "—"}
-            icon={<DollarSign className="h-4 w-4" />}
-            iconBg="#F59E0B"
-            trend={prev.sellerComm + prev.managerComm > 0 ? ((commTotal - (prev.sellerComm + prev.managerComm)) / (prev.sellerComm + prev.managerComm)) * 100 : commTotal > 0 ? 100 : 0}
-            pctMeta={cur.basePrice > 0 ? Math.min((commTotal / cur.basePrice) * 100 / 5 * 100, 100) : 0}
-          />
+          <MetricCard label="Faturamento FOB" value={cur.count > 0 ? formatCompact(cur.basePrice) : "—"} icon={<DollarSign className="h-4 w-4" />} color="#3B82F6" sub={cur.count > 0 ? formatBrlCompact(cur.basePriceBrl) : undefined} />
+          <MetricCard label="Ticket Médio" value={cur.count > 0 ? formatCompact(ticketMedio) : "—"} icon={<BarChart3 className="h-4 w-4" />} color="#8B5CF6" />
+          <MetricCard label="Margem Média" value={cur.count > 0 ? formatPct(margemMedia) : "—"} icon={<Zap className="h-4 w-4" />} color={margemMedia >= 10 ? "#22C55E" : "#EF4444"} />
+          <MetricCard label="Comissões" value={cur.count > 0 ? formatCompact(commTotal) : "—"} icon={<DollarSign className="h-4 w-4" />} color="#F59E0B" />
         </div>
       </section>
 
-      {/* ═══ 5) TENDÊNCIA ═══ */}
+      {/* ═══ TENDÊNCIA ═══ */}
       <section>
         <div className="flex items-center gap-2 mb-4">
           <TrendingUp className="h-5 w-5 text-[#3B82F6]" />
           <h3 className="font-heading text-lg font-bold text-foreground">Tendência</h3>
         </div>
         <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-3">
-          {/* Trend card */}
-           <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
+          <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
             <div className="flex items-center gap-3 mb-3">
               <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${trend3m.icon === "up" ? "bg-[#22C55E]/10" : trend3m.icon === "down" ? "bg-[#EF4444]/10" : "bg-[#F97316]/10"}`}>
                 {trend3m.icon === "up" ? <TrendingUp className="h-5 w-5 text-[#22C55E]" /> : trend3m.icon === "down" ? <TrendingDown className="h-5 w-5 text-[#EF4444]" /> : <Minus className="h-5 w-5 text-[#F97316]" />}
@@ -682,28 +647,26 @@ const ExecutiveDashboard = ({ userId }: Props) => {
             <p className={`font-heading text-2xl font-black ${trend3m.icon === "up" ? "text-[#22C55E]" : trend3m.icon === "down" ? "text-[#EF4444]" : "text-[#F97316]"}`}>{trend3m.label}</p>
             <p className="text-xs text-muted-foreground mt-1">vs média últimos 3 meses</p>
           </div>
-          {/* Comparison */}
           <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
             <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">Comparativos</h4>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Mês anterior</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-foreground">{trend3m.prevMonth} vendas</span>
+                  <span className="text-sm font-bold text-foreground">{trend3m.prevMonth} máq</span>
                   {vendasVar !== 0 && <span className={`text-xs font-bold ${vendasVar > 0 ? "text-[#22C55E]" : "text-[#EF4444]"}`}>{vendasVar > 0 ? "+" : ""}{vendasVar.toFixed(0)}%</span>}
                 </div>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Média 3 meses</span>
-                <span className="text-sm font-bold text-foreground">{trend3m.avg.toFixed(1)} vendas</span>
+                <span className="text-sm font-bold text-foreground">{trend3m.avg.toFixed(1)} máq</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm text-muted-foreground">Período atual</span>
-                <span className="text-sm font-black text-foreground">{cur.count} vendas</span>
+                <span className="text-sm font-black text-foreground">{cur.count} máq</span>
               </div>
             </div>
           </div>
-          {/* Evolution mini-chart */}
           <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
             <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">Evolução 6 Meses</h4>
             <ResponsiveContainer width="100%" height={120}>
@@ -715,7 +678,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <Area type="monotone" dataKey="Faturamento" stroke="#3B82F6" fill="url(#gradTrend)" strokeWidth={2} />
+                <Area type="monotone" dataKey="Vendas" stroke="#3B82F6" fill="url(#gradTrend)" strokeWidth={2.5} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -752,7 +715,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         </div>
       </section>
 
-      {/* ═══ 6) RESUMO EXECUTIVO ═══ */}
+      {/* ═══ RESUMO EXECUTIVO ═══ */}
       <section className="bg-gradient-to-br from-[#1E293B] to-[#334155] rounded-2xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="absolute top-0 right-0 w-48 h-48 bg-white/[0.03] rounded-full -translate-y-20 translate-x-20" />
         <div className="relative">
@@ -760,10 +723,59 @@ const ExecutiveDashboard = ({ userId }: Props) => {
             <FileText className="h-5 w-5 text-[#3B82F6]" />
             <h3 className="font-heading text-lg font-bold uppercase tracking-wider">Resumo Executivo</h3>
           </div>
-          <div className="space-y-3">
-            {resumoExecutivo.map((line, i) => (
-              <p key={i} className="text-sm leading-relaxed text-white/90">{line}</p>
-            ))}
+          <div className="grid gap-4 sm:grid-cols-3">
+            {/* Destaques */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5 mb-2">
+                <div className="h-2 w-2 rounded-full bg-[#22C55E]" />
+                <span className="text-xs font-bold uppercase tracking-wider text-[#4ade80]">Destaques</span>
+              </div>
+              {(() => {
+                const positivos: string[] = [];
+                if (topPerformer && topPerformer.pctQtd >= 100) positivos.push(`${topPerformer.nome} bateu a meta`);
+                if (vendasVar > 10) positivos.push(`Vendas +${vendasVar.toFixed(0)}% vs anterior`);
+                if (margemMedia > 15) positivos.push(`Margem saudável: ${formatPct(margemMedia)}`);
+                if (noRitmo && faltam > 0) positivos.push("Ritmo suficiente para a meta");
+                if (pctAtingido >= 100) positivos.push("Meta superada!");
+                return positivos.length > 0
+                  ? positivos.map((p, i) => <p key={i} className="text-xs text-white/80 leading-relaxed">✅ {p}</p>)
+                  : <p className="text-xs text-white/40">Nenhum destaque</p>;
+              })()}
+            </div>
+            {/* Atenção */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5 mb-2">
+                <div className="h-2 w-2 rounded-full bg-[#F59E0B]" />
+                <span className="text-xs font-bold uppercase tracking-wider text-[#FBBF24]">Atenção</span>
+              </div>
+              {(() => {
+                const atencao: string[] = [];
+                if (pctAtingido < 100 && pctAtingido >= 50) atencao.push(`${formatPct(pctAtingido)} da meta — acompanhar`);
+                if (!noRitmo && diasRestantes > 0) atencao.push(`Ritmo ${ritmoAtual.toFixed(1)}/sem (precisa ${ritmoNecessario.toFixed(1)})`);
+                if (margemMedia < 10 && margemMedia >= 5 && cur.count > 0) atencao.push(`Margem moderada: ${formatPct(margemMedia)}`);
+                return atencao.length > 0
+                  ? atencao.map((a, i) => <p key={i} className="text-xs text-white/80 leading-relaxed">⚠️ {a}</p>)
+                  : <p className="text-xs text-white/40">Sem pontos de atenção</p>;
+              })()}
+            </div>
+            {/* Alertas */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5 mb-2">
+                <div className="h-2 w-2 rounded-full bg-[#EF4444]" />
+                <span className="text-xs font-bold uppercase tracking-wider text-[#F87171]">Alertas</span>
+              </div>
+              {(() => {
+                const alertas: string[] = [];
+                const repsAbaixo = (repRanking || []).filter(r => r.metaQtd > 0 && r.pctQtd < 70);
+                if (repsAbaixo.length > 0) alertas.push(`${repsAbaixo.length} rep${repsAbaixo.length > 1 ? "s" : ""} abaixo de 70%`);
+                if (pctAtingido < 50) alertas.push(`Apenas ${formatPct(pctAtingido)} da meta`);
+                if (margemMedia < 5 && cur.count > 0) alertas.push(`Margem crítica: ${formatPct(margemMedia)}`);
+                if (trend3m.icon === "down") alertas.push("Tendência de queda");
+                return alertas.length > 0
+                  ? alertas.map((a, i) => <p key={i} className="text-xs text-white/80 leading-relaxed">🔴 {a}</p>)
+                  : <p className="text-xs text-white/40">Sem alertas</p>;
+              })()}
+            </div>
           </div>
         </div>
       </section>
