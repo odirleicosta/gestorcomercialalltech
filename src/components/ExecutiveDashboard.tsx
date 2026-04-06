@@ -891,8 +891,8 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
             <section>
               <div className="flex items-center gap-2 mb-4">
-                <Trophy className="h-5 w-5 text-yellow-500" />
-                <h3 className="font-heading text-base font-bold text-foreground uppercase tracking-wider">Top 5 Prioridades</h3>
+                <Trophy className="h-5 w-5 text-[#FBBF24]" />
+                <h3 className="font-heading text-base font-bold text-white uppercase tracking-wider">Top 5 Prioridades</h3>
               </div>
               <div className="space-y-2">
                 {top5.map((d: any, i: number) => (
