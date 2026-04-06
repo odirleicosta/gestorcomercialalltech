@@ -416,16 +416,25 @@ const TeamManagement = ({ userId }: Props) => {
               </div>
 
               {/* Meta restante + por semana */}
-              {rep.remaining > 0 && (
-                <div className="flex gap-4 mb-3 text-xs">
-                  <span className="text-muted-foreground">
-                    Faltam <span className="font-semibold text-foreground">{rep.remaining}</span> máquinas
-                  </span>
-                  <span className="text-muted-foreground">
-                    Necessário/semana: <span className="font-semibold text-foreground">{rep.perWeek}</span>
-                  </span>
-                </div>
-              )}
+              {/* Meta details */}
+              <div className="flex flex-wrap gap-3 mb-3 text-xs">
+                <span className="text-muted-foreground">
+                  Meta/semana: <span className="font-semibold text-foreground">{rep.metaSemanal}</span>
+                </span>
+                {rep.remaining > 0 && (
+                  <>
+                    <span className="text-muted-foreground">
+                      Faltam <span className="font-semibold text-foreground">{rep.remaining}</span> máquinas
+                    </span>
+                    <span className={`font-semibold ${rep.perWeek > rep.metaSemanal ? "text-red-400" : "text-foreground"}`}>
+                      Necessário/semana: {rep.perWeek}
+                    </span>
+                  </>
+                )}
+                {rep.remaining === 0 && rep.pct >= 100 && (
+                  <span className="text-emerald-400 font-semibold">✓ Meta atingida</span>
+                )}
+              </div>
 
               {/* KPIs inline — simplified */}
               <div className="grid grid-cols-3 gap-2 mb-3">
