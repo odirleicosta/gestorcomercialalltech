@@ -117,21 +117,46 @@ const TeamManagement = ({ userId }: Props) => {
     load();
   }, [userId, filterYear]);
 
+  // Team-level meta fallback: 8 machines/month divided equally
+  const TEAM_META_MONTHLY = 8;
+
   const repData = useMemo(() => {
     const now = new Date();
     const currentDay = now.getDate();
     const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
-    const remainingDays = daysInMonth - currentDay;
+    const daysInPeriod = daysInMonth * activeMonths.length;
+    const elapsedDays = periodMode === "month"
+      ? currentDay
+      : (() => {
+          // For quarter/year, sum full past months + current month days
+          const currentMonth = now.getMonth() + 1;
+          let elapsed = 0;
+          for (const m of activeMonths) {
+            if (m < currentMonth) elapsed += new Date(filterYear, m, 0).getDate();
+            else if (m === currentMonth) elapsed += currentDay;
+          }
+          return elapsed;
+        })();
+    const remainingDays = Math.max(1, daysInPeriod - elapsedDays);
     const remainingWeeks = Math.max(1, Math.ceil(remainingDays / 7));
+    const totalWeeks = Math.max(1, Math.ceil(daysInPeriod / 7));
 
-    return reps
-      .filter((r) => filterRep === "all" || r.id === filterRep)
+    const activeReps = reps.filter((r) => filterRep === "all" || r.id === filterRep);
+    const repCount = reps.length || 1; // always divide by total team size
+
+    return activeReps
       .map((rep) => {
-        // Meta
+        // Meta: 1) monthly_goals table, 2) rep.meta_quantidade, 3) team split
         const repGoals = goals.filter(
           (g) => g.representative_id === rep.id && g.ano === filterYear && activeMonths.includes(g.mes)
         );
-        const meta = repGoals.reduce((s, g) => s + g.meta_quantidade, 0) || rep.meta_quantidade * activeMonths.length;
+        const goalsSum = repGoals.reduce((s, g) => s + g.meta_quantidade, 0);
+        const repDefault = rep.meta_quantidade * activeMonths.length;
+        const teamSplit = Math.ceil((TEAM_META_MONTHLY * activeMonths.length) / repCount);
+        const meta = goalsSum > 0 ? goalsSum : repDefault > 0 ? repDefault : teamSplit;
+
+        // Meta semanal
+        const metaSemanal = Math.ceil(meta / totalWeeks);
 
         // Vendas fechadas
         const closedDeals = deals.filter((d) => {
