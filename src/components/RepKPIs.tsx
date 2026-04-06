@@ -645,7 +645,7 @@ const RepKPIs = ({ userId }: Props) => {
         rep={filterRep}
         onRepChange={setFilterRep}
         reps={reps}
-        showWeek={subTab === "visitas"}
+        showWeek={subTab === "visitas" && periodMode === "semana"}
         week={filterWeek}
         onWeekChange={setFilterWeek}
         maxWeek={52}
