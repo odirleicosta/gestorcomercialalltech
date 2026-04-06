@@ -84,6 +84,7 @@ const FilterBar = ({
       {/* Period mode pills */}
       <div className="flex items-center gap-1">
         <PillBtn active={periodMode === "month"} onClick={() => onPeriodModeChange("month")}>Mês</PillBtn>
+        <PillBtn active={periodMode === "week"} onClick={() => onPeriodModeChange("week")}>Semana</PillBtn>
         {["T1", "T2", "T3", "T4"].map(q => (
           <PillBtn
             key={q}
