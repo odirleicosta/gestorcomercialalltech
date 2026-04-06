@@ -278,7 +278,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   const calcVar = (c: number, p: number) => { if (p === 0) return c > 0 ? 100 : 0; return ((c-p)/p)*100; };
   const vendasVar = calcVar(cur.count, prev.count);
 
-  const handleFilterPeriodMode = (mode: "month" | "quarter" | "year") => {
+  const handleFilterPeriodMode = (mode: "month" | "quarter" | "year" | "week") => {
     if (mode === "month") { setFilterMode("month"); setFilterQuarter(null); }
     else if (mode === "year") { setFilterMode("year"); setFilterQuarter(null); }
   };
