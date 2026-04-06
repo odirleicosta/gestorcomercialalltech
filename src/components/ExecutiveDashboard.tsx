@@ -400,50 +400,56 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       />
 
       {/* ═══ 1) HERO — MÁQUINAS VENDIDAS ═══ */}
-      <section className="grid gap-4 lg:grid-cols-[1.5fr_1fr] lg:items-stretch">
-        <div className="rounded-2xl p-5 sm:p-7 shadow-2xl flex flex-col justify-between border border-white/[0.06] relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #0f2744 60%, #0d1f38 100%)' }}>
-          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#F59E0B]/[0.06] to-transparent pointer-events-none" />
+      <section className="grid gap-5 lg:grid-cols-[1.6fr_1fr] lg:items-stretch">
+        <div className="rounded-2xl p-6 sm:p-8 shadow-2xl flex flex-col justify-between border border-white/[0.08] relative overflow-hidden group hover:shadow-[0_8px_40px_rgba(0,0,0,0.5)] transition-all duration-300" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #0f2744 60%, #0d1f38 100%)' }}>
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#F59E0B]/[0.08] to-transparent pointer-events-none" />
+          <div className="absolute top-0 right-0 w-40 h-40 bg-white/[0.02] rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
           <div>
-            <p className="text-white/50 text-[10px] uppercase tracking-widest font-semibold mb-3">{periodLabel}</p>
+            <p className="text-white/50 text-[10px] uppercase tracking-[0.2em] font-semibold mb-4">{periodLabel}</p>
             <div className="flex items-baseline gap-3">
-              <span className="text-5xl sm:text-6xl font-black text-white tracking-tighter">{totalSold}</span>
-              <span className="text-xl sm:text-2xl font-semibold text-white/40">/ {totalMetaQtd}</span>
-              <span className="text-lg text-white/35 font-medium">máquinas</span>
+              <span className="text-6xl sm:text-7xl font-black text-white tracking-tighter drop-shadow-[0_2px_8px_rgba(255,255,255,0.1)]">{totalSold}</span>
+              <span className="text-2xl sm:text-3xl font-semibold text-white/40">/ {totalMetaQtd}</span>
+              <span className="text-lg text-white/30 font-medium">máquinas</span>
             </div>
-            <div className="flex items-center gap-2 mt-2">
-              <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${
+            <div className="flex items-center gap-3 mt-3 flex-wrap">
+              <span className={`inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1 rounded-full ${
                 pctAtingido >= 100 ? "bg-[#22C55E]/20 text-[#4ade80]" :
                 pctAtingido >= 70 ? "bg-[#F59E0B]/20 text-[#FBBF24]" :
                 "bg-[#EF4444]/20 text-[#F87171]"
               }`}>
-                {pctAtingido >= 100 ? "✓" : pctAtingido >= 70 ? "●" : "⚠"} {formatPct(pctAtingido)}
+                {pctAtingido >= 100 ? "✓ Acima da meta" : pctAtingido >= 70 ? "● No ritmo" : "⚠ Abaixo da meta"} — {formatPct(pctAtingido)}
               </span>
-              <span className="text-white/30 text-xs">
-                {faltam > 0 ? `Faltam ${faltam}` : "Meta batida!"}
+              <span className={`text-sm font-semibold ${faltam > 0 ? "text-white/50" : "text-[#4ade80]"}`}>
+                {faltam > 0 ? `Faltam ${faltam} máquinas` : "🏆 Meta batida!"}
               </span>
             </div>
           </div>
 
           {/* Progress bar */}
-          <div className="mt-5">
-            <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+          <div className="mt-6">
+            <div className="w-full h-3 bg-white/[0.08] rounded-full overflow-hidden shadow-inner">
               <div
-                className="h-full rounded-full transition-all duration-1000"
+                className="h-full rounded-full transition-all duration-1000 shadow-lg"
                 style={{
                   width: `${Math.min(pctAtingido, 100)}%`,
-                  backgroundColor: pctAtingido >= 100 ? "#4ade80" : pctAtingido >= 70 ? "#FBBF24" : "#F87171",
+                  background: pctAtingido >= 100
+                    ? "linear-gradient(90deg, #22C55E, #4ade80)"
+                    : pctAtingido >= 70
+                    ? "linear-gradient(90deg, #F59E0B, #FBBF24)"
+                    : "linear-gradient(90deg, #EF4444, #F87171)",
+                  boxShadow: `0 0 12px ${pctAtingido >= 100 ? "rgba(34,197,94,0.4)" : pctAtingido >= 70 ? "rgba(245,158,11,0.4)" : "rgba(239,68,68,0.4)"}`,
                 }}
               />
             </div>
-            <div className="flex items-center justify-between mt-2 text-white/35 text-[10px]">
-              <span>Faturamento: {cur.count > 0 ? formatCompact(cur.basePrice) : "—"}</span>
-              <span>Projeção: {projQtd} máq ({formatPct(projPct)})</span>
+            <div className="flex items-center justify-between mt-2.5 text-white/35 text-[11px]">
+              <span>Faturamento: <span className="text-white/50 font-medium">{cur.count > 0 ? formatCompact(cur.basePrice) : "—"}</span></span>
+              <span>Projeção: <span className="text-white/50 font-medium">{projQtd} máq ({formatPct(projPct)})</span></span>
             </div>
           </div>
         </div>
 
         {/* KPIs SECUNDÁRIOS */}
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 opacity-[0.92]">
           <KpiSecondaryCard
             label="Faturamento FOB"
             value={cur.count > 0 ? formatCompact(cur.basePrice) : "—"}
@@ -538,7 +544,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                 const visitCount = visitStats.perRep.get(rep.id) || 0;
 
                 return (
-                  <div key={rep.id} onClick={() => setFilterRep(rep.id)} className={`flex items-center gap-3 px-4 sm:px-5 py-3 transition-colors cursor-pointer ${idx === 0 ? "bg-[#F59E0B]/[0.06]" : "hover:bg-white/[0.03]"}`}>
+                  <div key={rep.id} onClick={() => setFilterRep(rep.id)} className={`flex items-center gap-3 px-4 sm:px-5 py-3.5 transition-all duration-200 cursor-pointer ${idx === 0 ? "bg-[#F59E0B]/[0.08] hover:bg-[#F59E0B]/[0.12]" : idx === 1 ? "bg-white/[0.02] hover:bg-white/[0.05]" : idx === 2 ? "bg-white/[0.015] hover:bg-white/[0.04]" : "hover:bg-white/[0.04]"}`}>
                     <span className="text-base font-bold w-7 text-center shrink-0">
                       {medal || <span className="text-white/30 text-sm">#{idx + 1}</span>}
                     </span>
@@ -550,8 +556,8 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                         <p className="text-sm font-semibold text-white truncate">{rep.nome}</p>
                         {pct >= 100 && <span className="text-[9px] bg-[#22C55E]/20 text-[#4ade80] font-bold px-1.5 py-0.5 rounded-full shrink-0">META ✓</span>}
                       </div>
-                      <div className="w-full max-w-[200px] h-[4px] bg-white/[0.08] rounded-full mt-1.5 overflow-hidden">
-                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: progressColor }} />
+                      <div className="w-full max-w-[200px] h-1.5 bg-white/[0.08] rounded-full mt-1.5 overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(pct, 100)}%`, background: `linear-gradient(90deg, ${progressColor}cc, ${progressColor})` }} />
                       </div>
                     </div>
                     <div className="text-right shrink-0 space-y-0.5">
@@ -941,7 +947,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 const MetricCard = ({ label, value, icon, color, sub }: {
   label: string; value: string; icon: React.ReactNode; color: string; sub?: string;
 }) => (
-  <div className="rounded-xl border border-white/[0.06] p-2.5 sm:p-5 shadow-lg hover:shadow-xl transition-shadow" style={{ background: 'rgba(255,255,255,0.04)' }}>
+  <div className="rounded-xl border border-white/[0.06] p-2.5 sm:p-5 shadow-lg hover:shadow-xl hover:border-white/[0.1] hover:bg-white/[0.06] transition-all duration-200 cursor-default" style={{ background: 'rgba(255,255,255,0.04)' }}>
     <div className="flex items-center gap-1.5 sm:gap-3 mb-1.5 sm:mb-3">
       <div className="h-7 w-7 sm:h-10 sm:w-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}20`, color }}>{icon}</div>
       <span className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase leading-tight">{label}</span>
@@ -957,19 +963,19 @@ const KpiSecondaryCard = ({ label, value, icon, iconBg, trend, pctMeta }: {
   const progressColor = pctMeta >= 70 ? "#4ade80" : pctMeta >= 40 ? "#60A5FA" : "#F87171";
   const trendPositive = trend >= 0;
   return (
-    <div className="rounded-xl border border-white/[0.06] p-3 sm:p-5 shadow-lg hover:shadow-xl transition-shadow" style={{ background: 'rgba(255,255,255,0.04)' }}>
+    <div className="rounded-xl border border-white/[0.06] p-3 sm:p-5 shadow-lg hover:shadow-xl hover:border-white/[0.1] hover:bg-white/[0.06] transition-all duration-200 cursor-default" style={{ background: 'rgba(255,255,255,0.04)' }}>
       <div className="flex items-center justify-between mb-2 sm:mb-3">
         <span className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase leading-tight">{label}</span>
         <div className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${iconBg}25`, color: iconBg }}>{icon}</div>
       </div>
-      <p className="text-2xl font-bold tracking-tight text-white truncate">{value}</p>
+      <p className="text-2xl sm:text-3xl font-black tracking-tight text-white truncate">{value}</p>
       {trend !== 0 && (
-        <span className={`inline-flex items-center text-xs font-bold px-1.5 py-0.5 rounded mt-1.5 ${trendPositive ? "bg-[#22C55E]/15 text-[#4ade80]" : "bg-[#EF4444]/15 text-[#F87171]"}`}>
+        <span className={`inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full mt-2 ${trendPositive ? "bg-[#22C55E]/20 text-[#4ade80]" : "bg-[#EF4444]/20 text-[#F87171]"}`}>
           {trendPositive ? "+" : ""}{trend.toFixed(0)}%
         </span>
       )}
-      <div className="w-full h-[3px] bg-white/[0.08] rounded-full mt-3 overflow-hidden">
-        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(pctMeta, 100)}%`, backgroundColor: progressColor }} />
+      <div className="w-full h-1.5 bg-white/[0.08] rounded-full mt-3 overflow-hidden">
+        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(pctMeta, 100)}%`, background: `linear-gradient(90deg, ${progressColor}cc, ${progressColor})` }} />
       </div>
     </div>
   );
