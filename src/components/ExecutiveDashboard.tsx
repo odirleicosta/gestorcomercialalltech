@@ -896,21 +896,21 @@ const ExecutiveDashboard = ({ userId }: Props) => {
               </div>
               <div className="space-y-2">
                 {top5.map((d: any, i: number) => (
-                  <div key={d.id} className="flex items-center gap-3 bg-card rounded-xl border border-border p-3">
+                  <div key={d.id} className="flex items-center gap-3 rounded-xl border border-white/[0.06] p-3" style={{ background: 'rgba(255,255,255,0.03)' }}>
                     <div className="h-8 w-8 rounded-lg flex items-center justify-center font-heading font-black text-sm shrink-0"
-                      style={{ backgroundColor: i === 0 ? '#F59E0B15' : '#3B82F615', color: i === 0 ? '#F59E0B' : '#3B82F6' }}>
+                      style={{ backgroundColor: i === 0 ? 'rgba(245,158,11,0.15)' : 'rgba(59,130,246,0.15)', color: i === 0 ? '#FBBF24' : '#60A5FA' }}>
                       {i + 1}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-foreground truncate">{d.client_name}</p>
-                      <p className="text-xs text-muted-foreground">{repNm(d.representative_id)} · {d.machine_name || d.machine_type}</p>
+                      <p className="text-sm font-semibold text-white truncate">{d.client_name}</p>
+                      <p className="text-xs text-white/35">{repNm(d.representative_id)} · {d.machine_name || d.machine_type}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-foreground">{fmtUsd(d.deal_value)}</p>
+                      <p className="text-sm font-bold text-white">{fmtUsd(d.deal_value)}</p>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                        d.probability === "Alta" ? "bg-green-500/15 text-green-400" :
-                        d.probability === "Média" ? "bg-yellow-500/15 text-yellow-400" :
-                        "bg-red-500/15 text-red-400"
+                        d.probability === "Alta" ? "bg-green-500/20 text-[#4ade80]" :
+                        d.probability === "Média" ? "bg-yellow-500/20 text-[#FBBF24]" :
+                        "bg-red-500/20 text-[#F87171]"
                       }`}>{d.probability}</span>
                     </div>
                   </div>
