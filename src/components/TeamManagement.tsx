@@ -86,7 +86,7 @@ const TeamManagement = ({ userId }: Props) => {
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
   const [filterQuarter, setFilterQuarter] = useState(`T${Math.ceil((new Date().getMonth() + 1) / 3)}`);
-  const [periodMode, setPeriodMode] = useState<PeriodMode>("mes");
+  const [periodMode, setPeriodMode] = useState<PeriodMode>("month");
   const [filterRep, setFilterRep] = useState("all");
 
   const activeMonths = useMemo(() => {
