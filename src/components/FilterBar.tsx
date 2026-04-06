@@ -11,8 +11,8 @@ interface Rep {
 interface FilterBarProps {
   year: number;
   onYearChange: (y: number) => void;
-  periodMode: "month" | "quarter" | "year";
-  onPeriodModeChange: (m: "month" | "quarter" | "year") => void;
+  periodMode: "month" | "quarter" | "year" | "week";
+  onPeriodModeChange: (m: "month" | "quarter" | "year" | "week") => void;
   month: number; // 1-indexed
   onMonthChange: (m: number) => void;
   quarter: string; // "T1"-"T4"
