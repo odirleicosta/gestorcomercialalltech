@@ -851,8 +851,8 @@ const ExecutiveDashboard = ({ userId }: Props) => {
             {(alertOver30.length > 0 || alertNoNext.length > 0 || baixa.length > 0 || alertNearDate.length > 0 || alertRisk.length > 0) && (
               <section>
                 <div className="flex items-center gap-2 mb-4">
-                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                  <h3 className="font-heading text-base font-bold text-foreground uppercase tracking-wider">Alertas do Gestor</h3>
+                  <AlertTriangle className="h-5 w-5 text-[#FBBF24]" />
+                  <h3 className="font-heading text-base font-bold text-white uppercase tracking-wider">Alertas do Gestor</h3>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                   {[
