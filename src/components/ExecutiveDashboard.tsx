@@ -511,22 +511,22 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       {/* ═══ RANKING DE REPS — MÁQUINAS ═══ */}
       {sortedRanking.length > 0 && (
         <section>
-          <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-border">
+          <div className="rounded-xl border border-white/[0.06] shadow-lg overflow-hidden" style={{ background: 'rgba(255,255,255,0.03)' }}>
+            <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-white/[0.06]">
               <div className="flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-[#F59E0B]" />
-                <h3 className="font-heading text-base font-bold text-foreground">Ranking — Máquinas Vendidas</h3>
+                <h3 className="font-heading text-base font-bold text-white">Ranking — Máquinas Vendidas</h3>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-[10px] font-mono">{periodLabel}</Badge>
+                <Badge variant="outline" className="text-[10px] font-mono border-white/20 text-white/60">{periodLabel}</Badge>
                 {sortedRanking.length > 5 && (
-                  <button onClick={() => setShowAllReps(!showAllReps)} className="text-xs font-semibold text-[#3B82F6] hover:underline">
+                  <button onClick={() => setShowAllReps(!showAllReps)} className="text-xs font-semibold text-[#60A5FA] hover:underline">
                     {showAllReps ? "Menos" : "Ver todos"}
                   </button>
                 )}
               </div>
             </div>
-            <div className="divide-y divide-border/50">
+            <div className="divide-y divide-white/[0.05]">
               {displayedRanking.map((rep, idx) => {
                 const pct = rep.pctQtd;
                 const medals = ["🥇", "🥈", "🥉"];
