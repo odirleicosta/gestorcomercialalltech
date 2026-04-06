@@ -372,15 +372,15 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
   return (
     <SafeComponent loading={loading} error={loadError} onRetry={() => window.location.reload()}>
-    <div className="space-y-8 animate-fade-in">
+    <div className="space-y-8 animate-fade-in min-h-screen rounded-2xl p-4 sm:p-6 lg:p-8" style={{ background: 'linear-gradient(145deg, #0f1729 0%, #162033 40%, #1a2744 100%)' }}>
       {/* ═══ HEADER ═══ */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-heading text-lg sm:text-2xl font-bold text-foreground flex items-center gap-2">
+          <h2 className="font-heading text-lg sm:text-2xl font-bold text-white flex items-center gap-2">
             <Flame className="h-5 w-5 sm:h-6 sm:w-6 text-[#F97316]" />
             Reunião Comercial
           </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{periodLabel}</p>
+          <p className="text-xs sm:text-sm text-white/40 mt-0.5">{periodLabel}</p>
         </div>
       </div>
 
@@ -401,7 +401,8 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
       {/* ═══ 1) HERO — MÁQUINAS VENDIDAS ═══ */}
       <section className="grid gap-4 lg:grid-cols-[1.5fr_1fr] lg:items-stretch">
-        <div className="bg-[#1a2744] rounded-2xl p-5 sm:p-7 shadow-xl flex flex-col justify-between">
+        <div className="rounded-2xl p-5 sm:p-7 shadow-2xl flex flex-col justify-between border border-white/[0.06] relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #0f2744 60%, #0d1f38 100%)' }}>
+          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#F59E0B]/[0.06] to-transparent pointer-events-none" />
           <div>
             <p className="text-white/50 text-[10px] uppercase tracking-widest font-semibold mb-3">{periodLabel}</p>
             <div className="flex items-baseline gap-3">
@@ -487,22 +488,22 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       <section>
         <div className="flex items-center gap-2 mb-4">
           <Users className="h-5 w-5 text-[#8B5CF6]" />
-          <h3 className="font-heading text-lg font-bold text-foreground">Atividade da Equipe</h3>
+          <h3 className="font-heading text-lg font-bold text-white">Atividade da Equipe</h3>
         </div>
         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
-          <div className="bg-card rounded-xl border border-border p-4 sm:p-5 shadow-sm text-center">
-            <p className="font-heading text-3xl sm:text-4xl font-black text-foreground">{visitStats.totalVisitas}</p>
-            <p className="text-xs text-muted-foreground mt-1">Visitas no período</p>
+          <div className="rounded-xl border border-white/[0.06] p-4 sm:p-5 shadow-lg text-center" style={{ background: 'rgba(255,255,255,0.04)' }}>
+            <p className="font-heading text-3xl sm:text-4xl font-black text-white">{visitStats.totalVisitas}</p>
+            <p className="text-xs text-white/40 mt-1">Visitas no período</p>
           </div>
-          <div className="bg-card rounded-xl border border-border p-4 sm:p-5 shadow-sm text-center">
-            <p className="font-heading text-3xl sm:text-4xl font-black text-foreground">{visitStats.media.toFixed(1)}</p>
-            <p className="text-xs text-muted-foreground mt-1">Média por vendedor</p>
+          <div className="rounded-xl border border-white/[0.06] p-4 sm:p-5 shadow-lg text-center" style={{ background: 'rgba(255,255,255,0.04)' }}>
+            <p className="font-heading text-3xl sm:text-4xl font-black text-white">{visitStats.media.toFixed(1)}</p>
+            <p className="text-xs text-white/40 mt-1">Média por vendedor</p>
           </div>
-          <div className="bg-card rounded-xl border border-border p-4 sm:p-5 shadow-sm text-center">
+          <div className="rounded-xl border border-white/[0.06] p-4 sm:p-5 shadow-lg text-center" style={{ background: 'rgba(255,255,255,0.04)' }}>
             <p className={`font-heading text-3xl sm:text-4xl font-black ${visitStats.pctMeta >= 100 ? "text-[#22C55E]" : visitStats.pctMeta >= 70 ? "text-[#F97316]" : "text-[#EF4444]"}`}>
               {formatPct(visitStats.pctMeta)}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">{visitStats.totalVisitas} de {visitStats.totalMeta} visitas</p>
+            <p className="text-xs text-white/40 mt-1">{visitStats.totalVisitas} de {visitStats.totalMeta} visitas</p>
           </div>
         </div>
       </section>
@@ -510,22 +511,22 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       {/* ═══ RANKING DE REPS — MÁQUINAS ═══ */}
       {sortedRanking.length > 0 && (
         <section>
-          <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
-            <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-border">
+          <div className="rounded-xl border border-white/[0.06] shadow-lg overflow-hidden" style={{ background: 'rgba(255,255,255,0.03)' }}>
+            <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-white/[0.06]">
               <div className="flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-[#F59E0B]" />
-                <h3 className="font-heading text-base font-bold text-foreground">Ranking — Máquinas Vendidas</h3>
+                <h3 className="font-heading text-base font-bold text-white">Ranking — Máquinas Vendidas</h3>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-[10px] font-mono">{periodLabel}</Badge>
+                <Badge variant="outline" className="text-[10px] font-mono border-white/20 text-white/60">{periodLabel}</Badge>
                 {sortedRanking.length > 5 && (
-                  <button onClick={() => setShowAllReps(!showAllReps)} className="text-xs font-semibold text-[#3B82F6] hover:underline">
+                  <button onClick={() => setShowAllReps(!showAllReps)} className="text-xs font-semibold text-[#60A5FA] hover:underline">
                     {showAllReps ? "Menos" : "Ver todos"}
                   </button>
                 )}
               </div>
             </div>
-            <div className="divide-y divide-border/50">
+            <div className="divide-y divide-white/[0.05]">
               {displayedRanking.map((rep, idx) => {
                 const pct = rep.pctQtd;
                 const medals = ["🥇", "🥈", "🥉"];
@@ -537,26 +538,26 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                 const visitCount = visitStats.perRep.get(rep.id) || 0;
 
                 return (
-                  <div key={rep.id} onClick={() => setFilterRep(rep.id)} className={`flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-muted/50 transition-colors cursor-pointer ${idx === 0 ? "bg-[#F59E0B]/[0.04]" : ""}`}>
+                  <div key={rep.id} onClick={() => setFilterRep(rep.id)} className={`flex items-center gap-3 px-4 sm:px-5 py-3 transition-colors cursor-pointer ${idx === 0 ? "bg-[#F59E0B]/[0.06]" : "hover:bg-white/[0.03]"}`}>
                     <span className="text-base font-bold w-7 text-center shrink-0">
-                      {medal || <span className="text-muted-foreground text-sm">#{idx + 1}</span>}
+                      {medal || <span className="text-white/30 text-sm">#{idx + 1}</span>}
                     </span>
-                    <div className="h-[32px] w-[32px] rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{ backgroundColor: avatarColor }}>
+                    <div className="h-[32px] w-[32px] rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 ring-1 ring-white/10" style={{ backgroundColor: avatarColor }}>
                       {initials}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-foreground truncate">{rep.nome}</p>
-                        {pct >= 100 && <span className="text-[9px] bg-[#22C55E]/15 text-[#22C55E] font-bold px-1.5 py-0.5 rounded-full shrink-0">META ✓</span>}
+                        <p className="text-sm font-semibold text-white truncate">{rep.nome}</p>
+                        {pct >= 100 && <span className="text-[9px] bg-[#22C55E]/20 text-[#4ade80] font-bold px-1.5 py-0.5 rounded-full shrink-0">META ✓</span>}
                       </div>
-                      <div className="w-full max-w-[200px] h-[4px] bg-muted rounded-full mt-1.5 overflow-hidden">
+                      <div className="w-full max-w-[200px] h-[4px] bg-white/[0.08] rounded-full mt-1.5 overflow-hidden">
                         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: progressColor }} />
                       </div>
                     </div>
                     <div className="text-right shrink-0 space-y-0.5">
-                      <p className="text-sm font-black text-foreground tabular-nums">{rep.count} / {rep.metaQtd}</p>
-                      <p className={`text-[10px] font-semibold ${pct >= 100 ? "text-[#22C55E]" : pct >= 70 ? "text-[#F59E0B]" : "text-[#EF4444]"}`}>{formatPct(pct)}</p>
-                      <p className="text-[9px] text-muted-foreground">{visitCount} visitas</p>
+                      <p className="text-sm font-black text-white tabular-nums">{rep.count} / {rep.metaQtd}</p>
+                      <p className={`text-[10px] font-semibold ${pct >= 100 ? "text-[#4ade80]" : pct >= 70 ? "text-[#FBBF24]" : "text-[#F87171]"}`}>{formatPct(pct)}</p>
+                      <p className="text-[9px] text-white/30">{visitCount} visitas</p>
                     </div>
                   </div>
                 );
@@ -568,18 +569,18 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
       {/* ═══ RITMO COMERCIAL ═══ */}
       <section className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2">
-        <div className="bg-card rounded-xl border border-border p-4 sm:p-6 shadow-sm">
+        <div className="rounded-xl border border-white/[0.06] p-4 sm:p-6 shadow-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
           <div className="flex items-center gap-2 mb-3 sm:mb-4">
-            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-[#3B82F6]/10 flex items-center justify-center">
-              <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-[#3B82F6]" />
+            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-lg bg-[#3B82F6]/15 flex items-center justify-center">
+              <Activity className="h-4 w-4 sm:h-5 sm:w-5 text-[#60A5FA]" />
             </div>
             <div>
-              <h4 className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase">Ritmo Atual</h4>
-              <p className="font-heading text-xl sm:text-3xl font-black text-foreground">{ritmoAtual.toFixed(1)} <span className="text-sm sm:text-lg text-muted-foreground">máq / semana</span></p>
+              <h4 className="text-[10px] sm:text-xs font-semibold text-white/40 uppercase">Ritmo Atual</h4>
+              <p className="font-heading text-xl sm:text-3xl font-black text-white">{ritmoAtual.toFixed(1)} <span className="text-sm sm:text-lg text-white/35">máq / semana</span></p>
             </div>
           </div>
-          <div className={`rounded-lg px-4 py-3 ${noRitmo ? "bg-[#22C55E]/10" : "bg-[#EF4444]/10"}`}>
-            <p className={`text-sm font-medium ${noRitmo ? "text-[#22C55E]" : "text-[#EF4444]"}`}>
+          <div className={`rounded-lg px-4 py-3 ${noRitmo ? "bg-[#22C55E]/[0.08] border border-[#22C55E]/20" : "bg-[#EF4444]/[0.08] border border-[#EF4444]/20"}`}>
+            <p className={`text-sm font-medium ${noRitmo ? "text-[#4ade80]" : "text-[#F87171]"}`}>
               {noRitmo
                 ? faltam === 0
                   ? "✓ Meta já foi atingida! Manter o momento."
@@ -589,28 +590,28 @@ const ExecutiveDashboard = ({ userId }: Props) => {
             </p>
           </div>
         </div>
-        <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
+        <div className="rounded-xl border border-white/[0.06] p-6 shadow-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
           <div className="flex items-center gap-2 mb-4">
-            <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${noRitmo ? "bg-[#22C55E]/10" : "bg-[#EF4444]/10"}`}>
-              <Gauge className={`h-5 w-5 ${noRitmo ? "text-[#22C55E]" : "text-[#EF4444]"}`} />
+            <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${noRitmo ? "bg-[#22C55E]/15" : "bg-[#EF4444]/15"}`}>
+              <Gauge className={`h-5 w-5 ${noRitmo ? "text-[#4ade80]" : "text-[#F87171]"}`} />
             </div>
             <div>
-              <h4 className="text-xs font-semibold text-muted-foreground uppercase">Ritmo Necessário</h4>
-              <p className="font-heading text-3xl font-black text-foreground">{faltam === 0 ? "0.0" : ritmoNecessario.toFixed(1)} <span className="text-lg text-muted-foreground">/ semana</span></p>
+              <h4 className="text-xs font-semibold text-white/40 uppercase">Ritmo Necessário</h4>
+              <p className="font-heading text-3xl font-black text-white">{faltam === 0 ? "0.0" : ritmoNecessario.toFixed(1)} <span className="text-lg text-white/35">/ semana</span></p>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <div className="text-center bg-muted/50 rounded-lg py-2">
-              <p className="text-xs text-muted-foreground">Dias passados</p>
-              <p className="font-heading text-xl font-black text-foreground">{elapsedDays}</p>
+            <div className="text-center rounded-lg py-2" style={{ background: 'rgba(255,255,255,0.04)' }}>
+              <p className="text-xs text-white/35">Dias passados</p>
+              <p className="font-heading text-xl font-black text-white">{elapsedDays}</p>
             </div>
-            <div className="text-center bg-muted/50 rounded-lg py-2">
-              <p className="text-xs text-muted-foreground">Dias restantes</p>
-              <p className="font-heading text-xl font-black text-foreground">{diasRestantes}</p>
+            <div className="text-center rounded-lg py-2" style={{ background: 'rgba(255,255,255,0.04)' }}>
+              <p className="text-xs text-white/35">Dias restantes</p>
+              <p className="font-heading text-xl font-black text-white">{diasRestantes}</p>
             </div>
-            <div className="text-center bg-muted/50 rounded-lg py-2">
-              <p className="text-xs text-muted-foreground">Total dias</p>
-              <p className="font-heading text-xl font-black text-foreground">{totalDaysPeriod}</p>
+            <div className="text-center rounded-lg py-2" style={{ background: 'rgba(255,255,255,0.04)' }}>
+              <p className="text-xs text-white/35">Total dias</p>
+              <p className="font-heading text-xl font-black text-white">{totalDaysPeriod}</p>
             </div>
           </div>
         </div>
@@ -619,8 +620,8 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       {/* ═══ RESULTADO FINANCEIRO ═══ */}
       <section>
         <div className="flex items-center gap-2 mb-4">
-          <DollarSign className="h-5 w-5 text-[#22C55E]" />
-          <h3 className="font-heading text-lg font-bold text-foreground">Resultado Financeiro</h3>
+          <DollarSign className="h-5 w-5 text-[#4ade80]" />
+          <h3 className="font-heading text-lg font-bold text-white">Resultado Financeiro</h3>
         </div>
         <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
           <MetricCard label="Faturamento FOB" value={cur.count > 0 ? formatCompact(cur.basePrice) : "—"} icon={<DollarSign className="h-4 w-4" />} color="#3B82F6" sub={cur.count > 0 ? formatBrlCompact(cur.basePriceBrl) : undefined} />
@@ -633,42 +634,42 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       {/* ═══ TENDÊNCIA ═══ */}
       <section>
         <div className="flex items-center gap-2 mb-4">
-          <TrendingUp className="h-5 w-5 text-[#3B82F6]" />
-          <h3 className="font-heading text-lg font-bold text-foreground">Tendência</h3>
+          <TrendingUp className="h-5 w-5 text-[#60A5FA]" />
+          <h3 className="font-heading text-lg font-bold text-white">Tendência</h3>
         </div>
         <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-3">
-          <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
+          <div className="rounded-xl border border-white/[0.06] p-5 shadow-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
             <div className="flex items-center gap-3 mb-3">
-              <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${trend3m.icon === "up" ? "bg-[#22C55E]/10" : trend3m.icon === "down" ? "bg-[#EF4444]/10" : "bg-[#F97316]/10"}`}>
-                {trend3m.icon === "up" ? <TrendingUp className="h-5 w-5 text-[#22C55E]" /> : trend3m.icon === "down" ? <TrendingDown className="h-5 w-5 text-[#EF4444]" /> : <Minus className="h-5 w-5 text-[#F97316]" />}
+              <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${trend3m.icon === "up" ? "bg-[#22C55E]/15" : trend3m.icon === "down" ? "bg-[#EF4444]/15" : "bg-[#F97316]/15"}`}>
+                {trend3m.icon === "up" ? <TrendingUp className="h-5 w-5 text-[#4ade80]" /> : trend3m.icon === "down" ? <TrendingDown className="h-5 w-5 text-[#F87171]" /> : <Minus className="h-5 w-5 text-[#FBBF24]" />}
               </div>
-              <span className="text-xs font-semibold text-muted-foreground uppercase">Direção</span>
+              <span className="text-xs font-semibold text-white/40 uppercase">Direção</span>
             </div>
-            <p className={`font-heading text-2xl font-black ${trend3m.icon === "up" ? "text-[#22C55E]" : trend3m.icon === "down" ? "text-[#EF4444]" : "text-[#F97316]"}`}>{trend3m.label}</p>
-            <p className="text-xs text-muted-foreground mt-1">vs média últimos 3 meses</p>
+            <p className={`font-heading text-2xl font-black ${trend3m.icon === "up" ? "text-[#4ade80]" : trend3m.icon === "down" ? "text-[#F87171]" : "text-[#FBBF24]"}`}>{trend3m.label}</p>
+            <p className="text-xs text-white/35 mt-1">vs média últimos 3 meses</p>
           </div>
-          <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">Comparativos</h4>
+          <div className="rounded-xl border border-white/[0.06] p-5 shadow-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
+            <h4 className="text-xs font-semibold text-white/40 uppercase mb-3">Comparativos</h4>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Mês anterior</span>
+                <span className="text-sm text-white/45">Mês anterior</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-foreground">{trend3m.prevMonth} máq</span>
-                  {vendasVar !== 0 && <span className={`text-xs font-bold ${vendasVar > 0 ? "text-[#22C55E]" : "text-[#EF4444]"}`}>{vendasVar > 0 ? "+" : ""}{vendasVar.toFixed(0)}%</span>}
+                  <span className="text-sm font-bold text-white">{trend3m.prevMonth} máq</span>
+                  {vendasVar !== 0 && <span className={`text-xs font-bold ${vendasVar > 0 ? "text-[#4ade80]" : "text-[#F87171]"}`}>{vendasVar > 0 ? "+" : ""}{vendasVar.toFixed(0)}%</span>}
                 </div>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Média 3 meses</span>
-                <span className="text-sm font-bold text-foreground">{trend3m.avg.toFixed(1)} máq</span>
+                <span className="text-sm text-white/45">Média 3 meses</span>
+                <span className="text-sm font-bold text-white">{trend3m.avg.toFixed(1)} máq</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Período atual</span>
-                <span className="text-sm font-black text-foreground">{cur.count} máq</span>
+                <span className="text-sm text-white/45">Período atual</span>
+                <span className="text-sm font-black text-white">{cur.count} máq</span>
               </div>
             </div>
           </div>
-          <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">Evolução 6 Meses</h4>
+          <div className="rounded-xl border border-white/[0.06] p-5 shadow-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
+            <h4 className="text-xs font-semibold text-white/40 uppercase mb-3">Evolução 6 Meses</h4>
             <ResponsiveContainer width="100%" height={120}>
               <AreaChart data={evolutionData}>
                 <defs>
@@ -687,36 +688,36 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
       {/* ═══ EVOLUÇÃO COMPLETA ═══ */}
       <section>
-        <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-4 flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-[#3B82F6]" /> Evolução Detalhada (6 meses)
+        <div className="rounded-xl border border-white/[0.06] p-6 shadow-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
+          <h4 className="text-xs font-semibold text-white/40 uppercase mb-4 flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-[#60A5FA]" /> Evolução Detalhada (6 meses)
           </h4>
           <ResponsiveContainer width="100%" height={260}>
             <AreaChart data={evolutionData}>
               <defs>
                 <linearGradient id="gradFat2" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.15} />
+                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.25} />
                   <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="gradLucro2" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#22C55E" stopOpacity={0.15} />
+                  <stop offset="5%" stopColor="#22C55E" stopOpacity={0.25} />
                   <stop offset="95%" stopColor="#22C55E" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#6B7280' }} />
-              <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} />
-              <Tooltip formatter={(v: number) => formatUsd(v)} contentStyle={{ fontSize: 12, borderRadius: 12, background: '#fff', border: '1px solid #E5E7EB', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} />
-              <Area type="monotone" dataKey="Faturamento" stroke="#3B82F6" fill="url(#gradFat2)" strokeWidth={2.5} />
-              <Area type="monotone" dataKey="Lucro Líquido" stroke="#22C55E" fill="url(#gradLucro2)" strokeWidth={2.5} />
-              <RechartLegend wrapperStyle={{ fontSize: 12 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+              <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'rgba(255,255,255,0.4)' }} />
+              <YAxis tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.4)' }} />
+              <Tooltip formatter={(v: number) => formatUsd(v)} contentStyle={{ fontSize: 12, borderRadius: 12, background: '#1a2744', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', color: '#fff' }} />
+              <Area type="monotone" dataKey="Faturamento" stroke="#60A5FA" fill="url(#gradFat2)" strokeWidth={2.5} />
+              <Area type="monotone" dataKey="Lucro Líquido" stroke="#4ade80" fill="url(#gradLucro2)" strokeWidth={2.5} />
+              <RechartLegend wrapperStyle={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
       </section>
 
       {/* ═══ RESUMO EXECUTIVO ═══ */}
-      <section className="bg-gradient-to-br from-[#1E293B] to-[#334155] rounded-2xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
+      <section className="rounded-2xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden border border-white/[0.06]" style={{ background: 'linear-gradient(135deg, #162033 0%, #1e3047 50%, #1a2744 100%)' }}>
         <div className="absolute top-0 right-0 w-48 h-48 bg-white/[0.03] rounded-full -translate-y-20 translate-x-20" />
         <div className="relative">
           <div className="flex items-center gap-2 mb-5">
@@ -808,8 +809,8 @@ const ExecutiveDashboard = ({ userId }: Props) => {
           <>
             <section>
               <div className="flex items-center gap-2 mb-4">
-                <Crosshair className="h-5 w-5 text-primary" />
-                <h3 className="font-heading text-base font-bold text-foreground uppercase tracking-wider">Pipeline em Fechamento</h3>
+                <Crosshair className="h-5 w-5 text-[#60A5FA]" />
+                <h3 className="font-heading text-base font-bold text-white uppercase tracking-wider">Pipeline em Fechamento</h3>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <MetricCard label="Negociações Ativas" value={String(closingDeals.length)} icon={<Crosshair className="h-4 w-4" />} color="#3B82F6" />
@@ -821,8 +822,8 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
             <section>
               <div className="flex items-center gap-2 mb-4">
-                <Gauge className="h-5 w-5 text-primary" />
-                <h3 className="font-heading text-base font-bold text-foreground uppercase tracking-wider">Previsão de Fechamento</h3>
+                <Gauge className="h-5 w-5 text-[#60A5FA]" />
+                <h3 className="font-heading text-base font-bold text-white uppercase tracking-wider">Previsão de Fechamento</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {[
@@ -830,16 +831,16 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                   { label: "Média Probabilidade", items: media, color: "#F59E0B", bg: "bg-yellow-500/10 border-yellow-500/20" },
                   { label: "Baixa Probabilidade", items: baixa, color: "#EF4444", bg: "bg-red-500/10 border-red-500/20" },
                 ].map(({ label, items, color, bg }) => (
-                  <div key={label} className={`rounded-xl border p-4 ${bg}`}>
+                  <div key={label} className="rounded-xl border border-white/[0.06] p-4" style={{ background: 'rgba(255,255,255,0.03)' }}>
                     <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color }}>{label}</p>
                     <div className="flex justify-between">
                       <div>
-                        <p className="font-heading text-2xl font-black text-foreground">{items.reduce((s: number, d: any) => s + (d.quantity || 0), 0)}</p>
-                        <p className="text-xs text-muted-foreground">máquinas</p>
+                        <p className="font-heading text-2xl font-black text-white">{items.reduce((s: number, d: any) => s + (d.quantity || 0), 0)}</p>
+                        <p className="text-xs text-white/35">máquinas</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-heading text-lg font-bold text-foreground">{fmtUsd(items.reduce((s: number, d: any) => s + (d.deal_value || 0), 0))}</p>
-                        <p className="text-xs text-muted-foreground">{items.length} negociações</p>
+                        <p className="font-heading text-lg font-bold text-white">{fmtUsd(items.reduce((s: number, d: any) => s + (d.deal_value || 0), 0))}</p>
+                        <p className="text-xs text-white/35">{items.length} negociações</p>
                       </div>
                     </div>
                   </div>
@@ -850,8 +851,8 @@ const ExecutiveDashboard = ({ userId }: Props) => {
             {(alertOver30.length > 0 || alertNoNext.length > 0 || baixa.length > 0 || alertNearDate.length > 0 || alertRisk.length > 0) && (
               <section>
                 <div className="flex items-center gap-2 mb-4">
-                  <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                  <h3 className="font-heading text-base font-bold text-foreground uppercase tracking-wider">Alertas do Gestor</h3>
+                  <AlertTriangle className="h-5 w-5 text-[#FBBF24]" />
+                  <h3 className="font-heading text-base font-bold text-white uppercase tracking-wider">Alertas do Gestor</h3>
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                   {[
@@ -861,10 +862,10 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                     { label: "Fecham em 7d", count: alertNearDate.length, icon: <Flame className="h-4 w-4" />, color: "#F97316" },
                     { label: "Com risco", count: alertRisk.length, icon: <AlertTriangle className="h-4 w-4" />, color: "#EF4444" },
                   ].map(({ label, count, icon, color }) => count > 0 ? (
-                    <div key={label} className="bg-card rounded-xl border border-border p-3 text-center">
-                      <div className="h-8 w-8 mx-auto rounded-lg flex items-center justify-center mb-1" style={{ backgroundColor: `${color}15`, color }}>{icon}</div>
-                      <p className="font-heading text-xl font-black text-foreground">{count}</p>
-                      <p className="text-[10px] text-muted-foreground">{label}</p>
+                    <div key={label} className="rounded-xl border border-white/[0.06] p-3 text-center" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                      <div className="h-8 w-8 mx-auto rounded-lg flex items-center justify-center mb-1" style={{ backgroundColor: `${color}20`, color }}>{icon}</div>
+                      <p className="font-heading text-xl font-black text-white">{count}</p>
+                      <p className="text-[10px] text-white/35">{label}</p>
                     </div>
                   ) : null)}
                 </div>
@@ -890,26 +891,26 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
             <section>
               <div className="flex items-center gap-2 mb-4">
-                <Trophy className="h-5 w-5 text-yellow-500" />
-                <h3 className="font-heading text-base font-bold text-foreground uppercase tracking-wider">Top 5 Prioridades</h3>
+                <Trophy className="h-5 w-5 text-[#FBBF24]" />
+                <h3 className="font-heading text-base font-bold text-white uppercase tracking-wider">Top 5 Prioridades</h3>
               </div>
               <div className="space-y-2">
                 {top5.map((d: any, i: number) => (
-                  <div key={d.id} className="flex items-center gap-3 bg-card rounded-xl border border-border p-3">
+                  <div key={d.id} className="flex items-center gap-3 rounded-xl border border-white/[0.06] p-3" style={{ background: 'rgba(255,255,255,0.03)' }}>
                     <div className="h-8 w-8 rounded-lg flex items-center justify-center font-heading font-black text-sm shrink-0"
-                      style={{ backgroundColor: i === 0 ? '#F59E0B15' : '#3B82F615', color: i === 0 ? '#F59E0B' : '#3B82F6' }}>
+                      style={{ backgroundColor: i === 0 ? 'rgba(245,158,11,0.15)' : 'rgba(59,130,246,0.15)', color: i === 0 ? '#FBBF24' : '#60A5FA' }}>
                       {i + 1}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-foreground truncate">{d.client_name}</p>
-                      <p className="text-xs text-muted-foreground">{repNm(d.representative_id)} · {d.machine_name || d.machine_type}</p>
+                      <p className="text-sm font-semibold text-white truncate">{d.client_name}</p>
+                      <p className="text-xs text-white/35">{repNm(d.representative_id)} · {d.machine_name || d.machine_type}</p>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-foreground">{fmtUsd(d.deal_value)}</p>
+                      <p className="text-sm font-bold text-white">{fmtUsd(d.deal_value)}</p>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                        d.probability === "Alta" ? "bg-green-500/15 text-green-400" :
-                        d.probability === "Média" ? "bg-yellow-500/15 text-yellow-400" :
-                        "bg-red-500/15 text-red-400"
+                        d.probability === "Alta" ? "bg-green-500/20 text-[#4ade80]" :
+                        d.probability === "Média" ? "bg-yellow-500/20 text-[#FBBF24]" :
+                        "bg-red-500/20 text-[#F87171]"
                       }`}>{d.probability}</span>
                     </div>
                   </div>
@@ -940,34 +941,34 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 const MetricCard = ({ label, value, icon, color, sub }: {
   label: string; value: string; icon: React.ReactNode; color: string; sub?: string;
 }) => (
-  <div className="bg-card rounded-xl border border-border p-2.5 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
+  <div className="rounded-xl border border-white/[0.06] p-2.5 sm:p-5 shadow-lg hover:shadow-xl transition-shadow" style={{ background: 'rgba(255,255,255,0.04)' }}>
     <div className="flex items-center gap-1.5 sm:gap-3 mb-1.5 sm:mb-3">
-      <div className="h-7 w-7 sm:h-10 sm:w-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}15`, color }}>{icon}</div>
-      <span className="text-[9px] sm:text-xs font-semibold text-muted-foreground uppercase leading-tight">{label}</span>
+      <div className="h-7 w-7 sm:h-10 sm:w-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}20`, color }}>{icon}</div>
+      <span className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase leading-tight">{label}</span>
     </div>
-    <p className="font-heading text-sm sm:text-2xl font-black text-foreground truncate">{value}</p>
-    {sub && <p className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">{sub}</p>}
+    <p className="font-heading text-sm sm:text-2xl font-black text-white truncate">{value}</p>
+    {sub && <p className="text-[9px] sm:text-xs text-white/30 mt-0.5 sm:mt-1">{sub}</p>}
   </div>
 );
 
 const KpiSecondaryCard = ({ label, value, icon, iconBg, trend, pctMeta }: {
   label: string; value: string; icon: React.ReactNode; iconBg: string; trend: number; pctMeta: number;
 }) => {
-  const progressColor = pctMeta >= 70 ? "#22C55E" : pctMeta >= 40 ? "#3B82F6" : "#EF4444";
+  const progressColor = pctMeta >= 70 ? "#4ade80" : pctMeta >= 40 ? "#60A5FA" : "#F87171";
   const trendPositive = trend >= 0;
   return (
-    <div className="bg-card rounded-xl border border-border p-3 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
+    <div className="rounded-xl border border-white/[0.06] p-3 sm:p-5 shadow-lg hover:shadow-xl transition-shadow" style={{ background: 'rgba(255,255,255,0.04)' }}>
       <div className="flex items-center justify-between mb-2 sm:mb-3">
-        <span className="text-[9px] sm:text-xs font-semibold text-muted-foreground uppercase leading-tight">{label}</span>
-        <div className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${iconBg}20`, color: iconBg }}>{icon}</div>
+        <span className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase leading-tight">{label}</span>
+        <div className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${iconBg}25`, color: iconBg }}>{icon}</div>
       </div>
-      <p className="text-2xl font-semibold tracking-tight text-foreground truncate">{value}</p>
+      <p className="text-2xl font-bold tracking-tight text-white truncate">{value}</p>
       {trend !== 0 && (
-        <span className={`inline-flex items-center text-xs px-1.5 py-0.5 rounded mt-1.5 ${trendPositive ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"}`}>
+        <span className={`inline-flex items-center text-xs font-bold px-1.5 py-0.5 rounded mt-1.5 ${trendPositive ? "bg-[#22C55E]/15 text-[#4ade80]" : "bg-[#EF4444]/15 text-[#F87171]"}`}>
           {trendPositive ? "+" : ""}{trend.toFixed(0)}%
         </span>
       )}
-      <div className="w-full h-[3px] bg-muted rounded-full mt-3 overflow-hidden">
+      <div className="w-full h-[3px] bg-white/[0.08] rounded-full mt-3 overflow-hidden">
         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(pctMeta, 100)}%`, backgroundColor: progressColor }} />
       </div>
     </div>
