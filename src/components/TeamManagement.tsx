@@ -303,16 +303,17 @@ const TeamManagement = ({ userId }: Props) => {
 
       {/* Filters */}
       <FilterBar
-        filterYear={filterYear}
-        setFilterYear={setFilterYear}
+        year={filterYear}
+        onYearChange={setFilterYear}
         periodMode={periodMode}
-        setPeriodMode={setPeriodMode}
-        filterMonth={filterMonth}
-        setFilterMonth={setFilterMonth}
-        filterQuarter={filterQuarter}
-        setFilterQuarter={setFilterQuarter}
-        filterRep={filterRep}
-        setFilterRep={setFilterRep}
+        onPeriodModeChange={setPeriodMode}
+        month={filterMonth}
+        onMonthChange={setFilterMonth}
+        quarter={filterQuarter}
+        onQuarterChange={setFilterQuarter}
+        showRep
+        rep={filterRep}
+        onRepChange={setFilterRep}
         reps={reps}
       />
 
