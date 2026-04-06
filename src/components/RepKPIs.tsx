@@ -424,7 +424,7 @@ const RepKPIs = ({ userId }: Props) => {
   };
 
   // Determine if we're in single-week edit mode (week selector visible & month mode)
-  const isWeekEditMode = periodMode === "mes" || periodMode === "semana";
+  const isWeekEditMode = periodMode === "semana";
 
   // Shared: relevant months for current period mode
   const relevantMonths = useMemo(() => {
