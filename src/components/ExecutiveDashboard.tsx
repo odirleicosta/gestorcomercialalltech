@@ -407,9 +407,9 @@ const ExecutiveDashboard = ({ userId }: Props) => {
           <div>
             <p className="text-white/50 text-[10px] uppercase tracking-[0.2em] font-semibold mb-4">{periodLabel}</p>
             <div className="flex items-baseline gap-3">
-              <span className="text-6xl sm:text-7xl font-black text-white tracking-tighter drop-shadow-[0_2px_8px_rgba(255,255,255,0.1)]">{totalSold}</span>
-              <span className="text-2xl sm:text-3xl font-semibold text-white/40">/ {totalMetaQtd}</span>
-              <span className="text-lg text-white/30 font-medium">máquinas</span>
+              <span className="text-7xl sm:text-8xl font-black text-white tracking-tighter drop-shadow-[0_2px_12px_rgba(255,255,255,0.12)]">{totalSold}</span>
+              <span className="text-xl sm:text-2xl font-medium text-white/25">/ {totalMetaQtd}</span>
+              <span className="text-base text-white/20 font-normal">máquinas</span>
             </div>
             <div className="flex items-center gap-3 mt-3 flex-wrap">
               <span className={`inline-flex items-center gap-1.5 text-sm font-bold px-3 py-1 rounded-full ${
@@ -423,11 +423,18 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                 {faltam > 0 ? `Faltam ${faltam} máquinas` : "🏆 Meta batida!"}
               </span>
             </div>
+            {faltam > 0 && diasRestantes > 0 && (
+              <div className="flex items-center gap-4 mt-3 text-[11px] text-white/40">
+                <span>Meta restante: <span className="text-white/60 font-semibold">{faltam} máquinas</span></span>
+                <span className="text-white/15">|</span>
+                <span>Necessário: <span className="text-white/60 font-semibold">{ritmoNecessario.toFixed(1)} máq/semana</span></span>
+              </div>
+            )}
           </div>
 
           {/* Progress bar */}
           <div className="mt-6">
-            <div className="w-full h-3 bg-white/[0.08] rounded-full overflow-hidden shadow-inner">
+            <div className="w-full h-3.5 bg-white/[0.07] rounded-full overflow-hidden shadow-inner">
               <div
                 className="h-full rounded-full transition-all duration-1000 shadow-lg"
                 style={{
@@ -963,7 +970,7 @@ const KpiSecondaryCard = ({ label, value, icon, iconBg, trend, pctMeta }: {
   const progressColor = pctMeta >= 70 ? "#4ade80" : pctMeta >= 40 ? "#60A5FA" : "#F87171";
   const trendPositive = trend >= 0;
   return (
-    <div className="rounded-xl border border-white/[0.06] p-3 sm:p-5 shadow-lg hover:shadow-xl hover:border-white/[0.1] hover:bg-white/[0.06] transition-all duration-200 cursor-default" style={{ background: 'rgba(255,255,255,0.04)' }}>
+    <div className={`rounded-xl p-3 sm:p-5 shadow-lg hover:shadow-xl transition-all duration-200 cursor-default border ${trendPositive ? "border-[#22C55E]/[0.08] hover:border-[#22C55E]/[0.15]" : trend < 0 ? "border-[#EF4444]/[0.08] hover:border-[#EF4444]/[0.15]" : "border-white/[0.06] hover:border-white/[0.1]"}`} style={{ background: trendPositive ? 'rgba(34,197,94,0.03)' : trend < 0 ? 'rgba(239,68,68,0.03)' : 'rgba(255,255,255,0.04)' }}>
       <div className="flex items-center justify-between mb-2 sm:mb-3">
         <span className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase leading-tight">{label}</span>
         <div className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${iconBg}25`, color: iconBg }}>{icon}</div>
