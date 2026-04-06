@@ -839,6 +839,12 @@ const PriceCalculator = () => {
             </KpiErrorBoundary>
           </TabsContent>
 
+          <TabsContent value="team-management">
+            <KpiErrorBoundary fallbackTitle="Erro ao carregar Gestão da Equipe">
+              <TeamManagement userId={user.id} />
+            </KpiErrorBoundary>
+          </TabsContent>
+
 
           <TabsContent value="settings">
             <KpiErrorBoundary fallbackTitle="Erro ao carregar Configurações">
