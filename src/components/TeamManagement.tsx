@@ -90,8 +90,8 @@ const TeamManagement = ({ userId }: Props) => {
   const [filterRep, setFilterRep] = useState("all");
 
   const activeMonths = useMemo(() => {
-    if (periodMode === "mes") return [filterMonth];
-    if (periodMode === "trimestre") return QUARTER_MONTHS[filterQuarter] || [filterMonth];
+    if (periodMode === "month") return [filterMonth];
+    if (periodMode === "quarter") return QUARTER_MONTHS[filterQuarter] || [filterMonth];
     return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   }, [periodMode, filterMonth, filterQuarter]);
 
