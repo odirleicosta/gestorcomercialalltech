@@ -16,7 +16,7 @@ const QUARTER_MONTHS: Record<string, number[]> = {
   T1: [0, 1, 2], T2: [3, 4, 5], T3: [6, 7, 8], T4: [9, 10, 11],
 };
 
-type PeriodMode = "year" | "quarter" | "month";
+type PeriodMode = "year" | "quarter" | "month" | "week";
 
 const CommissionsTab = ({ userId }: Props) => {
   const [deals, setDeals] = useState<DealCommission[]>([]);

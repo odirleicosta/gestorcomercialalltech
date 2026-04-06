@@ -424,7 +424,7 @@ const RepKPIs = ({ userId }: Props) => {
   };
 
   // Determine if we're in single-week edit mode (week selector visible & month mode)
-  const isWeekEditMode = periodMode === "mes" || periodMode === "semana";
+  const isWeekEditMode = periodMode === "semana";
 
   // Shared: relevant months for current period mode
   const relevantMonths = useMemo(() => {
@@ -437,10 +437,16 @@ const RepKPIs = ({ userId }: Props) => {
 
   // Aggregated visits based on periodMode using allYearVisits
   const aggregatedVisits = useMemo(() => {
-    if (isMonthMode) return null;
-    const relevantWeeks = periodMode === "trimestre"
-      ? (QUARTER_MONTHS[filterQuarter] || []).flatMap(m => getWeeksForMonth(m, filterYear))
-      : Array.from({ length: 52 }, (_, i) => i + 1);
+    // Only single-week mode uses the `visits` state directly
+    if (periodMode === "semana") return null;
+    let relevantWeeks: number[];
+    if (periodMode === "mes") {
+      relevantWeeks = getWeeksForMonth(filterMonth, filterYear);
+    } else if (periodMode === "trimestre") {
+      relevantWeeks = (QUARTER_MONTHS[filterQuarter] || []).flatMap(m => getWeeksForMonth(m, filterYear));
+    } else {
+      relevantWeeks = Array.from({ length: 52 }, (_, i) => i + 1);
+    }
     const weekSet = new Set(relevantWeeks);
     const filtered = allYearVisits.filter(v => weekSet.has(v.semana));
     return reps.map(r => {
@@ -452,9 +458,9 @@ const RepKPIs = ({ userId }: Props) => {
         quantidade: repRows.reduce((s, v) => s + v.quantidade, 0),
       };
     });
-  }, [isMonthMode, periodMode, filterQuarter, filterYear, allYearVisits, reps]);
+  }, [periodMode, filterMonth, filterQuarter, filterYear, allYearVisits, reps]);
 
-  // Effective visits: aggregated for quarter/year, single-week for month
+  // Effective visits: aggregated for month/quarter/year, single-week for semana
   const effectiveVisits = useMemo(() => aggregatedVisits || visits, [aggregatedVisits, visits]);
 
   // Aggregated opportunities based on periodMode
@@ -625,9 +631,10 @@ const RepKPIs = ({ userId }: Props) => {
       <FilterBar
         year={filterYear}
         onYearChange={setFilterYear}
-        periodMode={periodMode === "mes" || periodMode === "semana" ? "month" : periodMode === "trimestre" ? "quarter" : "year"}
+        periodMode={periodMode === "semana" ? "week" : periodMode === "mes" ? "month" : periodMode === "trimestre" ? "quarter" : "year"}
         onPeriodModeChange={(m) => {
           if (m === "month") setPeriodMode("mes");
+          else if (m === "week") setPeriodMode("semana");
           else if (m === "quarter") setPeriodMode("trimestre");
           else setPeriodMode("ano");
         }}
@@ -639,7 +646,7 @@ const RepKPIs = ({ userId }: Props) => {
         rep={filterRep}
         onRepChange={setFilterRep}
         reps={reps}
-        showWeek={subTab === "visitas"}
+        showWeek={subTab === "visitas" && periodMode === "semana"}
         week={filterWeek}
         onWeekChange={setFilterWeek}
         maxWeek={52}

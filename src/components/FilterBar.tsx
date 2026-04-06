@@ -11,8 +11,8 @@ interface Rep {
 interface FilterBarProps {
   year: number;
   onYearChange: (y: number) => void;
-  periodMode: "month" | "quarter" | "year";
-  onPeriodModeChange: (m: "month" | "quarter" | "year") => void;
+  periodMode: "month" | "quarter" | "year" | "week";
+  onPeriodModeChange: (m: "month" | "quarter" | "year" | "week") => void;
   month: number; // 1-indexed
   onMonthChange: (m: number) => void;
   quarter: string; // "T1"-"T4"
@@ -84,6 +84,7 @@ const FilterBar = ({
       {/* Period mode pills */}
       <div className="flex items-center gap-1">
         <PillBtn active={periodMode === "month"} onClick={() => onPeriodModeChange("month")}>Mês</PillBtn>
+        <PillBtn active={periodMode === "week"} onClick={() => onPeriodModeChange("week")}>Semana</PillBtn>
         {["T1", "T2", "T3", "T4"].map(q => (
           <PillBtn
             key={q}
@@ -97,7 +98,7 @@ const FilterBar = ({
       </div>
 
       {/* Month selector (only in month mode) */}
-      {periodMode === "month" && (
+      {(periodMode === "month" || periodMode === "week") && (
         <>
           <div className="w-px h-5 bg-border hidden sm:block" />
           <Select value={String(month)} onValueChange={v => onMonthChange(parseInt(v))}>
@@ -114,7 +115,7 @@ const FilterBar = ({
       )}
 
       {/* Week selector */}
-      {showWeek && periodMode === "month" && week !== undefined && onWeekChange && (
+      {showWeek && (periodMode === "month" || periodMode === "week") && week !== undefined && onWeekChange && (
         <>
           <div className="w-px h-5 bg-border hidden sm:block" />
           <Select value={String(week)} onValueChange={v => onWeekChange(parseInt(v))}>
