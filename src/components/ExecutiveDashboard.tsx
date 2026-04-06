@@ -638,33 +638,33 @@ const ExecutiveDashboard = ({ userId }: Props) => {
           <h3 className="font-heading text-lg font-bold text-white">Tendência</h3>
         </div>
         <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-3">
-          <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
+          <div className="rounded-xl border border-white/[0.06] p-5 shadow-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
             <div className="flex items-center gap-3 mb-3">
-              <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${trend3m.icon === "up" ? "bg-[#22C55E]/10" : trend3m.icon === "down" ? "bg-[#EF4444]/10" : "bg-[#F97316]/10"}`}>
-                {trend3m.icon === "up" ? <TrendingUp className="h-5 w-5 text-[#22C55E]" /> : trend3m.icon === "down" ? <TrendingDown className="h-5 w-5 text-[#EF4444]" /> : <Minus className="h-5 w-5 text-[#F97316]" />}
+              <div className={`h-10 w-10 rounded-lg flex items-center justify-center ${trend3m.icon === "up" ? "bg-[#22C55E]/15" : trend3m.icon === "down" ? "bg-[#EF4444]/15" : "bg-[#F97316]/15"}`}>
+                {trend3m.icon === "up" ? <TrendingUp className="h-5 w-5 text-[#4ade80]" /> : trend3m.icon === "down" ? <TrendingDown className="h-5 w-5 text-[#F87171]" /> : <Minus className="h-5 w-5 text-[#FBBF24]" />}
               </div>
-              <span className="text-xs font-semibold text-muted-foreground uppercase">Direção</span>
+              <span className="text-xs font-semibold text-white/40 uppercase">Direção</span>
             </div>
-            <p className={`font-heading text-2xl font-black ${trend3m.icon === "up" ? "text-[#22C55E]" : trend3m.icon === "down" ? "text-[#EF4444]" : "text-[#F97316]"}`}>{trend3m.label}</p>
-            <p className="text-xs text-muted-foreground mt-1">vs média últimos 3 meses</p>
+            <p className={`font-heading text-2xl font-black ${trend3m.icon === "up" ? "text-[#4ade80]" : trend3m.icon === "down" ? "text-[#F87171]" : "text-[#FBBF24]"}`}>{trend3m.label}</p>
+            <p className="text-xs text-white/35 mt-1">vs média últimos 3 meses</p>
           </div>
-          <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
-            <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">Comparativos</h4>
+          <div className="rounded-xl border border-white/[0.06] p-5 shadow-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
+            <h4 className="text-xs font-semibold text-white/40 uppercase mb-3">Comparativos</h4>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Mês anterior</span>
+                <span className="text-sm text-white/45">Mês anterior</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-foreground">{trend3m.prevMonth} máq</span>
-                  {vendasVar !== 0 && <span className={`text-xs font-bold ${vendasVar > 0 ? "text-[#22C55E]" : "text-[#EF4444]"}`}>{vendasVar > 0 ? "+" : ""}{vendasVar.toFixed(0)}%</span>}
+                  <span className="text-sm font-bold text-white">{trend3m.prevMonth} máq</span>
+                  {vendasVar !== 0 && <span className={`text-xs font-bold ${vendasVar > 0 ? "text-[#4ade80]" : "text-[#F87171]"}`}>{vendasVar > 0 ? "+" : ""}{vendasVar.toFixed(0)}%</span>}
                 </div>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Média 3 meses</span>
-                <span className="text-sm font-bold text-foreground">{trend3m.avg.toFixed(1)} máq</span>
+                <span className="text-sm text-white/45">Média 3 meses</span>
+                <span className="text-sm font-bold text-white">{trend3m.avg.toFixed(1)} máq</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">Período atual</span>
-                <span className="text-sm font-black text-foreground">{cur.count} máq</span>
+                <span className="text-sm text-white/45">Período atual</span>
+                <span className="text-sm font-black text-white">{cur.count} máq</span>
               </div>
             </div>
           </div>
