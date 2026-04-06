@@ -809,8 +809,8 @@ const ExecutiveDashboard = ({ userId }: Props) => {
           <>
             <section>
               <div className="flex items-center gap-2 mb-4">
-                <Crosshair className="h-5 w-5 text-primary" />
-                <h3 className="font-heading text-base font-bold text-foreground uppercase tracking-wider">Pipeline em Fechamento</h3>
+                <Crosshair className="h-5 w-5 text-[#60A5FA]" />
+                <h3 className="font-heading text-base font-bold text-white uppercase tracking-wider">Pipeline em Fechamento</h3>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <MetricCard label="Negociações Ativas" value={String(closingDeals.length)} icon={<Crosshair className="h-4 w-4" />} color="#3B82F6" />
