@@ -115,7 +115,7 @@ const FilterBar = ({
       )}
 
       {/* Week selector */}
-      {showWeek && periodMode === "month" && week !== undefined && onWeekChange && (
+      {showWeek && (periodMode === "month" || periodMode === "week") && week !== undefined && onWeekChange && (
         <>
           <div className="w-px h-5 bg-border hidden sm:block" />
           <Select value={String(week)} onValueChange={v => onWeekChange(parseInt(v))}>
