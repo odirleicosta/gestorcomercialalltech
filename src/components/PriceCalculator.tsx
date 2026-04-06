@@ -56,11 +56,19 @@ export interface SavedCalculation {
 }
 
 const STORAGE_KEY = "price-calc-history";
+const ACTIVE_TAB_STORAGE_KEY = "price-calc-active-tab";
 
 const loadHistory = (): SavedCalculation[] => {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
   } catch { return []; }
+};
+
+const loadStoredActiveTab = (): AppTabId => {
+  if (typeof window === "undefined") return DEFAULT_APP_TAB;
+
+  const storedTab = localStorage.getItem(ACTIVE_TAB_STORAGE_KEY);
+  return storedTab && isAppTab(storedTab) ? storedTab : DEFAULT_APP_TAB;
 };
 
 const PriceCalculator = () => {
@@ -80,7 +88,7 @@ const PriceCalculator = () => {
   const [observation, setObservation] = useState("");
   const [notes, setNotes] = useState("");
 
-  const [activeTab, setActiveTab] = useState<AppTabId>(DEFAULT_APP_TAB);
+  const [activeTab, setActiveTab] = useState<AppTabId>(loadStoredActiveTab);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [kpiSubTab, setKpiSubTab] = useState("performance");
   const [registrySubTab, setRegistrySubTab] = useState("clients");
@@ -130,6 +138,10 @@ const PriceCalculator = () => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
   }, [history]);
+
+  useEffect(() => {
+    localStorage.setItem(ACTIVE_TAB_STORAGE_KEY, activeTab);
+  }, [activeTab]);
 
   const handleTabChange = (tab: string) => {
     if (isAppTab(tab)) {
