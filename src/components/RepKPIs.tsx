@@ -1297,8 +1297,119 @@ const RepKPIs = ({ userId }: Props) => {
           return best;
         })();
 
+        // ── Sales result metrics ──
+        const pctMetaMaquinas = totalMetaQtd > 0 ? (totalVendasFechadas / totalMetaQtd) * 100 : 0;
+        const faltamMaquinas = Math.max(0, totalMetaQtd - totalVendasFechadas);
+        const statusLabel = pctMetaMaquinas >= 100 ? "Acima da meta" : pctMetaMaquinas >= 70 ? "No ritmo" : "Abaixo da meta";
+        const statusColor = pctMetaMaquinas >= 100 ? "text-green-500" : pctMetaMaquinas >= 70 ? "text-yellow-500" : "text-destructive";
+        const statusBg = pctMetaMaquinas >= 100 ? "bg-green-500" : pctMetaMaquinas >= 70 ? "bg-yellow-500" : "bg-destructive";
+        const progressColor = pctMetaMaquinas >= 100 ? "from-green-500 to-green-400" : pctMetaMaquinas >= 70 ? "from-yellow-500 to-yellow-400" : "from-red-500 to-red-400";
+
+        // Per-rep sales ranking
+        const salesRanking = perfData.map(r => {
+          const closed = allYearClosedDeals.filter(d => {
+            if (d.representative_id !== r.id) return false;
+            const dt = new Date(d.closed_at);
+            if (dt.getFullYear() !== filterYear) return false;
+            if (relevantMonths.length > 0) return relevantMonths.includes(dt.getMonth() + 1);
+            return true;
+          }).length;
+          const pctRep = r.metaQtd > 0 ? (closed / r.metaQtd) * 100 : 0;
+          return { ...r, vendas: closed, pctMeta: pctRep, faltam: Math.max(0, r.metaQtd - closed) };
+        }).sort((a, b) => b.vendas - a.vendas);
+
         return (
           <>
+            {/* ═══ RESULTADO COMERCIAL — MÁQUINAS ═══ */}
+            <Card className="p-4 sm:p-6 border-l-4 border-l-primary bg-gradient-to-br from-primary/[0.05] to-transparent">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-primary" />
+                  <h3 className="font-heading text-base font-bold text-foreground">Resultado Comercial — Máquinas</h3>
+                </div>
+                <Badge className={`${statusColor} ${statusBg}/10 border-0 text-xs font-bold`}>{statusLabel}</Badge>
+              </div>
+
+              {/* Main KPI cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <div className="rounded-xl p-3 bg-card border border-border text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Vendidas</p>
+                  <p className="text-3xl font-black text-foreground">{totalVendasFechadas}</p>
+                </div>
+                <div className="rounded-xl p-3 bg-card border border-border text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Meta</p>
+                  <p className="text-3xl font-black text-muted-foreground">{totalMetaQtd}</p>
+                </div>
+                <div className="rounded-xl p-3 bg-card border border-border text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">% Atingido</p>
+                  <p className={`text-3xl font-black ${statusColor}`}>{pctMetaMaquinas.toFixed(0)}%</p>
+                </div>
+                <div className="rounded-xl p-3 bg-card border border-border text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Faltam</p>
+                  <p className={`text-3xl font-black ${faltamMaquinas > 0 ? "text-destructive" : "text-green-500"}`}>{faltamMaquinas}</p>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div className="mb-3">
+                <div className="relative h-3 w-full overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 bg-gradient-to-r ${progressColor}`}
+                    style={{ width: `${Math.min(pctMetaMaquinas, 100)}%` }}
+                  />
+                </div>
+                <div className="flex justify-between mt-1.5 text-[10px] text-muted-foreground">
+                  <span>{totalVendasFechadas} de {totalMetaQtd} máquinas</span>
+                  <span className={statusColor}>{statusLabel}</span>
+                </div>
+              </div>
+
+              {/* Top/Bottom summary */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                <div className="rounded-lg bg-secondary/50 px-3 py-2">
+                  <span className="text-muted-foreground">🏆 Melhor: </span>
+                  <span className="font-semibold text-foreground">{melhorVendedor?.nome?.split(" ")[0] || "—"} ({melhorVendedor?.vendas || 0})</span>
+                </div>
+                <div className="rounded-lg bg-secondary/50 px-3 py-2">
+                  <span className="text-muted-foreground">📊 Total equipe: </span>
+                  <span className="font-semibold text-foreground">{totalVendasFechadas} máquinas</span>
+                </div>
+                <div className="rounded-lg bg-secondary/50 px-3 py-2">
+                  <span className="text-muted-foreground">🎯 Meta período: </span>
+                  <span className="font-semibold text-foreground">{totalMetaQtd} máquinas</span>
+                </div>
+              </div>
+            </Card>
+
+            {/* ═══ RANKING POR VENDAS DE MÁQUINAS ═══ */}
+            <Card className="p-4 sm:p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                <h3 className="font-semibold text-foreground">Vendas vs Meta por Vendedor</h3>
+              </div>
+              <div className="space-y-2.5">
+                {salesRanking.map((r, i) => {
+                  const pctClamped = Math.min(r.pctMeta, 100);
+                  const barColor = r.pctMeta >= 100 ? "from-green-500 to-green-400" : r.pctMeta >= 70 ? "from-yellow-500 to-yellow-400" : "from-red-500 to-red-400";
+                  const textColor = r.pctMeta >= 100 ? "text-green-500" : r.pctMeta >= 70 ? "text-yellow-500" : "text-destructive";
+                  const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`;
+                  return (
+                    <div key={r.id} className="flex items-center gap-2">
+                      <span className="text-sm font-bold w-8">{medal}</span>
+                      <span className="text-xs font-medium w-28 truncate">{r.shortName}</span>
+                      <div className="flex-1 h-4 rounded-full bg-muted overflow-hidden">
+                        <div className={`h-full rounded-full transition-all duration-500 bg-gradient-to-r ${barColor}`} style={{ width: `${pctClamped}%` }} />
+                      </div>
+                      <span className="text-xs font-bold w-12 text-right">{r.vendas}/{r.metaQtd}</span>
+                      <span className={`text-xs font-bold w-12 text-right ${textColor}`}>{r.pctMeta.toFixed(0)}%</span>
+                      {r.faltam > 0 && <span className="text-[10px] text-muted-foreground w-16 text-right">faltam {r.faltam}</span>}
+                      {r.faltam === 0 && r.pctMeta >= 100 && <span className="text-[10px] text-green-500 w-16 text-right">✓ Meta</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+
             {/* ═══ RESUMO DE GESTÃO ═══ */}
             <Card className="p-4 sm:p-6 border-l-4 border-l-primary bg-primary/[0.03]">
               <div className="flex items-center gap-2 mb-4">
