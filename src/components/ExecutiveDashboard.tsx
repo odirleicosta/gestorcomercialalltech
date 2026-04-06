@@ -587,17 +587,77 @@ const ExecutiveDashboard = ({ userId }: Props) => {
         </div>
       </section>
 
-      {/* ═══ 4) RESULTADO FINANCEIRO ═══ */}
+      {/* ═══ 4) RESULTADO FINANCEIRO — Hero Card + Secondary KPIs ═══ */}
       <section>
         <div className="flex items-center gap-2 mb-4">
           <DollarSign className="h-5 w-5 text-[#22C55E]" />
           <h3 className="font-heading text-lg font-bold text-foreground">Resultado Financeiro</h3>
         </div>
+
+        {/* Hero card — Faturamento FOB */}
+        <div className="bg-[#1a2744] rounded-2xl p-5 sm:p-7 mb-4 shadow-xl">
+          <p className="text-white/55 text-xs uppercase tracking-wide mb-1">{periodLabel}</p>
+          <p className="text-4xl font-bold text-white tracking-tight">
+            {cur.count > 0 ? formatCompact(cur.basePrice) : "—"}
+          </p>
+          <p className="text-white/45 text-xs mt-1">
+            {cur.count > 0 ? formatBrlCompact(cur.basePriceBrl) : "—"}
+          </p>
+          {/* Progress bar */}
+          {(() => {
+            const totalMetaVal = filterRep !== "all"
+              ? (repRanking.find(r => r.id === filterRep)?.metaVal || 0)
+              : repRanking.reduce((s, r) => s + (r.metaVal || 0), 0);
+            const pctFat = totalMetaVal > 0 ? Math.min((cur.basePrice / totalMetaVal) * 100, 100) : 0;
+            const pctFatRaw = totalMetaVal > 0 ? (cur.basePrice / totalMetaVal) * 100 : 0;
+            return (
+              <>
+                <div className="w-full h-1 bg-white/12 rounded-full mt-4 overflow-hidden">
+                  <div className="h-full rounded-full transition-all duration-1000" style={{ width: `${pctFat}%`, backgroundColor: '#4ade80' }} />
+                </div>
+                <div className="flex justify-between mt-2">
+                  <span className="text-white/45 text-xs">Meta {totalMetaVal > 0 ? formatCompact(totalMetaVal) : "—"}</span>
+                  <span className="text-white/45 text-xs">Realizado {totalMetaVal > 0 ? formatPct(pctFatRaw) : "—"}</span>
+                </div>
+              </>
+            );
+          })()}
+        </div>
+
+        {/* Secondary KPI cards with trend badges */}
         <div className="grid gap-3 sm:gap-4 grid-cols-2 md:grid-cols-4">
-          <MetricCard label="FOB Total" value={cur.count > 0 ? formatCompact(cur.basePrice) : "—"} icon={<DollarSign className="h-5 w-5" />} color="#3B82F6" sub={`${cur.count} vendas`} />
-          <MetricCard label="Ticket Médio" value={cur.count > 0 ? formatCompact(ticketMedio) : "—"} icon={<BarChart3 className="h-5 w-5" />} color="#8B5CF6" sub="FOB / máquina" />
-          <MetricCard label="Margem Média" value={cur.count > 0 ? formatPct(margemMedia) : "—"} icon={<Zap className="h-5 w-5" />} color={margemMedia >= 0 ? "#22C55E" : "#EF4444"} sub="Lucro líq. / preço base" />
-          <MetricCard label="FOB Total BRL" value={cur.count > 0 ? formatBrlCompact(cur.basePriceBrl) : "—"} icon={<DollarSign className="h-5 w-5" />} color="#F97316" sub="Convertido em R$" />
+          <KpiSecondaryCard
+            label="Máquinas Vendidas"
+            value={String(cur.count)}
+            icon={<Target className="h-4 w-4" />}
+            iconBg="#22C55E"
+            trend={prev.count > 0 ? ((cur.count - prev.count) / prev.count) * 100 : cur.count > 0 ? 100 : 0}
+            pctMeta={totalMetaQtd > 0 ? (cur.count / totalMetaQtd) * 100 : 0}
+          />
+          <KpiSecondaryCard
+            label="Margem Média"
+            value={cur.count > 0 ? formatPct(margemMedia) : "—"}
+            icon={<Zap className="h-4 w-4" />}
+            iconBg="#3B82F6"
+            trend={prev.basePrice > 0 ? margemMedia - (prev.netProfit / prev.basePrice) * 100 : 0}
+            pctMeta={margemMedia > 0 ? Math.min(margemMedia / 20 * 100, 100) : 0}
+          />
+          <KpiSecondaryCard
+            label="Lucro Líquido"
+            value={cur.count > 0 ? formatCompact(cur.netProfit) : "—"}
+            icon={<TrendingUp className="h-4 w-4" />}
+            iconBg="#22C55E"
+            trend={prev.netProfit > 0 ? ((cur.netProfit - prev.netProfit) / prev.netProfit) * 100 : cur.netProfit > 0 ? 100 : 0}
+            pctMeta={cur.basePrice > 0 ? Math.min((cur.netProfit / cur.basePrice) * 100 / 15 * 100, 100) : 0}
+          />
+          <KpiSecondaryCard
+            label="Comissões"
+            value={cur.count > 0 ? formatCompact(commTotal) : "—"}
+            icon={<DollarSign className="h-4 w-4" />}
+            iconBg="#F59E0B"
+            trend={prev.sellerComm + prev.managerComm > 0 ? ((commTotal - (prev.sellerComm + prev.managerComm)) / (prev.sellerComm + prev.managerComm)) * 100 : commTotal > 0 ? 100 : 0}
+            pctMeta={cur.basePrice > 0 ? Math.min((commTotal / cur.basePrice) * 100 / 5 * 100, 100) : 0}
+          />
         </div>
       </section>
 
