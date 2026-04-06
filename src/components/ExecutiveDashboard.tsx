@@ -822,8 +822,8 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
             <section>
               <div className="flex items-center gap-2 mb-4">
-                <Gauge className="h-5 w-5 text-primary" />
-                <h3 className="font-heading text-base font-bold text-foreground uppercase tracking-wider">Previsão de Fechamento</h3>
+                <Gauge className="h-5 w-5 text-[#60A5FA]" />
+                <h3 className="font-heading text-base font-bold text-white uppercase tracking-wider">Previsão de Fechamento</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {[
