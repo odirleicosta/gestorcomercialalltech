@@ -491,19 +491,19 @@ const ExecutiveDashboard = ({ userId }: Props) => {
           <h3 className="font-heading text-lg font-bold text-white">Atividade da Equipe</h3>
         </div>
         <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-3">
-          <div className="bg-card rounded-xl border border-border p-4 sm:p-5 shadow-sm text-center">
-            <p className="font-heading text-3xl sm:text-4xl font-black text-foreground">{visitStats.totalVisitas}</p>
-            <p className="text-xs text-muted-foreground mt-1">Visitas no período</p>
+          <div className="rounded-xl border border-white/[0.06] p-4 sm:p-5 shadow-lg text-center" style={{ background: 'rgba(255,255,255,0.04)' }}>
+            <p className="font-heading text-3xl sm:text-4xl font-black text-white">{visitStats.totalVisitas}</p>
+            <p className="text-xs text-white/40 mt-1">Visitas no período</p>
           </div>
-          <div className="bg-card rounded-xl border border-border p-4 sm:p-5 shadow-sm text-center">
-            <p className="font-heading text-3xl sm:text-4xl font-black text-foreground">{visitStats.media.toFixed(1)}</p>
-            <p className="text-xs text-muted-foreground mt-1">Média por vendedor</p>
+          <div className="rounded-xl border border-white/[0.06] p-4 sm:p-5 shadow-lg text-center" style={{ background: 'rgba(255,255,255,0.04)' }}>
+            <p className="font-heading text-3xl sm:text-4xl font-black text-white">{visitStats.media.toFixed(1)}</p>
+            <p className="text-xs text-white/40 mt-1">Média por vendedor</p>
           </div>
-          <div className="bg-card rounded-xl border border-border p-4 sm:p-5 shadow-sm text-center">
+          <div className="rounded-xl border border-white/[0.06] p-4 sm:p-5 shadow-lg text-center" style={{ background: 'rgba(255,255,255,0.04)' }}>
             <p className={`font-heading text-3xl sm:text-4xl font-black ${visitStats.pctMeta >= 100 ? "text-[#22C55E]" : visitStats.pctMeta >= 70 ? "text-[#F97316]" : "text-[#EF4444]"}`}>
               {formatPct(visitStats.pctMeta)}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">{visitStats.totalVisitas} de {visitStats.totalMeta} visitas</p>
+            <p className="text-xs text-white/40 mt-1">{visitStats.totalVisitas} de {visitStats.totalMeta} visitas</p>
           </div>
         </div>
       </section>
