@@ -1252,8 +1252,104 @@ const RepKPIs = ({ userId }: Props) => {
           type: mt, total: perfData.reduce((s, r) => s + (r.byType[mt] || 0), 0),
         }));
 
+        // ── Management alerts computed from perfData ──
+        const repsZeroVendas = perfData.filter(r => {
+          const closed = allYearClosedDeals.filter(d => {
+            if (d.representative_id !== r.id) return false;
+            const dt = new Date(d.closed_at);
+            if (dt.getFullYear() !== filterYear) return false;
+            if (relevantMonths.length > 0) return relevantMonths.includes(dt.getMonth() + 1);
+            return true;
+          });
+          return closed.length === 0;
+        });
+        const repsAbaixo50 = perfData.filter(r => {
+          if (r.metaQtd <= 0) return false;
+          const closed = allYearClosedDeals.filter(d => {
+            if (d.representative_id !== r.id) return false;
+            const dt = new Date(d.closed_at);
+            if (dt.getFullYear() !== filterYear) return false;
+            if (relevantMonths.length > 0) return relevantMonths.includes(dt.getMonth() + 1);
+            return true;
+          }).length;
+          return closed < r.metaQtd * 0.5 && closed > 0;
+        });
+        const totalVendasFechadas = allYearClosedDeals.filter(d => {
+          if (filterRep !== "all" && d.representative_id !== filterRep) return false;
+          const dt = new Date(d.closed_at);
+          if (dt.getFullYear() !== filterYear) return false;
+          if (relevantMonths.length > 0) return relevantMonths.includes(dt.getMonth() + 1);
+          return true;
+        }).length;
+        const taxaConversaoGeral = totalOpp > 0 ? (totalVendasFechadas / totalOpp) * 100 : 0;
+        const melhorVendedor = (() => {
+          let best: { nome: string; vendas: number } | null = null;
+          for (const r of perfData) {
+            const closed = allYearClosedDeals.filter(d => {
+              if (d.representative_id !== r.id) return false;
+              const dt = new Date(d.closed_at);
+              if (dt.getFullYear() !== filterYear) return false;
+              if (relevantMonths.length > 0) return relevantMonths.includes(dt.getMonth() + 1);
+              return true;
+            }).length;
+            if (!best || closed > best.vendas) best = { nome: r.nome, vendas: closed };
+          }
+          return best;
+        })();
+
         return (
           <>
+            {/* ═══ RESUMO DE GESTÃO ═══ */}
+            <Card className="p-4 sm:p-6 border-l-4 border-l-primary bg-primary/[0.03]">
+              <div className="flex items-center gap-2 mb-4">
+                <AlertTriangle className="h-5 w-5 text-primary" />
+                <h3 className="font-heading text-base font-bold text-foreground">Resumo de Gestão do Período</h3>
+                <Badge variant="outline" className="text-[10px] ml-auto">{periodLabel}</Badge>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* Vendedores com 0 vendas */}
+                <div className={`rounded-xl p-3 border ${repsZeroVendas.length > 0 ? "border-destructive/20 bg-destructive/[0.05]" : "border-green-500/20 bg-green-500/[0.05]"}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className={`h-2 w-2 rounded-full ${repsZeroVendas.length > 0 ? "bg-destructive" : "bg-green-500"}`} />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Sem vendas</span>
+                  </div>
+                  <p className={`text-2xl font-black ${repsZeroVendas.length > 0 ? "text-destructive" : "text-green-500"}`}>{repsZeroVendas.length}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    {repsZeroVendas.length > 0 ? repsZeroVendas.slice(0, 2).map(r => r.nome.split(" ")[0]).join(", ") + (repsZeroVendas.length > 2 ? ` +${repsZeroVendas.length - 2}` : "") : "Todos venderam"}
+                  </p>
+                </div>
+                {/* Abaixo de 50% */}
+                <div className={`rounded-xl p-3 border ${repsAbaixo50.length > 0 ? "border-yellow-500/20 bg-yellow-500/[0.05]" : "border-green-500/20 bg-green-500/[0.05]"}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className={`h-2 w-2 rounded-full ${repsAbaixo50.length > 0 ? "bg-yellow-500" : "bg-green-500"}`} />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{"< 50% da meta"}</span>
+                  </div>
+                  <p className={`text-2xl font-black ${repsAbaixo50.length > 0 ? "text-yellow-500" : "text-green-500"}`}>{repsAbaixo50.length}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    {repsAbaixo50.length > 0 ? repsAbaixo50.slice(0, 2).map(r => r.nome.split(" ")[0]).join(", ") + (repsAbaixo50.length > 2 ? ` +${repsAbaixo50.length - 2}` : "") : "Todos acima de 50%"}
+                  </p>
+                </div>
+                {/* Taxa de conversão */}
+                <div className={`rounded-xl p-3 border ${taxaConversaoGeral < 10 ? "border-destructive/20 bg-destructive/[0.05]" : taxaConversaoGeral < 25 ? "border-yellow-500/20 bg-yellow-500/[0.05]" : "border-green-500/20 bg-green-500/[0.05]"}`}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className={`h-2 w-2 rounded-full ${taxaConversaoGeral < 10 ? "bg-destructive" : taxaConversaoGeral < 25 ? "bg-yellow-500" : "bg-green-500"}`} />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Conversão</span>
+                  </div>
+                  <p className={`text-2xl font-black ${taxaConversaoGeral < 10 ? "text-destructive" : taxaConversaoGeral < 25 ? "text-yellow-500" : "text-green-500"}`}>{taxaConversaoGeral.toFixed(1)}%</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{totalVendasFechadas} vendas / {totalOpp} oportunidades</p>
+                </div>
+                {/* Melhor vendedor */}
+                <div className="rounded-xl p-3 border border-green-500/20 bg-green-500/[0.05]">
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="h-2 w-2 rounded-full bg-green-500" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Melhor vendedor</span>
+                  </div>
+                  <p className="text-lg font-black text-foreground truncate">{melhorVendedor?.nome || "—"}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{melhorVendedor ? `${melhorVendedor.vendas} vendas fechadas` : "Sem dados"}</p>
+                </div>
+              </div>
+            </Card>
+
             {/* Summary KPIs */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <KpiCard icon={<Eye className="h-5 w-5" />} label="Visitas Realizadas" value={String(totalVisitas)} color="text-primary" />
@@ -1350,6 +1446,9 @@ const RepKPIs = ({ userId }: Props) => {
                         <div className={`h-full rounded-full transition-all duration-500 ${color}`} style={{ width: `${Math.min(row.pctVisitas, 100)}%` }} />
                       </div>
                       <span className={`text-sm font-bold min-w-[3.5rem] text-right ${textColor}`}>{row.pctVisitas.toFixed(0)}%</span>
+                      <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${row.pctVisitas >= 100 ? "border-green-500/30 text-green-500 bg-green-500/5" : row.pctVisitas >= 70 ? "border-yellow-500/30 text-yellow-500 bg-yellow-500/5" : "border-destructive/30 text-destructive bg-destructive/5"}`}>
+                        {row.pctVisitas >= 100 ? "Acima" : row.pctVisitas >= 70 ? "No ritmo" : "Abaixo"}
+                      </Badge>
                       <div className="flex gap-2 text-xs text-muted-foreground">
                         <span title="Visitas">{row.visitasRealizadas}v</span>
                         <span title="Oportunidades">{row.totalOpp}o</span>
@@ -1436,6 +1535,14 @@ const RepKPIs = ({ userId }: Props) => {
                       );
                     })}
                   </div>
+
+                  {/* Alert if conversion is low */}
+                  {totalVisitas > 0 && vendasFechadas > 0 && (vendasFechadas / totalVisitas) * 100 < 10 && (
+                    <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/[0.05] p-3 flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                      <p className="text-xs font-medium text-destructive">Conversão abaixo do esperado — apenas {((vendasFechadas / totalVisitas) * 100).toFixed(1)}% das visitas resultaram em vendas</p>
+                    </div>
+                  )}
 
                   {/* Taxas de conversão */}
                   <div className="mt-4 pt-3 border-t border-border">
@@ -1631,6 +1738,35 @@ const RepKPIs = ({ userId }: Props) => {
                     </div>
                     <span className="text-[10px] text-muted-foreground">0 → Máx</span>
                   </div>
+
+                  {/* Heatmap insights */}
+                  {(() => {
+                    const lowActivityWeeks = sortedWeeks.filter(w => {
+                      const weekTotal = heatData.reduce((s, r) => s + (r.weeks[w] || 0), 0);
+                      return weekTotal === 0;
+                    });
+                    const lowActivityReps = heatData.filter(r => {
+                      const total = Object.values(r.weeks).reduce((s, v) => s + v, 0);
+                      return total === 0;
+                    });
+                    if (lowActivityWeeks.length === 0 && lowActivityReps.length === 0) return null;
+                    return (
+                      <div className="mt-3 space-y-1.5">
+                        {lowActivityWeeks.length > 0 && (
+                          <div className="flex items-center gap-2 rounded-lg border border-yellow-500/20 bg-yellow-500/[0.05] px-3 py-2">
+                            <AlertTriangle className="h-3.5 w-3.5 text-yellow-500 shrink-0" />
+                            <p className="text-[11px] text-yellow-600 dark:text-yellow-400 font-medium">Baixa atividade na{lowActivityWeeks.length > 1 ? "s" : ""} semana{lowActivityWeeks.length > 1 ? "s" : ""} {lowActivityWeeks.slice(0, 3).map(w => `S${w}`).join(", ")}{lowActivityWeeks.length > 3 ? ` +${lowActivityWeeks.length - 3}` : ""}</p>
+                          </div>
+                        )}
+                        {lowActivityReps.length > 0 && (
+                          <div className="flex items-center gap-2 rounded-lg border border-destructive/20 bg-destructive/[0.05] px-3 py-2">
+                            <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+                            <p className="text-[11px] text-destructive font-medium">{lowActivityReps.length} rep{lowActivityReps.length > 1 ? "s" : ""} sem nenhuma visita: {lowActivityReps.slice(0, 3).map(r => r.nome).join(", ")}</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </Card>
               );
             })()}
