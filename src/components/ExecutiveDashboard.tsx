@@ -688,29 +688,29 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
       {/* ═══ EVOLUÇÃO COMPLETA ═══ */}
       <section>
-        <div className="bg-card rounded-xl border border-border p-6 shadow-sm">
-          <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-4 flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-[#3B82F6]" /> Evolução Detalhada (6 meses)
+        <div className="rounded-xl border border-white/[0.06] p-6 shadow-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
+          <h4 className="text-xs font-semibold text-white/40 uppercase mb-4 flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-[#60A5FA]" /> Evolução Detalhada (6 meses)
           </h4>
           <ResponsiveContainer width="100%" height={260}>
             <AreaChart data={evolutionData}>
               <defs>
                 <linearGradient id="gradFat2" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.15} />
+                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.25} />
                   <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="gradLucro2" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#22C55E" stopOpacity={0.15} />
+                  <stop offset="5%" stopColor="#22C55E" stopOpacity={0.25} />
                   <stop offset="95%" stopColor="#22C55E" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#6B7280' }} />
-              <YAxis tick={{ fontSize: 11, fill: '#6B7280' }} />
-              <Tooltip formatter={(v: number) => formatUsd(v)} contentStyle={{ fontSize: 12, borderRadius: 12, background: '#fff', border: '1px solid #E5E7EB', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} />
-              <Area type="monotone" dataKey="Faturamento" stroke="#3B82F6" fill="url(#gradFat2)" strokeWidth={2.5} />
-              <Area type="monotone" dataKey="Lucro Líquido" stroke="#22C55E" fill="url(#gradLucro2)" strokeWidth={2.5} />
-              <RechartLegend wrapperStyle={{ fontSize: 12 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+              <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'rgba(255,255,255,0.4)' }} />
+              <YAxis tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.4)' }} />
+              <Tooltip formatter={(v: number) => formatUsd(v)} contentStyle={{ fontSize: 12, borderRadius: 12, background: '#1a2744', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', color: '#fff' }} />
+              <Area type="monotone" dataKey="Faturamento" stroke="#60A5FA" fill="url(#gradFat2)" strokeWidth={2.5} />
+              <Area type="monotone" dataKey="Lucro Líquido" stroke="#4ade80" fill="url(#gradLucro2)" strokeWidth={2.5} />
+              <RechartLegend wrapperStyle={{ fontSize: 12, color: 'rgba(255,255,255,0.5)' }} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
