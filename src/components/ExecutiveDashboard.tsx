@@ -941,34 +941,34 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 const MetricCard = ({ label, value, icon, color, sub }: {
   label: string; value: string; icon: React.ReactNode; color: string; sub?: string;
 }) => (
-  <div className="bg-card rounded-xl border border-border p-2.5 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
+  <div className="rounded-xl border border-white/[0.06] p-2.5 sm:p-5 shadow-lg hover:shadow-xl transition-shadow" style={{ background: 'rgba(255,255,255,0.04)' }}>
     <div className="flex items-center gap-1.5 sm:gap-3 mb-1.5 sm:mb-3">
-      <div className="h-7 w-7 sm:h-10 sm:w-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}15`, color }}>{icon}</div>
-      <span className="text-[9px] sm:text-xs font-semibold text-muted-foreground uppercase leading-tight">{label}</span>
+      <div className="h-7 w-7 sm:h-10 sm:w-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}20`, color }}>{icon}</div>
+      <span className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase leading-tight">{label}</span>
     </div>
-    <p className="font-heading text-sm sm:text-2xl font-black text-foreground truncate">{value}</p>
-    {sub && <p className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">{sub}</p>}
+    <p className="font-heading text-sm sm:text-2xl font-black text-white truncate">{value}</p>
+    {sub && <p className="text-[9px] sm:text-xs text-white/30 mt-0.5 sm:mt-1">{sub}</p>}
   </div>
 );
 
 const KpiSecondaryCard = ({ label, value, icon, iconBg, trend, pctMeta }: {
   label: string; value: string; icon: React.ReactNode; iconBg: string; trend: number; pctMeta: number;
 }) => {
-  const progressColor = pctMeta >= 70 ? "#22C55E" : pctMeta >= 40 ? "#3B82F6" : "#EF4444";
+  const progressColor = pctMeta >= 70 ? "#4ade80" : pctMeta >= 40 ? "#60A5FA" : "#F87171";
   const trendPositive = trend >= 0;
   return (
-    <div className="bg-card rounded-xl border border-border p-3 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
+    <div className="rounded-xl border border-white/[0.06] p-3 sm:p-5 shadow-lg hover:shadow-xl transition-shadow" style={{ background: 'rgba(255,255,255,0.04)' }}>
       <div className="flex items-center justify-between mb-2 sm:mb-3">
-        <span className="text-[9px] sm:text-xs font-semibold text-muted-foreground uppercase leading-tight">{label}</span>
-        <div className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${iconBg}20`, color: iconBg }}>{icon}</div>
+        <span className="text-[9px] sm:text-xs font-semibold text-white/40 uppercase leading-tight">{label}</span>
+        <div className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${iconBg}25`, color: iconBg }}>{icon}</div>
       </div>
-      <p className="text-2xl font-semibold tracking-tight text-foreground truncate">{value}</p>
+      <p className="text-2xl font-bold tracking-tight text-white truncate">{value}</p>
       {trend !== 0 && (
-        <span className={`inline-flex items-center text-xs px-1.5 py-0.5 rounded mt-1.5 ${trendPositive ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"}`}>
+        <span className={`inline-flex items-center text-xs font-bold px-1.5 py-0.5 rounded mt-1.5 ${trendPositive ? "bg-[#22C55E]/15 text-[#4ade80]" : "bg-[#EF4444]/15 text-[#F87171]"}`}>
           {trendPositive ? "+" : ""}{trend.toFixed(0)}%
         </span>
       )}
-      <div className="w-full h-[3px] bg-muted rounded-full mt-3 overflow-hidden">
+      <div className="w-full h-[3px] bg-white/[0.08] rounded-full mt-3 overflow-hidden">
         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(pctMeta, 100)}%`, backgroundColor: progressColor }} />
       </div>
     </div>
