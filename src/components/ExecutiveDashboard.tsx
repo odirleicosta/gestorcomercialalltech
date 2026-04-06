@@ -538,26 +538,26 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                 const visitCount = visitStats.perRep.get(rep.id) || 0;
 
                 return (
-                  <div key={rep.id} onClick={() => setFilterRep(rep.id)} className={`flex items-center gap-3 px-4 sm:px-5 py-3 hover:bg-muted/50 transition-colors cursor-pointer ${idx === 0 ? "bg-[#F59E0B]/[0.04]" : ""}`}>
+                  <div key={rep.id} onClick={() => setFilterRep(rep.id)} className={`flex items-center gap-3 px-4 sm:px-5 py-3 transition-colors cursor-pointer ${idx === 0 ? "bg-[#F59E0B]/[0.06]" : "hover:bg-white/[0.03]"}`}>
                     <span className="text-base font-bold w-7 text-center shrink-0">
-                      {medal || <span className="text-muted-foreground text-sm">#{idx + 1}</span>}
+                      {medal || <span className="text-white/30 text-sm">#{idx + 1}</span>}
                     </span>
-                    <div className="h-[32px] w-[32px] rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0" style={{ backgroundColor: avatarColor }}>
+                    <div className="h-[32px] w-[32px] rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0 ring-1 ring-white/10" style={{ backgroundColor: avatarColor }}>
                       {initials}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-foreground truncate">{rep.nome}</p>
-                        {pct >= 100 && <span className="text-[9px] bg-[#22C55E]/15 text-[#22C55E] font-bold px-1.5 py-0.5 rounded-full shrink-0">META ✓</span>}
+                        <p className="text-sm font-semibold text-white truncate">{rep.nome}</p>
+                        {pct >= 100 && <span className="text-[9px] bg-[#22C55E]/20 text-[#4ade80] font-bold px-1.5 py-0.5 rounded-full shrink-0">META ✓</span>}
                       </div>
-                      <div className="w-full max-w-[200px] h-[4px] bg-muted rounded-full mt-1.5 overflow-hidden">
+                      <div className="w-full max-w-[200px] h-[4px] bg-white/[0.08] rounded-full mt-1.5 overflow-hidden">
                         <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(pct, 100)}%`, backgroundColor: progressColor }} />
                       </div>
                     </div>
                     <div className="text-right shrink-0 space-y-0.5">
-                      <p className="text-sm font-black text-foreground tabular-nums">{rep.count} / {rep.metaQtd}</p>
-                      <p className={`text-[10px] font-semibold ${pct >= 100 ? "text-[#22C55E]" : pct >= 70 ? "text-[#F59E0B]" : "text-[#EF4444]"}`}>{formatPct(pct)}</p>
-                      <p className="text-[9px] text-muted-foreground">{visitCount} visitas</p>
+                      <p className="text-sm font-black text-white tabular-nums">{rep.count} / {rep.metaQtd}</p>
+                      <p className={`text-[10px] font-semibold ${pct >= 100 ? "text-[#4ade80]" : pct >= 70 ? "text-[#FBBF24]" : "text-[#F87171]"}`}>{formatPct(pct)}</p>
+                      <p className="text-[9px] text-white/30">{visitCount} visitas</p>
                     </div>
                   </div>
                 );
