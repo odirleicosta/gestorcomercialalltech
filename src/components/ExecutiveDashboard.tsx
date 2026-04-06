@@ -717,7 +717,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       </section>
 
       {/* ═══ RESUMO EXECUTIVO ═══ */}
-      <section className="bg-gradient-to-br from-[#1E293B] to-[#334155] rounded-2xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden">
+      <section className="rounded-2xl p-6 md:p-8 text-white shadow-xl relative overflow-hidden border border-white/[0.06]" style={{ background: 'linear-gradient(135deg, #162033 0%, #1e3047 50%, #1a2744 100%)' }}>
         <div className="absolute top-0 right-0 w-48 h-48 bg-white/[0.03] rounded-full -translate-y-20 translate-x-20" />
         <div className="relative">
           <div className="flex items-center gap-2 mb-5">
