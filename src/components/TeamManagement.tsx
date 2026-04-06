@@ -223,49 +223,16 @@ const TeamManagement = ({ userId }: Props) => {
       });
   }, [reps, deals, goals, opportunities, visits, closingDeals, filterYear, activeMonths, filterRep]);
 
-  // Alerts
-  const alerts = useMemo(() => {
-    const items: { type: "critical" | "warning" | "info"; text: string; icon: React.ReactNode }[] = [];
-
-    const zeroSales = repData.filter((r) => r.sold === 0);
-    if (zeroSales.length > 0) {
-      items.push({
-        type: "critical",
-        text: `${zeroSales.length} vendedor(es) com 0 vendas: ${zeroSales.map((r) => r.nome.split(" ")[0]).join(", ")}`,
-        icon: <XCircle className="h-4 w-4" />,
-      });
-    }
-
-    const zeroOpps = repData.filter((r) => r.totalOpps === 0);
-    if (zeroOpps.length > 0) {
-      items.push({
-        type: "critical",
-        text: `${zeroOpps.length} vendedor(es) com 0 oportunidades: ${zeroOpps.map((r) => r.nome.split(" ")[0]).join(", ")}`,
-        icon: <AlertTriangle className="h-4 w-4" />,
-      });
-    }
-
-    const lowActivity = repData.filter((r) => r.totalVisits < 5 && r.totalVisits > 0);
-    if (lowActivity.length > 0) {
-      items.push({
-        type: "warning",
-        text: `${lowActivity.length} vendedor(es) com baixa atividade de visitas`,
-        icon: <Clock className="h-4 w-4" />,
-      });
-    }
-
-    const totalSold = repData.reduce((s, r) => s + r.sold, 0);
-    const totalProposals = repData.reduce((s, r) => s + r.sold + r.activeNeg, 0);
-    const generalConversion = totalProposals > 0 ? Math.round((totalSold / totalProposals) * 100) : 0;
-    if (generalConversion < 25 && totalProposals > 0) {
-      items.push({
-        type: "warning",
-        text: `Conversão geral baixa: ${generalConversion}%`,
-        icon: <TrendingDown className="h-4 w-4" />,
-      });
-    }
-
-    return items;
+  // Critical reps (0 sales or 0 opps or lowest pct)
+  const criticalReps = useMemo(() => {
+    const ids = new Set<string>();
+    repData.forEach((r) => {
+      if (r.sold === 0 || r.totalOpps === 0 || r.pct < 30) ids.add(r.id);
+    });
+    // Also add the 3 worst by pct if not already critical
+    const sorted = [...repData].sort((a, b) => a.pct - b.pct);
+    sorted.slice(0, 3).forEach((r) => ids.add(r.id));
+    return ids;
   }, [repData]);
 
   // Team status counts
@@ -332,41 +299,56 @@ const TeamManagement = ({ userId }: Props) => {
         ))}
       </div>
 
-      {/* 2. Alertas */}
-      {alerts.length > 0 && (
-        <Card className="border-border/60 bg-card p-4 space-y-2">
-          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-400" />
-            Alertas Automáticos
-          </h2>
-          <div className="space-y-2">
-            {alerts.map((alert, i) => (
-              <div
-                key={i}
-                className={`flex items-start gap-2 text-sm rounded-lg px-3 py-2 ${
-                  alert.type === "critical"
-                    ? "bg-red-500/10 text-red-400"
-                    : alert.type === "warning"
-                    ? "bg-amber-500/10 text-amber-400"
-                    : "bg-blue-500/10 text-blue-400"
-                }`}
-              >
-                {alert.icon}
-                <span>{alert.text}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
+      {/* 2. Críticos do Período */}
+      {(() => {
+        const critical = repData.filter((r) => criticalReps.has(r.id));
+        if (critical.length === 0) return null;
+        return (
+          <Card className="border-red-500/40 bg-red-500/5 p-4 space-y-3">
+            <h2 className="text-sm font-bold text-red-400 flex items-center gap-2">
+              <XCircle className="h-4 w-4" />
+              Críticos do Período — Ação Imediata
+            </h2>
+            <div className="space-y-2">
+              {critical.map((r) => {
+                const reasons: string[] = [];
+                if (r.sold === 0) reasons.push("0 vendas");
+                if (r.totalOpps === 0) reasons.push("0 oportunidades");
+                if (r.totalVisits === 0) reasons.push("0 visitas");
+                if (reasons.length === 0 && r.pct < 30) reasons.push(`${r.pct}% da meta`);
+                return (
+                  <div key={r.id} className="flex items-center justify-between bg-red-500/10 rounded-lg px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center text-[10px] font-bold">
+                        {r.nome.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                      </div>
+                      <span className="text-sm font-semibold text-foreground">{r.nome}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-red-400">{reasons.join(" · ")}</span>
+                      <Badge className="bg-red-500/20 text-red-300 border-red-500/30 text-[10px]">{r.action}</Badge>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        );
+      })()}
 
       {/* 3. Lista de Vendedores */}
       <div className="space-y-3">
         {repData.map((rep) => {
           const cfg = statusConfig[rep.status];
+          const isCritical = criticalReps.has(rep.id);
           return (
             <Card
               key={rep.id}
-              className="border-border/40 bg-card p-4 transition-all hover:border-border/80 hover:shadow-md"
+              className={`p-4 transition-all hover:shadow-md ${
+                isCritical
+                  ? "border-red-500/50 bg-red-500/5 hover:border-red-500/70"
+                  : "border-border/40 bg-card hover:border-border/80"
+              }`}
             >
               {/* Header do card */}
               <div className="flex items-center justify-between mb-3">
@@ -419,12 +401,11 @@ const TeamManagement = ({ userId }: Props) => {
                 </div>
               )}
 
-              {/* KPIs inline */}
-              <div className="grid grid-cols-4 gap-2 mb-3">
+              {/* KPIs inline — simplified */}
+              <div className="grid grid-cols-3 gap-2 mb-3">
                 {([
                   { label: "Visitas", value: rep.totalVisits, icon: <Eye className="h-3.5 w-3.5" /> },
-                  { label: "Oportunid.", value: rep.totalOpps, icon: <Lightbulb className="h-3.5 w-3.5" /> },
-                  { label: "Negociações", value: rep.activeNeg, icon: <Target className="h-3.5 w-3.5" /> },
+                  { label: "Oportunidades", value: rep.totalOpps, icon: <Lightbulb className="h-3.5 w-3.5" /> },
                   { label: "Conversão", value: `${rep.conversion}%`, icon: <TrendingUp className="h-3.5 w-3.5" /> },
                 ]).map((kpi, idx) => (
                   <div key={idx} className="bg-secondary/50 rounded-lg px-2 py-1.5 text-center">
@@ -435,10 +416,18 @@ const TeamManagement = ({ userId }: Props) => {
                 ))}
               </div>
 
-              {/* Ação recomendada */}
-              <div className={`flex items-center gap-2 text-xs font-medium ${rep.actionColor} bg-secondary/30 rounded-lg px-3 py-2`}>
-                {rep.actionIcon}
-                <span>Ação recomendada: {rep.action}</span>
+              {/* Ação recomendada — more prominent */}
+              <div className={`flex items-center gap-2 rounded-lg px-3 py-2.5 font-semibold text-xs ${
+                rep.status === "abaixo"
+                  ? "bg-red-500/15 border border-red-500/30"
+                  : rep.status === "ritmo"
+                  ? "bg-amber-500/10 border border-amber-500/20"
+                  : "bg-emerald-500/10 border border-emerald-500/20"
+              }`}>
+                <Badge className={`${rep.actionColor} bg-transparent border-0 p-0`}>
+                  {rep.actionIcon}
+                </Badge>
+                <span className={rep.actionColor}>{rep.action}</span>
               </div>
             </Card>
           );
