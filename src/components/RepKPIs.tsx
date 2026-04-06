@@ -1782,6 +1782,11 @@ const RepKPIs = ({ userId }: Props) => {
         const formatDate = (d: string) => { const dt = new Date(d + "T00:00:00"); return `${SHORT_MONTH_NAMES[dt.getMonth()]} ${dt.getFullYear()}`; };
         const periodLabel = periodMode === "mes" ? `${MONTHS[filterMonth - 1]} ${filterYear}` : periodMode === "trimestre" ? `${filterQuarter} ${filterYear}` : `${filterYear}`;
 
+        // Unique values for dropdowns
+        const uniqueReps = [...new Set(periodFiltered.map(d => reps.find(r => r.id === d.representative_id)?.nome || "Sem Rep"))].sort();
+        const uniqueMotivos = [...new Set(periodFiltered.map(d => d.motivo_perda || "Não informado"))].sort();
+        const uniqueSubmotivos = [...new Set(periodFiltered.map(d => d.motivo_perda_detalhe || "Não informado"))].sort();
+
         return (
           <>
             {/* Action buttons for perdidas */}
@@ -1802,18 +1807,51 @@ const RepKPIs = ({ userId }: Props) => {
                 <Plus className="h-4 w-4" /> Registrar Perda
               </Button>
             </div>
-            {/* KPI Summary */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <KpiCard icon={<XCircle className="h-5 w-5" />} label="Total Perdidas" value={String(total)} color="text-destructive" />
-              <KpiCard icon={<AlertTriangle className="h-5 w-5" />} label="Valor Perdido" value={totalValor >= 1000 ? `R$ ${(totalValor / 1000).toFixed(0)}k` : formatBrlFull(totalValor)} color="text-destructive" />
-              <KpiCard icon={<Users className="h-5 w-5" />} label="Reps Envolvidos" value={String(Object.keys(byRep).length)} color="text-muted-foreground" />
-              <KpiCard icon={<Flag className="h-5 w-5" />} label="Motivos Distintos" value={String(Object.keys(byMotivo).length)} color="text-muted-foreground" />
+
+            {/* Dropdown Filters */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Filtros:</span>
+              </div>
+              <Select value={lostFilterRep || "__all__"} onValueChange={v => setLostFilterRep(v === "__all__" ? null : v)}>
+                <SelectTrigger className="w-[180px] h-8 text-xs">
+                  <SelectValue placeholder="Representante" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todos Representantes</SelectItem>
+                  {uniqueReps.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={lostFilterMotivo || "__all__"} onValueChange={v => setLostFilterMotivo(v === "__all__" ? null : v)}>
+                <SelectTrigger className="w-[200px] h-8 text-xs">
+                  <SelectValue placeholder="Motivo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todos Motivos</SelectItem>
+                  {uniqueMotivos.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={lostFilterSubmotivo || "__all__"} onValueChange={v => setLostFilterSubmotivo(v === "__all__" ? null : v)}>
+                <SelectTrigger className="w-[200px] h-8 text-xs">
+                  <SelectValue placeholder="Submotivo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todos Submotivos</SelectItem>
+                  {uniqueSubmotivos.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {hasActiveFilter && (
+                <Button variant="ghost" size="sm" className="h-8 text-xs text-muted-foreground gap-1" onClick={() => { setLostFilterRep(null); setLostFilterMotivo(null); setLostFilterSubmotivo(null); }}>
+                  <XCircle className="h-3.5 w-3.5" /> Limpar
+                </Button>
+              )}
             </div>
 
-            {/* Active Filters */}
+            {/* Active Filter Badges */}
             {hasActiveFilter && (
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-muted-foreground font-medium flex items-center gap-1"><Filter className="h-3 w-3" /> Filtros:</span>
+                <span className="text-xs text-muted-foreground font-medium flex items-center gap-1"><Filter className="h-3 w-3" /> Ativos:</span>
                 {lostFilterRep && (
                   <Badge variant="secondary" className="gap-1 cursor-pointer hover:bg-destructive/10" onClick={() => setLostFilterRep(null)}>
                     <Users className="h-3 w-3" /> {lostFilterRep} <XCircle className="h-3 w-3 ml-0.5" />
@@ -1829,9 +1867,6 @@ const RepKPIs = ({ userId }: Props) => {
                     <Flag className="h-3 w-3" /> {lostFilterSubmotivo} <XCircle className="h-3 w-3 ml-0.5" />
                   </Badge>
                 )}
-                <Button variant="ghost" size="sm" className="h-6 text-xs text-muted-foreground" onClick={() => { setLostFilterRep(null); setLostFilterMotivo(null); setLostFilterSubmotivo(null); }}>
-                  Limpar todos
-                </Button>
               </div>
             )}
 
