@@ -923,7 +923,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
   );
 };
 
-/* --- Sub-component --- */
+/* --- Sub-components --- */
 const MetricCard = ({ label, value, icon, color, sub }: {
   label: string; value: string; icon: React.ReactNode; color: string; sub?: string;
 }) => (
@@ -936,5 +936,29 @@ const MetricCard = ({ label, value, icon, color, sub }: {
     {sub && <p className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">{sub}</p>}
   </div>
 );
+
+const KpiSecondaryCard = ({ label, value, icon, iconBg, trend, pctMeta }: {
+  label: string; value: string; icon: React.ReactNode; iconBg: string; trend: number; pctMeta: number;
+}) => {
+  const progressColor = pctMeta >= 70 ? "#22C55E" : pctMeta >= 40 ? "#3B82F6" : "#EF4444";
+  const trendPositive = trend >= 0;
+  return (
+    <div className="bg-card rounded-xl border border-border p-3 sm:p-5 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between mb-2 sm:mb-3">
+        <span className="text-[9px] sm:text-xs font-semibold text-muted-foreground uppercase leading-tight">{label}</span>
+        <div className="h-7 w-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${iconBg}20`, color: iconBg }}>{icon}</div>
+      </div>
+      <p className="text-2xl font-semibold tracking-tight text-foreground truncate">{value}</p>
+      {trend !== 0 && (
+        <span className={`inline-flex items-center text-xs px-1.5 py-0.5 rounded mt-1.5 ${trendPositive ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400"}`}>
+          {trendPositive ? "+" : ""}{trend.toFixed(0)}%
+        </span>
+      )}
+      <div className="w-full h-[3px] bg-muted rounded-full mt-3 overflow-hidden">
+        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.min(pctMeta, 100)}%`, backgroundColor: progressColor }} />
+      </div>
+    </div>
+  );
+};
 
 export default ExecutiveDashboard;
