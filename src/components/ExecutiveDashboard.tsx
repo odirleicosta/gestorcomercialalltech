@@ -401,7 +401,8 @@ const ExecutiveDashboard = ({ userId }: Props) => {
 
       {/* ═══ 1) HERO — MÁQUINAS VENDIDAS ═══ */}
       <section className="grid gap-4 lg:grid-cols-[1.5fr_1fr] lg:items-stretch">
-        <div className="bg-[#1a2744] rounded-2xl p-5 sm:p-7 shadow-xl flex flex-col justify-between">
+        <div className="rounded-2xl p-5 sm:p-7 shadow-2xl flex flex-col justify-between border border-white/[0.06] relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #1e3a5f 0%, #0f2744 60%, #0d1f38 100%)' }}>
+          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#F59E0B]/[0.06] to-transparent pointer-events-none" />
           <div>
             <p className="text-white/50 text-[10px] uppercase tracking-widest font-semibold mb-3">{periodLabel}</p>
             <div className="flex items-baseline gap-3">
