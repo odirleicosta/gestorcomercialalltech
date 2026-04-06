@@ -376,11 +376,11 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       {/* ═══ HEADER ═══ */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="font-heading text-lg sm:text-2xl font-bold text-foreground flex items-center gap-2">
+          <h2 className="font-heading text-lg sm:text-2xl font-bold text-white flex items-center gap-2">
             <Flame className="h-5 w-5 sm:h-6 sm:w-6 text-[#F97316]" />
             Reunião Comercial
           </h2>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{periodLabel}</p>
+          <p className="text-xs sm:text-sm text-white/40 mt-0.5">{periodLabel}</p>
         </div>
       </div>
 
