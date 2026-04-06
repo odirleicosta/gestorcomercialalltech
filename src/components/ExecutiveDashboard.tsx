@@ -634,8 +634,8 @@ const ExecutiveDashboard = ({ userId }: Props) => {
       {/* ═══ TENDÊNCIA ═══ */}
       <section>
         <div className="flex items-center gap-2 mb-4">
-          <TrendingUp className="h-5 w-5 text-[#3B82F6]" />
-          <h3 className="font-heading text-lg font-bold text-foreground">Tendência</h3>
+          <TrendingUp className="h-5 w-5 text-[#60A5FA]" />
+          <h3 className="font-heading text-lg font-bold text-white">Tendência</h3>
         </div>
         <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-3">
           <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
