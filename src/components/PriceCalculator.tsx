@@ -30,6 +30,7 @@ import BottomNavBar from "@/components/BottomNavBar";
 
 import ClosingRadar from "@/components/ClosingRadar";
 import RepKPIs from "@/components/RepKPIs";
+import TeamManagement from "@/components/TeamManagement";
 import KpiErrorBoundary from "@/components/KpiErrorBoundary";
 
 import { useTheme } from "@/hooks/use-theme";
