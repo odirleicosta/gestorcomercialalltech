@@ -223,49 +223,16 @@ const TeamManagement = ({ userId }: Props) => {
       });
   }, [reps, deals, goals, opportunities, visits, closingDeals, filterYear, activeMonths, filterRep]);
 
-  // Alerts
-  const alerts = useMemo(() => {
-    const items: { type: "critical" | "warning" | "info"; text: string; icon: React.ReactNode }[] = [];
-
-    const zeroSales = repData.filter((r) => r.sold === 0);
-    if (zeroSales.length > 0) {
-      items.push({
-        type: "critical",
-        text: `${zeroSales.length} vendedor(es) com 0 vendas: ${zeroSales.map((r) => r.nome.split(" ")[0]).join(", ")}`,
-        icon: <XCircle className="h-4 w-4" />,
-      });
-    }
-
-    const zeroOpps = repData.filter((r) => r.totalOpps === 0);
-    if (zeroOpps.length > 0) {
-      items.push({
-        type: "critical",
-        text: `${zeroOpps.length} vendedor(es) com 0 oportunidades: ${zeroOpps.map((r) => r.nome.split(" ")[0]).join(", ")}`,
-        icon: <AlertTriangle className="h-4 w-4" />,
-      });
-    }
-
-    const lowActivity = repData.filter((r) => r.totalVisits < 5 && r.totalVisits > 0);
-    if (lowActivity.length > 0) {
-      items.push({
-        type: "warning",
-        text: `${lowActivity.length} vendedor(es) com baixa atividade de visitas`,
-        icon: <Clock className="h-4 w-4" />,
-      });
-    }
-
-    const totalSold = repData.reduce((s, r) => s + r.sold, 0);
-    const totalProposals = repData.reduce((s, r) => s + r.sold + r.activeNeg, 0);
-    const generalConversion = totalProposals > 0 ? Math.round((totalSold / totalProposals) * 100) : 0;
-    if (generalConversion < 25 && totalProposals > 0) {
-      items.push({
-        type: "warning",
-        text: `Conversão geral baixa: ${generalConversion}%`,
-        icon: <TrendingDown className="h-4 w-4" />,
-      });
-    }
-
-    return items;
+  // Critical reps (0 sales or 0 opps or lowest pct)
+  const criticalReps = useMemo(() => {
+    const ids = new Set<string>();
+    repData.forEach((r) => {
+      if (r.sold === 0 || r.totalOpps === 0 || r.pct < 30) ids.add(r.id);
+    });
+    // Also add the 3 worst by pct if not already critical
+    const sorted = [...repData].sort((a, b) => a.pct - b.pct);
+    sorted.slice(0, 3).forEach((r) => ids.add(r.id));
+    return ids;
   }, [repData]);
 
   // Team status counts
