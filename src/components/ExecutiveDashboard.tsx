@@ -668,7 +668,7 @@ const ExecutiveDashboard = ({ userId }: Props) => {
               </div>
             </div>
           </div>
-          <div className="bg-card rounded-xl border border-border p-5 shadow-sm">
+          <div className="rounded-xl border border-white/[0.06] p-5 shadow-lg" style={{ background: 'rgba(255,255,255,0.04)' }}>
             <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3">Evolução 6 Meses</h4>
             <ResponsiveContainer width="100%" height={120}>
               <AreaChart data={evolutionData}>
