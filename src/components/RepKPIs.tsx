@@ -94,6 +94,9 @@ const RepKPIs = ({ userId }: Props) => {
     quantidade: 1,
   });
   const [selRadar, setSelRadar] = useState<string[]>([]);
+  const [lostFilterRep, setLostFilterRep] = useState<string | null>(null);
+  const [lostFilterMotivo, setLostFilterMotivo] = useState<string | null>(null);
+  const [lostFilterSubmotivo, setLostFilterSubmotivo] = useState<string | null>(null);
   const [visitImportOpen, setVisitImportOpen] = useState(false);
   const [lostImportOpen, setLostImportOpen] = useState(false);
   const [oppImportOpen, setOppImportOpen] = useState(false);
