@@ -831,16 +831,16 @@ const ExecutiveDashboard = ({ userId }: Props) => {
                   { label: "Média Probabilidade", items: media, color: "#F59E0B", bg: "bg-yellow-500/10 border-yellow-500/20" },
                   { label: "Baixa Probabilidade", items: baixa, color: "#EF4444", bg: "bg-red-500/10 border-red-500/20" },
                 ].map(({ label, items, color, bg }) => (
-                  <div key={label} className={`rounded-xl border p-4 ${bg}`}>
+                  <div key={label} className="rounded-xl border border-white/[0.06] p-4" style={{ background: 'rgba(255,255,255,0.03)' }}>
                     <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color }}>{label}</p>
                     <div className="flex justify-between">
                       <div>
-                        <p className="font-heading text-2xl font-black text-foreground">{items.reduce((s: number, d: any) => s + (d.quantity || 0), 0)}</p>
-                        <p className="text-xs text-muted-foreground">máquinas</p>
+                        <p className="font-heading text-2xl font-black text-white">{items.reduce((s: number, d: any) => s + (d.quantity || 0), 0)}</p>
+                        <p className="text-xs text-white/35">máquinas</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-heading text-lg font-bold text-foreground">{fmtUsd(items.reduce((s: number, d: any) => s + (d.deal_value || 0), 0))}</p>
-                        <p className="text-xs text-muted-foreground">{items.length} negociações</p>
+                        <p className="font-heading text-lg font-bold text-white">{fmtUsd(items.reduce((s: number, d: any) => s + (d.deal_value || 0), 0))}</p>
+                        <p className="text-xs text-white/35">{items.length} negociações</p>
                       </div>
                     </div>
                   </div>
