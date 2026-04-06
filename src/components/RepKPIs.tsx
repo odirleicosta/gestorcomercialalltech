@@ -631,9 +631,10 @@ const RepKPIs = ({ userId }: Props) => {
       <FilterBar
         year={filterYear}
         onYearChange={setFilterYear}
-        periodMode={periodMode === "mes" || periodMode === "semana" ? "month" : periodMode === "trimestre" ? "quarter" : "year"}
+        periodMode={periodMode === "semana" ? "week" : periodMode === "mes" ? "month" : periodMode === "trimestre" ? "quarter" : "year"}
         onPeriodModeChange={(m) => {
           if (m === "month") setPeriodMode("mes");
+          else if (m === "week") setPeriodMode("semana");
           else if (m === "quarter") setPeriodMode("trimestre");
           else setPeriodMode("ano");
         }}
