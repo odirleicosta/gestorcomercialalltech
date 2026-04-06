@@ -30,6 +30,7 @@ import BottomNavBar from "@/components/BottomNavBar";
 
 import ClosingRadar from "@/components/ClosingRadar";
 import RepKPIs from "@/components/RepKPIs";
+import TeamManagement from "@/components/TeamManagement";
 import KpiErrorBoundary from "@/components/KpiErrorBoundary";
 
 import { useTheme } from "@/hooks/use-theme";
@@ -835,6 +836,12 @@ const PriceCalculator = () => {
           <TabsContent value="deep-analysis">
             <KpiErrorBoundary fallbackTitle="Erro ao carregar Análise Profunda">
               <DeepAnalysis userId={user.id} onBack={() => setActiveTab("dashboard")} />
+            </KpiErrorBoundary>
+          </TabsContent>
+
+          <TabsContent value="team-management">
+            <KpiErrorBoundary fallbackTitle="Erro ao carregar Gestão da Equipe">
+              <TeamManagement userId={user.id} />
             </KpiErrorBoundary>
           </TabsContent>
 

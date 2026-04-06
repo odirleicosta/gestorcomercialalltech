@@ -8,12 +8,14 @@ import {
   Target,
   UserPlus,
   Users,
+  UsersRound,
   Zap,
 } from "lucide-react";
 
 export type AppTabId =
   | "dashboard"
   | "rep-kpis"
+  | "team-management"
   | "registry"
   | "settings"
   | "deals"
@@ -33,6 +35,7 @@ export interface AppTabItem {
 export const PRIMARY_APP_TABS: AppTabItem[] = [
   { value: "dashboard", icon: BarChart3, label: "Dashboard" },
   { value: "rep-kpis", icon: Target, label: "KPIs" },
+  { value: "team-management", icon: UsersRound, label: "Equipe" },
   { value: "registry", icon: Building2, label: "Cadastros" },
   { value: "settings", icon: Settings, label: "Configurações" },
 ];
