@@ -2077,6 +2077,20 @@ const RepKPIs = ({ userId }: Props) => {
               </Button>
             </div>
 
+            {/* Tempo Médio KPI */}
+            {tempoMedio !== null && (
+              <Card className="p-4 flex items-center gap-4">
+                <div className="p-2.5 rounded-lg bg-primary/10">
+                  <Clock className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium">Tempo Médio da Negociação</p>
+                  <p className="text-xl font-bold text-foreground">{Math.round(tempoMedio)} dias</p>
+                  <p className="text-[10px] text-muted-foreground">{dealsComTempo.length} negociações com data de criação</p>
+                </div>
+              </Card>
+            )}
+
             {/* Dropdown Filters */}
             <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-1.5">
