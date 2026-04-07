@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Eye, Users, Target, TrendingUp, Save, Calendar, BarChart3, Lightbulb, Flag, Filter, Activity, XCircle, AlertTriangle, Plus, Trash2, Edit2, SlidersHorizontal, ChevronDown, FileSpreadsheet } from "lucide-react";
+import { Eye, Users, Target, TrendingUp, Save, Calendar, BarChart3, Lightbulb, Flag, Filter, Activity, XCircle, AlertTriangle, Plus, Trash2, Edit2, SlidersHorizontal, ChevronDown, FileSpreadsheet, Clock } from "lucide-react";
 import VisitImport from "@/components/VisitImport";
 import LostDealImport from "@/components/LostDealImport";
 import OpportunityImport from "@/components/OpportunityImport";
@@ -83,7 +83,7 @@ const RepKPIs = ({ userId }: Props) => {
   const [allYearOpps, setAllYearOpps] = useState<{ representative_id: string; mes: number; qty_proprias: number; qty_sdr: number }[]>([]);
   const [allYearGoals, setAllYearGoals] = useState<{ representative_id: string; mes: number; meta_quantidade: number; machine_type: string }[]>([]);
   const [allYearClosedDeals, setAllYearClosedDeals] = useState<{ representative_id: string | null; closed_at: string; machine_type: string }[]>([]);
-  const [lostDeals, setLostDeals] = useState<{ id: string; representative_id: string | null; client_name: string; machine_name: string; machine_type: string; deal_value: number; motivo_perda: string | null; motivo_perda_detalhe: string | null; data_perda: string; notes: string | null; created_at: string; updated_at: string }[]>([]);
+  const [lostDeals, setLostDeals] = useState<{ id: string; representative_id: string | null; client_name: string; machine_name: string; machine_type: string; deal_value: number; motivo_perda: string | null; motivo_perda_detalhe: string | null; data_perda: string; data_criacao: string | null; notes: string | null; created_at: string; updated_at: string }[]>([]);
   const [lostFormOpen, setLostFormOpen] = useState(false);
   const [editingLostId, setEditingLostId] = useState<string | null>(null);
   const [savingLost, setSavingLost] = useState(false);
@@ -1987,6 +1987,16 @@ const RepKPIs = ({ userId }: Props) => {
         const total = periodFiltered.reduce((s, d) => s + ((d as any).quantidade || 1), 0);
         const totalValor = periodFiltered.reduce((s, d) => s + (d.deal_value || 0), 0);
 
+        // Tempo médio da negociação (dias entre data_criacao e data_perda)
+        const dealsComTempo = periodFiltered.filter(d => d.data_criacao && d.data_perda);
+        const tempoMedio = dealsComTempo.length > 0
+          ? dealsComTempo.reduce((s, d) => {
+              const inicio = new Date(d.data_criacao! + "T00:00:00");
+              const fim = new Date(d.data_perda + "T00:00:00");
+              return s + Math.max(0, (fim.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24));
+            }, 0) / dealsComTempo.length
+          : null;
+
         // Cross-filtered data for summary tables
         const crossFiltered = periodFiltered.filter(d => {
           if (lostFilterRep) {
@@ -2066,6 +2076,20 @@ const RepKPIs = ({ userId }: Props) => {
                 <Plus className="h-4 w-4" /> Registrar Perda
               </Button>
             </div>
+
+            {/* Tempo Médio KPI */}
+            {tempoMedio !== null && (
+              <Card className="p-4 flex items-center gap-4">
+                <div className="p-2.5 rounded-lg bg-primary/10">
+                  <Clock className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium">Tempo Médio da Negociação</p>
+                  <p className="text-xl font-bold text-foreground">{Math.round(tempoMedio)} dias</p>
+                  <p className="text-[10px] text-muted-foreground">{dealsComTempo.length} negociações com data de criação</p>
+                </div>
+              </Card>
+            )}
 
             {/* Dropdown Filters */}
             <div className="flex items-center gap-3 flex-wrap">
@@ -2236,7 +2260,9 @@ const RepKPIs = ({ userId }: Props) => {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
-                      <TableHead className="font-semibold">Data</TableHead>
+                      <TableHead className="font-semibold">Criação</TableHead>
+                      <TableHead className="font-semibold">Fechamento</TableHead>
+                      <TableHead className="font-semibold text-center">Tempo</TableHead>
                       <TableHead className="font-semibold">Cliente</TableHead>
                       <TableHead className="font-semibold">Máquina</TableHead>
                       <TableHead className="font-semibold">Rep</TableHead>
@@ -2246,9 +2272,15 @@ const RepKPIs = ({ userId }: Props) => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filtered.map(d => (
+                    {filtered.map(d => {
+                      const tempoDias = d.data_criacao && d.data_perda
+                        ? Math.max(0, Math.round((new Date(d.data_perda + "T00:00:00").getTime() - new Date(d.data_criacao + "T00:00:00").getTime()) / (1000 * 60 * 60 * 24)))
+                        : null;
+                      return (
                       <TableRow key={d.id}>
+                        <TableCell className="text-sm whitespace-nowrap text-muted-foreground">{d.data_criacao ? formatDate(d.data_criacao) : "—"}</TableCell>
                         <TableCell className="text-sm whitespace-nowrap">{formatDate(d.data_perda)}</TableCell>
+                        <TableCell className="text-sm text-center font-mono">{tempoDias !== null ? `${tempoDias}d` : "—"}</TableCell>
                         <TableCell className="text-sm font-medium">{d.client_name}</TableCell>
                         <TableCell className="text-sm">{d.machine_type ? `${d.machine_type} — ` : ""}{d.machine_name}</TableCell>
                         <TableCell className="text-sm">{reps.find(r => r.id === d.representative_id)?.nome || "—"}</TableCell>
@@ -2265,10 +2297,12 @@ const RepKPIs = ({ userId }: Props) => {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
+
                     {filtered.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma negociação perdida no período.</TableCell>
+                        <TableCell colSpan={9} className="text-center text-muted-foreground py-8">Nenhuma negociação perdida no período.</TableCell>
                       </TableRow>
                     )}
                   </TableBody>

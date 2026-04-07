@@ -1,0 +1,1 @@
+ALTER TABLE public.negociacoes_perdidas ADD COLUMN IF NOT EXISTS data_criacao date;
