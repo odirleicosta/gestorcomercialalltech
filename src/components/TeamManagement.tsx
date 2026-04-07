@@ -439,13 +439,13 @@ const TeamManagement = ({ userId }: Props) => {
       {/* Status counts — 5-tier */}
       <div className="grid grid-cols-5 gap-2">
         {([
-          { key: "critico" as RepStatus, icon: <XCircle className="h-4 w-4" />, count: teamStatus.critico, bg: "from-red-600/15 to-red-600/5 border-red-600/30", textColor: "text-red-300", numColor: "text-red-200" },
-          { key: "abaixo" as RepStatus, icon: <TrendingDown className="h-4 w-4" />, count: teamStatus.abaixo, bg: "from-red-500/10 to-red-500/5 border-red-500/20", textColor: "text-red-400", numColor: "text-red-300" },
-          { key: "atencao" as RepStatus, icon: <AlertTriangle className="h-4 w-4" />, count: teamStatus.atencao, bg: "from-amber-500/10 to-amber-500/5 border-amber-500/20", textColor: "text-amber-400", numColor: "text-amber-300" },
-          { key: "ritmo" as RepStatus, icon: <Clock className="h-4 w-4" />, count: teamStatus.ritmo, bg: "from-emerald-500/10 to-emerald-500/5 border-emerald-500/20", textColor: "text-emerald-400", numColor: "text-emerald-300" },
-          { key: "acima" as RepStatus, icon: <TrendingUp className="h-4 w-4" />, count: teamStatus.acima, bg: "from-emerald-400/15 to-emerald-400/5 border-emerald-400/30", textColor: "text-emerald-300", numColor: "text-emerald-200" },
+          { key: "critico" as RepStatus, icon: <XCircle className="h-4 w-4" />, count: teamStatus.critico, borderColor: "border-red-500/40", textColor: "text-red-400", numColor: "text-foreground" },
+          { key: "abaixo" as RepStatus, icon: <TrendingDown className="h-4 w-4" />, count: teamStatus.abaixo, borderColor: "border-red-500/30", textColor: "text-red-400", numColor: "text-foreground" },
+          { key: "atencao" as RepStatus, icon: <AlertTriangle className="h-4 w-4" />, count: teamStatus.atencao, borderColor: "border-amber-500/30", textColor: "text-amber-400", numColor: "text-foreground" },
+          { key: "ritmo" as RepStatus, icon: <Clock className="h-4 w-4" />, count: teamStatus.ritmo, borderColor: "border-emerald-500/30", textColor: "text-emerald-400", numColor: "text-foreground" },
+          { key: "acima" as RepStatus, icon: <TrendingUp className="h-4 w-4" />, count: teamStatus.acima, borderColor: "border-emerald-500/40", textColor: "text-emerald-400", numColor: "text-foreground" },
         ]).map((item) => (
-          <Card key={item.key} className={`bg-gradient-to-br ${item.bg} border p-3 text-center`}>
+          <Card key={item.key} className={`bg-card ${item.borderColor} border p-3 text-center`}>
             <div className={`flex justify-center mb-1 ${item.textColor}`}>{item.icon}</div>
             <div className={`text-2xl font-bold ${item.numColor}`}>{item.count}</div>
             <div className={`text-[9px] font-medium mt-0.5 ${item.textColor}`}>{STATUS_CONFIG[item.key].label}</div>
