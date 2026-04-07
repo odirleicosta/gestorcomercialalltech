@@ -472,7 +472,7 @@ const TeamManagement = ({ userId }: Props) => {
                 return (
                   <div key={r.id} className="flex items-center justify-between bg-secondary/50 rounded-lg px-3 py-2.5 border border-red-500/30">
                     <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-full bg-red-500/30 text-red-300 flex items-center justify-center text-[10px] font-bold">
+                      <div className="h-7 w-7 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center text-[10px] font-bold">
                         {r.nome.split(" ").map((n) => n[0]).slice(0, 2).join("")}
                       </div>
                       <span className="text-sm font-semibold text-foreground">{r.nome}</span>
