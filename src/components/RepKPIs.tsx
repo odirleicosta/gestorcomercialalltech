@@ -2260,7 +2260,9 @@ const RepKPIs = ({ userId }: Props) => {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
-                      <TableHead className="font-semibold">Data</TableHead>
+                      <TableHead className="font-semibold">Criação</TableHead>
+                      <TableHead className="font-semibold">Fechamento</TableHead>
+                      <TableHead className="font-semibold text-center">Tempo</TableHead>
                       <TableHead className="font-semibold">Cliente</TableHead>
                       <TableHead className="font-semibold">Máquina</TableHead>
                       <TableHead className="font-semibold">Rep</TableHead>
@@ -2270,9 +2272,15 @@ const RepKPIs = ({ userId }: Props) => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filtered.map(d => (
+                    {filtered.map(d => {
+                      const tempoDias = d.data_criacao && d.data_perda
+                        ? Math.max(0, Math.round((new Date(d.data_perda + "T00:00:00").getTime() - new Date(d.data_criacao + "T00:00:00").getTime()) / (1000 * 60 * 60 * 24)))
+                        : null;
+                      return (
                       <TableRow key={d.id}>
+                        <TableCell className="text-sm whitespace-nowrap text-muted-foreground">{d.data_criacao ? formatDate(d.data_criacao) : "—"}</TableCell>
                         <TableCell className="text-sm whitespace-nowrap">{formatDate(d.data_perda)}</TableCell>
+                        <TableCell className="text-sm text-center font-mono">{tempoDias !== null ? `${tempoDias}d` : "—"}</TableCell>
                         <TableCell className="text-sm font-medium">{d.client_name}</TableCell>
                         <TableCell className="text-sm">{d.machine_type ? `${d.machine_type} — ` : ""}{d.machine_name}</TableCell>
                         <TableCell className="text-sm">{reps.find(r => r.id === d.representative_id)?.nome || "—"}</TableCell>
