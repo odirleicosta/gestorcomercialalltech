@@ -38,7 +38,7 @@ const normalize = (s: string) =>
   s?.toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") ?? "";
 
 const findCol = (headers: string[], ...names: string[]): number =>
-  headers.findIndex((h) => names.some((n) => normalize(h).includes(n)));
+  headers.findIndex((h) => names.some((n) => normalize(h).includes(normalize(n))));
 
 const parseExcelDate = (v: any): string | null => {
   if (!v) return null;
