@@ -3,6 +3,11 @@ import App from "./App.tsx";
 import "./index.css";
 
 const CACHE_RESET_PARAM = "__lovable_cache_reset";
+const FORCED_RELOAD_KEY = "__lovable_forced_reload_at";
+const FORCED_RELOAD_COOLDOWN_MS = 15000;
+
+const isLovableHosted = () =>
+  typeof window !== "undefined" && window.location.hostname.includes("lovable.app");
 
 const stripResetParam = () => {
   if (typeof window === "undefined") return;
@@ -15,32 +20,34 @@ const stripResetParam = () => {
 };
 
 const resetAppCache = async () => {
-  if (typeof window === "undefined") return false;
-
-  const isPreviewEnvironment =
-    import.meta.env.DEV || window.location.hostname.includes("lovable.app");
-
-  if (!isPreviewEnvironment) return false;
-
-  let didReset = false;
+  if (typeof window === "undefined" || !isLovableHosted()) return;
 
   if ("serviceWorker" in navigator) {
     const registrations = await navigator.serviceWorker.getRegistrations();
-    if (registrations.length > 0) {
-      didReset = true;
-      await Promise.all(registrations.map((registration) => registration.unregister()));
-    }
+    await Promise.all(registrations.map((registration) => registration.unregister()));
   }
 
   if ("caches" in window) {
     const cacheKeys = await window.caches.keys();
-    if (cacheKeys.length > 0) {
-      didReset = true;
-      await Promise.all(cacheKeys.map((cacheKey) => window.caches.delete(cacheKey)));
-    }
+    await Promise.all(cacheKeys.map((cacheKey) => window.caches.delete(cacheKey)));
   }
+};
 
-  return didReset;
+const forceFreshLoadIfNeeded = () => {
+  if (typeof window === "undefined" || !isLovableHosted()) return false;
+
+  const url = new URL(window.location.href);
+  if (url.searchParams.has(CACHE_RESET_PARAM)) return false;
+
+  const now = Date.now();
+  const lastForcedReload = Number(window.sessionStorage.getItem(FORCED_RELOAD_KEY) || "0");
+
+  if (now - lastForcedReload < FORCED_RELOAD_COOLDOWN_MS) return false;
+
+  window.sessionStorage.setItem(FORCED_RELOAD_KEY, String(now));
+  url.searchParams.set(CACHE_RESET_PARAM, String(now));
+  window.location.replace(url.toString());
+  return true;
 };
 
 const mountApp = () => {
@@ -48,20 +55,14 @@ const mountApp = () => {
   stripResetParam();
 };
 
-void resetAppCache()
-  .then((didReset) => {
-    if (typeof window !== "undefined" && didReset) {
-      const url = new URL(window.location.href);
+const bootstrap = async () => {
+  if (forceFreshLoadIfNeeded()) return;
 
-      if (!url.searchParams.has(CACHE_RESET_PARAM)) {
-        url.searchParams.set(CACHE_RESET_PARAM, "1");
-        window.location.replace(url.toString());
-        return;
-      }
-    }
+  try {
+    await resetAppCache();
+  } finally {
+    mountApp();
+  }
+};
 
-    mountApp();
-  })
-  .catch(() => {
-    mountApp();
-  });
+void bootstrap();
