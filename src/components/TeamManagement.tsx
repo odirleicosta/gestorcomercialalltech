@@ -458,8 +458,8 @@ const TeamManagement = ({ userId }: Props) => {
         const critical = repData.filter((r) => r.status === "critico");
         if (critical.length === 0) return null;
         return (
-          <Card className="border-red-600/50 bg-red-600/10 p-4 space-y-3">
-            <h2 className="text-sm font-bold text-red-300 flex items-center gap-2">
+          <Card className="border-red-500/40 bg-card p-4 space-y-3">
+            <h2 className="text-sm font-bold text-red-400 flex items-center gap-2">
               <Flame className="h-4 w-4" />
               Vendedores Críticos — Ação Imediata
             </h2>
