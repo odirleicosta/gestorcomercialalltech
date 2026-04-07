@@ -1987,6 +1987,16 @@ const RepKPIs = ({ userId }: Props) => {
         const total = periodFiltered.reduce((s, d) => s + ((d as any).quantidade || 1), 0);
         const totalValor = periodFiltered.reduce((s, d) => s + (d.deal_value || 0), 0);
 
+        // Tempo médio da negociação (dias entre data_criacao e data_perda)
+        const dealsComTempo = periodFiltered.filter(d => d.data_criacao && d.data_perda);
+        const tempoMedio = dealsComTempo.length > 0
+          ? dealsComTempo.reduce((s, d) => {
+              const inicio = new Date(d.data_criacao! + "T00:00:00");
+              const fim = new Date(d.data_perda + "T00:00:00");
+              return s + Math.max(0, (fim.getTime() - inicio.getTime()) / (1000 * 60 * 60 * 24));
+            }, 0) / dealsComTempo.length
+          : null;
+
         // Cross-filtered data for summary tables
         const crossFiltered = periodFiltered.filter(d => {
           if (lostFilterRep) {
