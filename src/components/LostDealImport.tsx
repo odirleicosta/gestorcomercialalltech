@@ -38,7 +38,7 @@ const normalize = (s: string) =>
   s?.toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") ?? "";
 
 const findCol = (headers: string[], ...names: string[]): number =>
-  headers.findIndex((h) => names.some((n) => normalize(h).includes(n)));
+  headers.findIndex((h) => names.some((n) => normalize(h).includes(normalize(n))));
 
 const parseExcelDate = (v: any): string | null => {
   if (!v) return null;
@@ -111,7 +111,7 @@ const LostDealImport = ({ userId, reps, open, onClose, onImported }: Props) => {
           const headers = raw[0].map((h: any) => String(h));
           const iFechada = findCol(headers, "fechada por");
           const iMotivo = findCol(headers, "motivo da perda", "motivo");
-          const iCriacao = findCol(headers, "criacao", "criação", "data de criacao", "data criacao");
+          const iCriacao = findCol(headers, "criacao", "criação", "data de criacao", "data criacao", "data de criação", "created_at", "data_criacao");
           const iPerda = findCol(headers, "data de perda", "data perda", "fechamento", "data fechamento");
           const iCliente = findCol(headers, "cliente");
           const iName = findCol(headers, "name", "nome_negociacao", "maquina", "máquina");
