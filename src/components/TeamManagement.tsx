@@ -86,48 +86,48 @@ const STATUS_ORDER: Record<RepStatus, number> = {
 const STATUS_CONFIG: Record<RepStatus, { label: string; color: string; dotColor: string; bg: string; border: string; avatarBg: string; avatarText: string }> = {
   critico: {
     label: "Crítico",
-    color: "bg-red-600/25 text-red-300 border-red-500/40",
+    color: "bg-red-600/20 text-red-400 border-red-500/50",
     dotColor: "bg-red-500",
-    bg: "border-red-500/60 bg-red-500/10",
-    border: "border-red-500/60",
-    avatarBg: "bg-red-500/30",
-    avatarText: "text-red-300",
+    bg: "border-red-500/40 bg-card",
+    border: "border-red-500/40",
+    avatarBg: "bg-red-500/20",
+    avatarText: "text-red-400",
   },
   abaixo: {
     label: "Abaixo da meta",
-    color: "bg-red-500/20 text-red-400 border-red-500/30",
+    color: "bg-red-500/15 text-red-400 border-red-500/30",
     dotColor: "bg-red-400",
-    bg: "border-red-500/30 bg-red-500/5",
-    border: "border-red-500/30",
-    avatarBg: "bg-red-500/20",
+    bg: "border-red-500/25 bg-card",
+    border: "border-red-500/25",
+    avatarBg: "bg-red-500/15",
     avatarText: "text-red-400",
   },
   atencao: {
     label: "Atenção",
-    color: "bg-amber-500/20 text-amber-400 border-amber-500/30",
+    color: "bg-amber-500/15 text-amber-400 border-amber-500/30",
     dotColor: "bg-amber-500",
-    bg: "border-amber-500/30 bg-amber-500/5",
-    border: "border-amber-500/30",
-    avatarBg: "bg-amber-500/20",
+    bg: "border-amber-500/25 bg-card",
+    border: "border-amber-500/25",
+    avatarBg: "bg-amber-500/15",
     avatarText: "text-amber-400",
   },
   ritmo: {
     label: "No ritmo",
-    color: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
+    color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
     dotColor: "bg-emerald-500",
     bg: "border-border/40 bg-card",
     border: "border-border/40",
-    avatarBg: "bg-emerald-500/20",
+    avatarBg: "bg-emerald-500/15",
     avatarText: "text-emerald-400",
   },
   acima: {
     label: "Acima da meta",
-    color: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+    color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/40",
     dotColor: "bg-emerald-400",
-    bg: "border-emerald-500/30 bg-emerald-500/5",
-    border: "border-emerald-500/30",
-    avatarBg: "bg-emerald-500/25",
-    avatarText: "text-emerald-300",
+    bg: "border-emerald-500/25 bg-card",
+    border: "border-emerald-500/25",
+    avatarBg: "bg-emerald-500/15",
+    avatarText: "text-emerald-400",
   },
 };
 
@@ -439,13 +439,13 @@ const TeamManagement = ({ userId }: Props) => {
       {/* Status counts — 5-tier */}
       <div className="grid grid-cols-5 gap-2">
         {([
-          { key: "critico" as RepStatus, icon: <XCircle className="h-4 w-4" />, count: teamStatus.critico, bg: "from-red-600/15 to-red-600/5 border-red-600/30", textColor: "text-red-300", numColor: "text-red-200" },
-          { key: "abaixo" as RepStatus, icon: <TrendingDown className="h-4 w-4" />, count: teamStatus.abaixo, bg: "from-red-500/10 to-red-500/5 border-red-500/20", textColor: "text-red-400", numColor: "text-red-300" },
-          { key: "atencao" as RepStatus, icon: <AlertTriangle className="h-4 w-4" />, count: teamStatus.atencao, bg: "from-amber-500/10 to-amber-500/5 border-amber-500/20", textColor: "text-amber-400", numColor: "text-amber-300" },
-          { key: "ritmo" as RepStatus, icon: <Clock className="h-4 w-4" />, count: teamStatus.ritmo, bg: "from-emerald-500/10 to-emerald-500/5 border-emerald-500/20", textColor: "text-emerald-400", numColor: "text-emerald-300" },
-          { key: "acima" as RepStatus, icon: <TrendingUp className="h-4 w-4" />, count: teamStatus.acima, bg: "from-emerald-400/15 to-emerald-400/5 border-emerald-400/30", textColor: "text-emerald-300", numColor: "text-emerald-200" },
+          { key: "critico" as RepStatus, icon: <XCircle className="h-4 w-4" />, count: teamStatus.critico, borderColor: "border-red-500/40", textColor: "text-red-400", numColor: "text-foreground" },
+          { key: "abaixo" as RepStatus, icon: <TrendingDown className="h-4 w-4" />, count: teamStatus.abaixo, borderColor: "border-red-500/30", textColor: "text-red-400", numColor: "text-foreground" },
+          { key: "atencao" as RepStatus, icon: <AlertTriangle className="h-4 w-4" />, count: teamStatus.atencao, borderColor: "border-amber-500/30", textColor: "text-amber-400", numColor: "text-foreground" },
+          { key: "ritmo" as RepStatus, icon: <Clock className="h-4 w-4" />, count: teamStatus.ritmo, borderColor: "border-emerald-500/30", textColor: "text-emerald-400", numColor: "text-foreground" },
+          { key: "acima" as RepStatus, icon: <TrendingUp className="h-4 w-4" />, count: teamStatus.acima, borderColor: "border-emerald-500/40", textColor: "text-emerald-400", numColor: "text-foreground" },
         ]).map((item) => (
-          <Card key={item.key} className={`bg-gradient-to-br ${item.bg} border p-3 text-center`}>
+          <Card key={item.key} className={`bg-card ${item.borderColor} border p-3 text-center`}>
             <div className={`flex justify-center mb-1 ${item.textColor}`}>{item.icon}</div>
             <div className={`text-2xl font-bold ${item.numColor}`}>{item.count}</div>
             <div className={`text-[9px] font-medium mt-0.5 ${item.textColor}`}>{STATUS_CONFIG[item.key].label}</div>
@@ -458,8 +458,8 @@ const TeamManagement = ({ userId }: Props) => {
         const critical = repData.filter((r) => r.status === "critico");
         if (critical.length === 0) return null;
         return (
-          <Card className="border-red-600/50 bg-red-600/10 p-4 space-y-3">
-            <h2 className="text-sm font-bold text-red-300 flex items-center gap-2">
+          <Card className="border-red-500/40 bg-card p-4 space-y-3">
+            <h2 className="text-sm font-bold text-red-400 flex items-center gap-2">
               <Flame className="h-4 w-4" />
               Vendedores Críticos — Ação Imediata
             </h2>
@@ -470,9 +470,9 @@ const TeamManagement = ({ userId }: Props) => {
                 if (r.totalOpps === 0) reasons.push("0 oportunidades");
                 if (r.totalVisits === 0) reasons.push("0 visitas");
                 return (
-                  <div key={r.id} className="flex items-center justify-between bg-red-600/15 rounded-lg px-3 py-2.5 border border-red-500/30">
+                  <div key={r.id} className="flex items-center justify-between bg-secondary/50 rounded-lg px-3 py-2.5 border border-red-500/30">
                     <div className="flex items-center gap-2">
-                      <div className="h-7 w-7 rounded-full bg-red-500/30 text-red-300 flex items-center justify-center text-[10px] font-bold">
+                      <div className="h-7 w-7 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center text-[10px] font-bold">
                         {r.nome.split(" ").map((n) => n[0]).slice(0, 2).join("")}
                       </div>
                       <span className="text-sm font-semibold text-foreground">{r.nome}</span>
