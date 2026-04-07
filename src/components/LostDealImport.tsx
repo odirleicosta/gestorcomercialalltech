@@ -193,6 +193,7 @@ const LostDealImport = ({ userId, reps, open, onClose, onImported }: Props) => {
         motivo_perda: r.motivo_perda || null,
         motivo_perda_detalhe: r.comentario || null,
         data_perda: r.data_perda,
+        data_criacao: r.data_criacao || null,
         notes: r.descricao || null,
         quantidade: 1,
       }));
