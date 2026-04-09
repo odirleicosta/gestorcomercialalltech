@@ -9,7 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Eye, Users, Target, TrendingUp, Save, Calendar, BarChart3, Lightbulb, Flag, Filter, Activity, XCircle, AlertTriangle, Plus, Trash2, Edit2, SlidersHorizontal, ChevronDown, FileSpreadsheet, Clock } from "lucide-react";
+import { Eye, Users, Target, TrendingUp, Save, Calendar, BarChart3, Lightbulb, Flag, Filter, Activity, XCircle, AlertTriangle, Plus, Trash2, Edit2, SlidersHorizontal, ChevronDown, FileSpreadsheet, Clock, FileDown } from "lucide-react";
+import { exportOpportunitiesPdf, exportLostDealsPdf } from "@/lib/pdfExport";
 import VisitImport from "@/components/VisitImport";
 import LostDealImport from "@/components/LostDealImport";
 import OpportunityImport from "@/components/OpportunityImport";
@@ -995,6 +996,12 @@ const RepKPIs = ({ userId }: Props) => {
         <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setOppImportOpen(true)}>
             <FileSpreadsheet className="h-3.5 w-3.5 mr-1" /> Importar Planilha
+          </Button>
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => {
+            const pLabel = periodMode === "mes" ? `${MONTHS[filterMonth - 1]} ${filterYear}` : periodMode === "trimestre" ? `${filterQuarter} ${filterYear}` : `${filterYear}`;
+            exportOpportunitiesPdf(filteredOpportunities, pLabel);
+          }}>
+            <FileDown className="h-3.5 w-3.5" /> Exportar PDF
           </Button>
         </div>
         <OpportunityImport userId={userId} reps={reps} open={oppImportOpen} onClose={() => setOppImportOpen(false)} onImported={() => setRefreshKey(k => k + 1)} />
@@ -2062,6 +2069,11 @@ const RepKPIs = ({ userId }: Props) => {
             <div className="flex items-center gap-2 flex-wrap">
               <Button variant="outline" size="sm" onClick={() => setLostImportOpen(true)} className="gap-1.5">
                 <FileSpreadsheet className="h-4 w-4" /> Importar Planilha
+              </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
+                exportLostDealsPdf(filtered, reps, periodLabel);
+              }}>
+                <FileDown className="h-4 w-4" /> Exportar PDF
               </Button>
               <Button variant="destructive" size="sm" className="gap-1.5" onClick={async () => {
                 if (!confirm("Tem certeza que deseja excluir TODAS as negociações perdidas? Esta ação não pode ser desfeita.")) return;
