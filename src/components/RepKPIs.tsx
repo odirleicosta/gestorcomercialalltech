@@ -997,6 +997,12 @@ const RepKPIs = ({ userId }: Props) => {
           <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setOppImportOpen(true)}>
             <FileSpreadsheet className="h-3.5 w-3.5 mr-1" /> Importar Planilha
           </Button>
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => {
+            const pLabel = periodMode === "mes" ? `${MONTHS[filterMonth - 1]} ${filterYear}` : periodMode === "trimestre" ? `${filterQuarter} ${filterYear}` : `${filterYear}`;
+            exportOpportunitiesPdf(filteredOpportunities, pLabel);
+          }}>
+            <FileDown className="h-3.5 w-3.5" /> Exportar PDF
+          </Button>
         </div>
         <OpportunityImport userId={userId} reps={reps} open={oppImportOpen} onClose={() => setOppImportOpen(false)} onImported={() => setRefreshKey(k => k + 1)} />
         {/* Opp KPI Cards */}
