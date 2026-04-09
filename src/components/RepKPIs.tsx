@@ -2070,6 +2070,11 @@ const RepKPIs = ({ userId }: Props) => {
               <Button variant="outline" size="sm" onClick={() => setLostImportOpen(true)} className="gap-1.5">
                 <FileSpreadsheet className="h-4 w-4" /> Importar Planilha
               </Button>
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
+                exportLostDealsPdf(filtered, reps, periodLabel);
+              }}>
+                <FileDown className="h-4 w-4" /> Exportar PDF
+              </Button>
               <Button variant="destructive" size="sm" className="gap-1.5" onClick={async () => {
                 if (!confirm("Tem certeza que deseja excluir TODAS as negociações perdidas? Esta ação não pode ser desfeita.")) return;
                 const { error } = await supabase.from("negociacoes_perdidas" as any).delete().eq("user_id", userId);
