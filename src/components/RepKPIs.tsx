@@ -9,7 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { Eye, Users, Target, TrendingUp, Save, Calendar, BarChart3, Lightbulb, Flag, Filter, Activity, XCircle, AlertTriangle, Plus, Trash2, Edit2, SlidersHorizontal, ChevronDown, FileSpreadsheet, Clock } from "lucide-react";
+import { Eye, Users, Target, TrendingUp, Save, Calendar, BarChart3, Lightbulb, Flag, Filter, Activity, XCircle, AlertTriangle, Plus, Trash2, Edit2, SlidersHorizontal, ChevronDown, FileSpreadsheet, Clock, FileDown } from "lucide-react";
+import { exportOpportunitiesPdf, exportLostDealsPdf } from "@/lib/pdfExport";
 import VisitImport from "@/components/VisitImport";
 import LostDealImport from "@/components/LostDealImport";
 import OpportunityImport from "@/components/OpportunityImport";
